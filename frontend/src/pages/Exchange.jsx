@@ -1,8 +1,8 @@
+import { apiGet, apiPost } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserContext } from '../context/UserContext'
 
-const API = 'http://127.0.0.1:8000'
 
 function Exchange() {
   const { t } = useTranslation()
@@ -13,12 +13,11 @@ function Exchange() {
   const [fromCurrency, setFromCurrency] = useState('KRW')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
+  const [isSuccess, setIsSuccess] = useState(false)
 
   const fetchData = () => {
-    // Exchange rate is public, no user_id needed
-    fetch(`${API}/exchange-rate`).then(r => r.json()).then(d => setRate(d.usd_to_krw))
-    // Account details are private, needs user_id
-    fetch(`${API}/portfolio/account?user_id=${currentUserId}`).then(r => r.json()).then(setAccount)
+    apiGet('/exchange-rate', (d) => setRate(d.usd_to_krw))
+    apiGet(`/portfolio/account?user_id=${currentUserId}`, setAccount)
   }
 
   useEffect(() => { fetchData() }, [currentUserId])
@@ -30,18 +29,17 @@ function Exchange() {
 
   const execute = async () => {
     setMessage('')
-    const res = await fetch(`${API}/trade/exchange?user_id=${currentUserId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_currency: fromCurrency, to_currency: toCurrency, amount: parseFloat(amount) }),
-    })
-    const data = await res.json()
-    if (res.ok) {
+    setIsSuccess(false)
+    const data = await apiPost(
+      `/trade/exchange?user_id=${currentUserId}`,
+      { from_currency: fromCurrency, to_currency: toCurrency, amount: parseFloat(amount) },
+      (err) => setMessage(err)
+    )
+    if (data) {
       setMessage(`${t('exchange.title')} ${t('trade.buySuccess')}`)
+      setIsSuccess(true)
       setAccount({ ...account, balance_krw: data.balance.krw, balance_usd: data.balance.usd })
       setAmount('')
-    } else {
-      setMessage(data.detail)
     }
   }
 
@@ -125,7 +123,7 @@ function Exchange() {
         </button>
 
         {message && (
-          <p style={{ marginTop: 12, textAlign: 'center', color: message.includes('완료') || message.includes('complete') ? '#34c759' : '#ff3b30' }}>
+          <p style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? '#34c759' : '#ff3b30' }}>
             {message}
           </p>
         )}

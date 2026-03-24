@@ -1,74 +1,72 @@
+import { apiFetch, apiPost } from '../api'
 import { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { getStockName } from "../utils/stockNames";
-import { UserContext } from "../context/UserContext"; // <-- Import the Context
+import { UserContext } from "../context/UserContext";
 
-const API = "http://127.0.0.1:8000";
 
 function TradeModal({ ticker, onClose, onComplete }) {
   const { t } = useTranslation();
-  const { currentUserId } = useContext(UserContext); // <-- Grab the current player's ID
+  const { currentUserId } = useContext(UserContext);
 
   const [stock, setStock] = useState(null);
   const [account, setAccount] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!ticker) return;
     setLoading(true);
     setMessage("");
+    setIsSuccess(false);
     setQuantity(1);
 
-    // Fetch stock data (global) AND account data (user-specific)
     Promise.all([
-      fetch(`${API}/stock/${ticker}`).then((r) => r.json()),
-      fetch(`${API}/portfolio/account?user_id=${currentUserId}`).then((r) =>
-        r.json(),
-      ), // <-- Added user_id
+      apiFetch(`/stock/${ticker}`),
+      apiFetch(`/portfolio/account?user_id=${currentUserId}`),
     ])
       .then(([stockData, accountData]) => {
         setStock(stockData);
         setAccount(accountData);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, [ticker, currentUserId]); // <-- Added currentUserId to dependencies
+      .catch(() => {
+        setMessage("Failed to load stock data");
+        setLoading(false);
+      });
+  }, [ticker, currentUserId]);
 
   if (!ticker) return null;
 
   const buy = async () => {
     setMessage("");
-    // <-- Added user_id to the buy endpoint
-    const res = await fetch(`${API}/trade/buy?user_id=${currentUserId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticker, quantity }),
-    });
-    const data = await res.json();
-    if (res.ok) {
+    setIsSuccess(false);
+    const data = await apiPost(
+      `/trade/buy?user_id=${currentUserId}`,
+      { ticker, quantity },
+      (err) => setMessage(err)
+    );
+    if (data) {
       setMessage(t("trade.buySuccess"));
+      setIsSuccess(true);
       if (onComplete) setTimeout(onComplete, 800);
-    } else {
-      setMessage(data.detail);
     }
   };
 
   const sell = async () => {
     setMessage("");
-    // <-- Added user_id to the sell endpoint
-    const res = await fetch(`${API}/trade/sell?user_id=${currentUserId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticker, quantity }),
-    });
-    const data = await res.json();
-    if (res.ok) {
+    setIsSuccess(false);
+    const data = await apiPost(
+      `/trade/sell?user_id=${currentUserId}`,
+      { ticker, quantity },
+      (err) => setMessage(err)
+    );
+    if (data) {
       setMessage(t("trade.sellSuccess"));
+      setIsSuccess(true);
       if (onComplete) setTimeout(onComplete, 800);
-    } else {
-      setMessage(data.detail);
     }
   };
 
@@ -192,10 +190,7 @@ function TradeModal({ ticker, onClose, onComplete }) {
                   marginTop: 12,
                   textAlign: "center",
                   fontSize: 14,
-                  color:
-                    message.includes("완료") || message.includes("complete")
-                      ? "#34c759"
-                      : "#ff3b30",
+                  color: isSuccess ? "#34c759" : "#ff3b30",
                 }}
               >
                 {message}

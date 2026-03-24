@@ -1,10 +1,10 @@
+import { apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/UserContext'
 
-const API = 'http://127.0.0.1:8000'
 
 function Portfolio() {
   const { t } = useTranslation()
@@ -18,12 +18,12 @@ function Portfolio() {
   const [tradeTicker, setTradeTicker] = useState(null)
 
   const fetchData = async () => {
-    const [holdingsRes, accountRes] = await Promise.all([
-      fetch(`${API}/portfolio/holdings?user_id=${currentUserId}`),
-      fetch(`${API}/portfolio/account?user_id=${currentUserId}`)
+    const [holdingsData, accountData] = await Promise.all([
+      apiFetch(`/portfolio/holdings?user_id=${currentUserId}`),
+      apiFetch(`/portfolio/account?user_id=${currentUserId}`)
     ])
-    setHoldings(await holdingsRes.json())
-    setAccount(await accountRes.json())
+    if (holdingsData) setHoldings(holdingsData)
+    if (accountData) setAccount(accountData)
   }
 
   useEffect(() => { fetchData() }, [currentUserId])

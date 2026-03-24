@@ -1,10 +1,10 @@
+import { apiFetch, apiDelete } from '../api'
 import { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/UserContext";
 
-const API = "http://127.0.0.1:8000";
 
 function Watchlist() {
   const { t, i18n } = useTranslation();
@@ -16,10 +16,8 @@ function Watchlist() {
 
   const fetchWatchlist = async () => {
     setLoading(true);
-    // Add user_id to the query
-    const res = await fetch(`${API}/watchlist/?user_id=${currentUserId}`);
-    const data = await res.json();
-    setWatchlist(data);
+    const data = await apiFetch(`/watchlist/?user_id=${currentUserId}`);
+    if (data) setWatchlist(data);
     setLoading(false);
   };
 
@@ -29,8 +27,7 @@ function Watchlist() {
 
   const remove = async (ticker, e) => {
     e.stopPropagation();
-    // Add user_id to the query
-    await fetch(`${API}/watchlist/remove/${ticker}?user_id=${currentUserId}`, { method: "DELETE" });
+    await apiDelete(`/watchlist/remove/${ticker}?user_id=${currentUserId}`);
     fetchWatchlist();
   };
 

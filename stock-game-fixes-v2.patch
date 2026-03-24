@@ -1,0 +1,905 @@
+diff --git a/.gitignore b/.gitignore
+index f5266b1..4aa746c 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,14 +1,14 @@
+ # Backend
+ backend/venv/
+-backend/stock_game.db
+-backend/__pycache__/
+-backend/app/__pycache__/
+-backend/app/services/__pycache__/
+-backend/app/routes/__pycache__/
++**/*.db
++**/__pycache__/
++*.pyc
++.env
+ 
+ # Frontend
+ frontend/node_modules/
+ frontend/dist/
++.env.local
+ 
+ # OS
+ .DS_Store
+\ No newline at end of file
+diff --git a/backend/app/main.py b/backend/app/main.py
+index 0d43d0e..0b91541 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -21,17 +21,21 @@ models.Base.metadata.create_all(bind=engine)
+ async def snapshot_loop():
+     while True:
+         await asyncio.sleep(3600)
+-        db = SessionLocal()
+-        try:
+-            # Grab EVERY user and save a snapshot for their chart
+-            users = db.query(models.User).all()
+-            for user in users:
+-                take_snapshot(db, user_id=user.id)
+-            print(f"Portfolio snapshots saved for {len(users)} users")
+-        except Exception as e:
+-            print(f"Snapshot error: {e}")
+-        finally:
+-            db.close()
++        # Run the entire snapshot batch in a thread so yfinance
++        # HTTP calls don't block the FastAPI event loop
++        def _take_all_snapshots():
++            db = SessionLocal()
++            try:
++                users = db.query(models.User).all()
++                for user in users:
++                    take_snapshot(db, user_id=user.id)
++                print(f"Portfolio snapshots saved for {len(users)} users")
++            except Exception as e:
++                print(f"Snapshot error: {e}")
++            finally:
++                db.close()
++
++        await asyncio.to_thread(_take_all_snapshots)
+ 
+ async def market_refresh_loop():
+     while True:
+diff --git a/backend/app/services/stock_service.py b/backend/app/services/stock_service.py
+index d0af803..9074066 100644
+--- a/backend/app/services/stock_service.py
++++ b/backend/app/services/stock_service.py
+@@ -1,5 +1,15 @@
+ import yfinance as yf
+ import requests
++import time
++
++# ── Caches ──────────────────────────────────────────────────────────
++# Price cache: 60-second TTL keeps pages fast without stale data
++_price_cache: dict[str, dict] = {}
++PRICE_CACHE_TTL = 60  # seconds
++
++# Info cache: 10-minute TTL since sector/industry/name rarely change
++_info_cache: dict[str, dict] = {}
++INFO_CACHE_TTL = 600  # seconds
+ 
+ KOREAN_STOCKS = {
+     "삼성전자": "005930.KS",
+@@ -114,39 +124,79 @@ def search_stocks(query: str) -> list:
+ 
+ 
+ def get_stock_price(ticker: str) -> float | None:
+-    stock = yf.Ticker(ticker)
+-    data = stock.history(period="1d")
+-    if data.empty:
++    now = time.time()
++
++    # Return cached price if still fresh
++    cached = _price_cache.get(ticker)
++    if cached and now - cached["ts"] < PRICE_CACHE_TTL:
++        return cached["value"]
++
++    try:
++        stock = yf.Ticker(ticker)
++        data = stock.history(period="1d")
++        if data.empty:
++            return None
++        price = round(float(data["Close"].iloc[-1]), 2)
++        _price_cache[ticker] = {"value": price, "ts": now}
++        return price
++    except Exception:
++        # If fetch fails, return stale cache if available
++        if cached:
++            return cached["value"]
+         return None
+-    return round(data["Close"].iloc[-1], 2)
+ 
+ 
+ def get_stock_info(ticker: str) -> dict | None:
+-    stock = yf.Ticker(ticker)
+-    info = stock.info
+-    if not info or "shortName" not in info:
+-        return None
++    now = time.time()
+ 
+-    is_kr = ticker.endswith(".KS") or ticker.endswith(".KQ")
+-    en_name = info.get("shortName", "")
+-    ko_name = en_name
+-
+-    if is_kr:
+-        ko_name = KOREAN_STOCKS.get(ticker) or next(
+-            (name for name, t in KOREAN_STOCKS.items() if t == ticker), en_name
+-        )
+-        en_name = KR_STOCK_NAMES_EN.get(ticker, en_name)
+-    else:
+-        ko_name = US_STOCK_NAMES_KO.get(ticker, en_name)
+-
+-    return {
+-        "ticker": ticker,
+-        "name": en_name,
+-        "name_en": en_name,
+-        "name_ko": ko_name,
+-        "sector": info.get("sector", "Unknown"),
+-        "industry": info.get("industry", "Unknown"),
+-        "market": "KRX" if is_kr else "US",
+-        "currency": "KRW" if is_kr else "USD",
+-        "price": get_stock_price(ticker),
+-    }
+\ No newline at end of file
++    # Return cached info if still fresh
++    cached = _info_cache.get(ticker)
++    if cached and now - cached["ts"] < INFO_CACHE_TTL:
++        # Update the price field with the latest cached price
++        result = cached["value"].copy()
++        result["price"] = get_stock_price(ticker)
++        return result
++
++    try:
++        stock = yf.Ticker(ticker)
++        info = stock.info
++        if not info or "shortName" not in info:
++            return None
++
++        is_kr = ticker.endswith(".KS") or ticker.endswith(".KQ")
++        en_name = info.get("shortName", "")
++        ko_name = en_name
++
++        if is_kr:
++            ko_name = KOREAN_STOCKS.get(ticker) or next(
++                (name for name, t in KOREAN_STOCKS.items() if t == ticker), en_name
++            )
++            en_name = KR_STOCK_NAMES_EN.get(ticker, en_name)
++        else:
++            ko_name = US_STOCK_NAMES_KO.get(ticker, en_name)
++
++        result = {
++            "ticker": ticker,
++            "name": en_name,
++            "name_en": en_name,
++            "name_ko": ko_name,
++            "sector": info.get("sector", "Unknown"),
++            "industry": info.get("industry", "Unknown"),
++            "market": "KRX" if is_kr else "US",
++            "currency": "KRW" if is_kr else "USD",
++            "marketCap": info.get("marketCap", 0),
++        }
++
++        _info_cache[ticker] = {"value": result, "ts": now}
++
++        # Get price separately (uses its own cache) and attach it
++        result_with_price = result.copy()
++        result_with_price["price"] = get_stock_price(ticker)
++        return result_with_price
++
++    except Exception:
++        if cached:
++            result = cached["value"].copy()
++            result["price"] = get_stock_price(ticker)
++            return result
++        return None
+\ No newline at end of file
+diff --git a/frontend/src/api.js b/frontend/src/api.js
+new file mode 100644
+index 0000000..cdc6361
+--- /dev/null
++++ b/frontend/src/api.js
+@@ -0,0 +1,55 @@
++import { API } from './config'
++
++/**
++ * Wrapper around fetch that handles errors gracefully.
++ * Returns the parsed JSON on success, or null on failure.
++ * Optionally calls an onError callback with the error message.
++ */
++export async function apiFetch(path, options = {}, onError = null) {
++  try {
++    const res = await fetch(`${API}${path}`, options)
++
++    if (!res.ok) {
++      const data = await res.json().catch(() => ({}))
++      const message = data.detail || data.error || `Request failed (${res.status})`
++      if (onError) onError(message)
++      return null
++    }
++
++    return await res.json()
++  } catch (err) {
++    const message = 'Cannot connect to server. Is the backend running?'
++    if (onError) onError(message)
++    console.error(`API error [${path}]:`, err)
++    return null
++  }
++}
++
++/**
++ * Fire-and-forget GET that sets state directly.
++ * Usage: apiGet('/portfolio/account?user_id=1', setAccount)
++ */
++export function apiGet(path, setter, onError = null) {
++  apiFetch(path, {}, onError).then(data => {
++    if (data !== null) setter(data)
++  })
++}
++
++/**
++ * POST helper that returns the parsed response or null.
++ * Usage: const data = await apiPost('/trade/buy?user_id=1', { ticker: 'AAPL', quantity: 5 })
++ */
++export async function apiPost(path, body, onError = null) {
++  return apiFetch(path, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify(body),
++  }, onError)
++}
++
++/**
++ * DELETE helper.
++ */
++export async function apiDelete(path, onError = null) {
++  return apiFetch(path, { method: 'DELETE' }, onError)
++}
+diff --git a/frontend/src/components/TradeModal.jsx b/frontend/src/components/TradeModal.jsx
+index 4690112..2c1aabd 100644
+--- a/frontend/src/components/TradeModal.jsx
++++ b/frontend/src/components/TradeModal.jsx
+@@ -1,74 +1,72 @@
++import { apiFetch, apiPost } from '../api'
+ import { useState, useEffect, useContext } from "react";
+ import { useTranslation } from "react-i18next";
+ import { getStockName } from "../utils/stockNames";
+-import { UserContext } from "../context/UserContext"; // <-- Import the Context
++import { UserContext } from "../context/UserContext";
+ 
+-const API = "http://127.0.0.1:8000";
+ 
+ function TradeModal({ ticker, onClose, onComplete }) {
+   const { t } = useTranslation();
+-  const { currentUserId } = useContext(UserContext); // <-- Grab the current player's ID
++  const { currentUserId } = useContext(UserContext);
+ 
+   const [stock, setStock] = useState(null);
+   const [account, setAccount] = useState(null);
+   const [quantity, setQuantity] = useState(1);
+   const [message, setMessage] = useState("");
++  const [isSuccess, setIsSuccess] = useState(false);
+   const [loading, setLoading] = useState(true);
+ 
+   useEffect(() => {
+     if (!ticker) return;
+     setLoading(true);
+     setMessage("");
++    setIsSuccess(false);
+     setQuantity(1);
+ 
+-    // Fetch stock data (global) AND account data (user-specific)
+     Promise.all([
+-      fetch(`${API}/stock/${ticker}`).then((r) => r.json()),
+-      fetch(`${API}/portfolio/account?user_id=${currentUserId}`).then((r) =>
+-        r.json(),
+-      ), // <-- Added user_id
++      apiFetch(`/stock/${ticker}`),
++      apiFetch(`/portfolio/account?user_id=${currentUserId}`),
+     ])
+       .then(([stockData, accountData]) => {
+         setStock(stockData);
+         setAccount(accountData);
+         setLoading(false);
+       })
+-      .catch(() => setLoading(false));
+-  }, [ticker, currentUserId]); // <-- Added currentUserId to dependencies
++      .catch(() => {
++        setMessage("Failed to load stock data");
++        setLoading(false);
++      });
++  }, [ticker, currentUserId]);
+ 
+   if (!ticker) return null;
+ 
+   const buy = async () => {
+     setMessage("");
+-    // <-- Added user_id to the buy endpoint
+-    const res = await fetch(`${API}/trade/buy?user_id=${currentUserId}`, {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ ticker, quantity }),
+-    });
+-    const data = await res.json();
+-    if (res.ok) {
++    setIsSuccess(false);
++    const data = await apiPost(
++      `/trade/buy?user_id=${currentUserId}`,
++      { ticker, quantity },
++      (err) => setMessage(err)
++    );
++    if (data) {
+       setMessage(t("trade.buySuccess"));
++      setIsSuccess(true);
+       if (onComplete) setTimeout(onComplete, 800);
+-    } else {
+-      setMessage(data.detail);
+     }
+   };
+ 
+   const sell = async () => {
+     setMessage("");
+-    // <-- Added user_id to the sell endpoint
+-    const res = await fetch(`${API}/trade/sell?user_id=${currentUserId}`, {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ ticker, quantity }),
+-    });
+-    const data = await res.json();
+-    if (res.ok) {
++    setIsSuccess(false);
++    const data = await apiPost(
++      `/trade/sell?user_id=${currentUserId}`,
++      { ticker, quantity },
++      (err) => setMessage(err)
++    );
++    if (data) {
+       setMessage(t("trade.sellSuccess"));
++      setIsSuccess(true);
+       if (onComplete) setTimeout(onComplete, 800);
+-    } else {
+-      setMessage(data.detail);
+     }
+   };
+ 
+@@ -192,10 +190,7 @@ function TradeModal({ ticker, onClose, onComplete }) {
+                   marginTop: 12,
+                   textAlign: "center",
+                   fontSize: 14,
+-                  color:
+-                    message.includes("완료") || message.includes("complete")
+-                      ? "#34c759"
+-                      : "#ff3b30",
++                  color: isSuccess ? "#34c759" : "#ff3b30",
+                 }}
+               >
+                 {message}
+diff --git a/frontend/src/config.js b/frontend/src/config.js
+new file mode 100644
+index 0000000..433bab4
+--- /dev/null
++++ b/frontend/src/config.js
+@@ -0,0 +1,4 @@
++// Central API configuration
++// In development: defaults to localhost
++// In production: set VITE_API_URL in your .env file
++export const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+diff --git a/frontend/src/pages/Analytics.jsx b/frontend/src/pages/Analytics.jsx
+index 7e96965..2baf244 100644
+--- a/frontend/src/pages/Analytics.jsx
++++ b/frontend/src/pages/Analytics.jsx
+@@ -1,3 +1,4 @@
++import { apiGet } from '../api'
+ import { useState, useEffect, useContext } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import {
+@@ -8,7 +9,6 @@ import { getStockName } from '../utils/stockNames'
+ import TradeModal from '../components/TradeModal'
+ import { UserContext } from '../context/UserContext'
+ 
+-const API = 'http://127.0.0.1:8000'
+ const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
+ 
+ function Analytics() {
+@@ -25,10 +25,10 @@ function Analytics() {
+   const [tradeTicker, setTradeTicker] = useState(null)
+ 
+   useEffect(() => {
+-    fetch(`${API}/analytics/performance?user_id=${currentUserId}`).then(r => r.json()).then(setPerformance)
+-    fetch(`${API}/analytics/by-stock?user_id=${currentUserId}`).then(r => r.json()).then(setByStock)
+-    fetch(`${API}/analytics/by-sector?user_id=${currentUserId}`).then(r => r.json()).then(setBySector)
+-    fetch(`${API}/analytics/realized?user_id=${currentUserId}`).then(r => r.json()).then(setRealized)
++    apiGet(`/analytics/performance?user_id=${currentUserId}`, setPerformance)
++    apiGet(`/analytics/by-stock?user_id=${currentUserId}`, setByStock)
++    apiGet(`/analytics/by-sector?user_id=${currentUserId}`, setBySector)
++    apiGet(`/analytics/realized?user_id=${currentUserId}`, setRealized)
+   }, [currentUserId])
+ 
+   if (!performance) return <p>{t('common.loading')}</p>
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+index cfcb487..428b78d 100644
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -1,3 +1,4 @@
++import { apiGet, apiPost } from '../api'
+ import { useState, useEffect, useContext } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import { useNavigate } from 'react-router-dom'
+@@ -5,7 +6,6 @@ import TradeModal from '../components/TradeModal'
+ import { getStockName } from '../utils/stockNames'
+ import { UserContext } from '../context/UserContext'
+ 
+-const API = 'http://127.0.0.1:8000'
+ 
+ function Dashboard() {
+   const { t } = useTranslation()
+@@ -21,22 +21,24 @@ function Dashboard() {
+   const [tradeTicker, setTradeTicker] = useState(null)
+   const [sortBy, setSortBy] = useState('alloc_desc')
+   const [filterMarket, setFilterMarket] = useState('ALL')
++  const [error, setError] = useState('')
+ 
+   const fetchData = () => {
+-    fetch(`${API}/portfolio/account?user_id=${currentUserId}`).then(r => r.json()).then(setAccount)
+-    fetch(`${API}/portfolio/holdings?user_id=${currentUserId}`).then(r => r.json()).then(setHoldings)
++    setError('')
++    apiGet(`/portfolio/account?user_id=${currentUserId}`, setAccount, setError)
++    apiGet(`/portfolio/holdings?user_id=${currentUserId}`, setHoldings, setError)
+   }
+ 
+   useEffect(() => { fetchData() }, [currentUserId])
+ 
+   const addFunds = async () => {
+     setGodMessage('')
+-    const res = await fetch(`${API}/admin/add-funds?user_id=${currentUserId}`, {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json' },
+-      body: JSON.stringify({ currency: godCurrency, amount: parseFloat(godAmount) }),
+-    })
+-    if (res.ok) {
++    const data = await apiPost(
++      `/admin/add-funds?user_id=${currentUserId}`,
++      { currency: godCurrency, amount: parseFloat(godAmount) },
++      (err) => setGodMessage(err)
++    )
++    if (data) {
+       setGodMessage(`+${godCurrency === 'KRW' ? '₩' : '$'}${parseFloat(godAmount).toLocaleString()} added`)
+       setGodAmount('')
+       fetchData()
+@@ -45,21 +47,19 @@ function Dashboard() {
+ 
+   const removeFunds = async () => {
+     setGodMessage('')
+-    const res = await fetch(`${API}/admin/remove-funds?user_id=${currentUserId}`, {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json' },
+-      body: JSON.stringify({ currency: godCurrency, amount: parseFloat(godAmount) }),
+-    })
+-    const data = await res.json()
+-    if (res.ok) {
++    const data = await apiPost(
++      `/admin/remove-funds?user_id=${currentUserId}`,
++      { currency: godCurrency, amount: parseFloat(godAmount) },
++      (err) => setGodMessage(err)
++    )
++    if (data) {
+       setGodMessage(`-${godCurrency === 'KRW' ? '₩' : '$'}${parseFloat(godAmount).toLocaleString()} removed`)
+       setGodAmount('')
+       fetchData()
+-    } else {
+-      setGodMessage(data.detail)
+     }
+   }
+ 
++  if (error) return <div className="card" style={{ color: '#ff3b30', textAlign: 'center' }}>{error}</div>
+   if (!account) return <p>{t('common.loading')}</p>
+ 
+   // Formatting helper for Market Cap
+diff --git a/frontend/src/pages/Exchange.jsx b/frontend/src/pages/Exchange.jsx
+index 88d4a54..ef74468 100644
+--- a/frontend/src/pages/Exchange.jsx
++++ b/frontend/src/pages/Exchange.jsx
+@@ -1,8 +1,8 @@
++import { apiGet, apiPost } from '../api'
+ import { useState, useEffect, useContext } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import { UserContext } from '../context/UserContext'
+ 
+-const API = 'http://127.0.0.1:8000'
+ 
+ function Exchange() {
+   const { t } = useTranslation()
+@@ -13,12 +13,11 @@ function Exchange() {
+   const [fromCurrency, setFromCurrency] = useState('KRW')
+   const [amount, setAmount] = useState('')
+   const [message, setMessage] = useState('')
++  const [isSuccess, setIsSuccess] = useState(false)
+ 
+   const fetchData = () => {
+-    // Exchange rate is public, no user_id needed
+-    fetch(`${API}/exchange-rate`).then(r => r.json()).then(d => setRate(d.usd_to_krw))
+-    // Account details are private, needs user_id
+-    fetch(`${API}/portfolio/account?user_id=${currentUserId}`).then(r => r.json()).then(setAccount)
++    apiGet('/exchange-rate', (d) => setRate(d.usd_to_krw))
++    apiGet(`/portfolio/account?user_id=${currentUserId}`, setAccount)
+   }
+ 
+   useEffect(() => { fetchData() }, [currentUserId])
+@@ -30,18 +29,17 @@ function Exchange() {
+ 
+   const execute = async () => {
+     setMessage('')
+-    const res = await fetch(`${API}/trade/exchange?user_id=${currentUserId}`, {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json' },
+-      body: JSON.stringify({ from_currency: fromCurrency, to_currency: toCurrency, amount: parseFloat(amount) }),
+-    })
+-    const data = await res.json()
+-    if (res.ok) {
++    setIsSuccess(false)
++    const data = await apiPost(
++      `/trade/exchange?user_id=${currentUserId}`,
++      { from_currency: fromCurrency, to_currency: toCurrency, amount: parseFloat(amount) },
++      (err) => setMessage(err)
++    )
++    if (data) {
+       setMessage(`${t('exchange.title')} ${t('trade.buySuccess')}`)
++      setIsSuccess(true)
+       setAccount({ ...account, balance_krw: data.balance.krw, balance_usd: data.balance.usd })
+       setAmount('')
+-    } else {
+-      setMessage(data.detail)
+     }
+   }
+ 
+@@ -125,7 +123,7 @@ function Exchange() {
+         </button>
+ 
+         {message && (
+-          <p style={{ marginTop: 12, textAlign: 'center', color: message.includes('완료') || message.includes('complete') ? '#34c759' : '#ff3b30' }}>
++          <p style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? '#34c759' : '#ff3b30' }}>
+             {message}
+           </p>
+         )}
+diff --git a/frontend/src/pages/Game.jsx b/frontend/src/pages/Game.jsx
+index 8f710d9..2eb7241 100644
+--- a/frontend/src/pages/Game.jsx
++++ b/frontend/src/pages/Game.jsx
+@@ -1,10 +1,10 @@
++import { apiGet, apiPost, apiFetch } from '../api'
+ import { useState, useEffect, useContext } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+ import { getStockName } from '../utils/stockNames'
+ import { UserContext } from '../context/UserContext'
+ 
+-const API = 'http://127.0.0.1:8000'
+ 
+ function Game() {
+   const { t } = useTranslation()
+@@ -23,9 +23,9 @@ function Game() {
+   const [showSummary, setShowSummary] = useState(false)
+ 
+   const fetchData = () => {
+-    fetch(`${API}/game/status?user_id=${currentUserId}`).then(r => r.json()).then(setStatus)
+-    fetch(`${API}/game/history?user_id=${currentUserId}`).then(r => r.json()).then(setHistory)
+-    fetch(`${API}/game/summary?user_id=${currentUserId}`).then(r => r.json()).then(setSummary)
++    apiGet(`/game/status?user_id=${currentUserId}`, setStatus)
++    apiGet(`/game/history?user_id=${currentUserId}`, setHistory)
++    apiGet(`/game/summary?user_id=${currentUserId}`, setSummary)
+   }
+ 
+   useEffect(() => { fetchData() }, [currentUserId])
+@@ -34,14 +34,12 @@ function Game() {
+     if (!status?.active) return
+     const days = status.duration_days
+ 
+-    fetch(`${API}/game/benchmark/${benchmarkIndex}?days=${days}`)
+-      .then(r => r.json())
++    apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
+       .then(data => { if (Array.isArray(data)) setBenchmarkData(data) })
+ 
+-    fetch(`${API}/analytics/performance?user_id=${currentUserId}`)
+-      .then(r => r.json())
++    apiFetch(`/analytics/performance?user_id=${currentUserId}`)
+       .then(data => {
+-        if (data.snapshots) {
++        if (data?.snapshots) {
+           const startVal = data.starting_value
+           setPortfolioData(data.snapshots.map(s => ({
+             date: s.date.split('T')[0],
+@@ -53,12 +51,11 @@ function Game() {
+   }, [status?.active, benchmarkIndex, currentUserId])
+ 
+   const startNewGame = async () => {
+-    const res = await fetch(`${API}/game/new?user_id=${currentUserId}`, {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json' },
+-      body: JSON.stringify({ starting_balance_krw: startingBalance, duration_days: duration }),
+-    })
+-    if (res.ok) {
++    const data = await apiPost(
++      `/game/new?user_id=${currentUserId}`,
++      { starting_balance_krw: startingBalance, duration_days: duration }
++    )
++    if (data) {
+       setShowNewGame(false)
+       setConfirmReset(false)
+       setShowSummary(false)
+diff --git a/frontend/src/pages/Market.jsx b/frontend/src/pages/Market.jsx
+index ca4d265..8b66035 100644
+--- a/frontend/src/pages/Market.jsx
++++ b/frontend/src/pages/Market.jsx
+@@ -1,9 +1,9 @@
++import { apiFetch } from '../api'
+ import { useState, useEffect } from "react";
+ import { useTranslation } from "react-i18next";
+ import TradeModal from "../components/TradeModal";
+ import { getStockName } from "../utils/stockNames";
+ 
+-const API = "http://127.0.0.1:8000";
+ 
+ function Market() {
+   const { t, i18n } = useTranslation();
+@@ -14,10 +14,9 @@ function Market() {
+ 
+   useEffect(() => {
+     setLoading(true);
+-    fetch(`${API}/market/top30/${market}`)
+-      .then((r) => r.json())
++    apiFetch(`/market/top30/${market}`)
+       .then((data) => {
+-        setStocks(data);
++        if (data) setStocks(data);
+         setLoading(false);
+       })
+       .catch(() => setLoading(false));
+diff --git a/frontend/src/pages/Portfolio.jsx b/frontend/src/pages/Portfolio.jsx
+index 0b919a3..7af3fb9 100644
+--- a/frontend/src/pages/Portfolio.jsx
++++ b/frontend/src/pages/Portfolio.jsx
+@@ -1,10 +1,10 @@
++import { apiFetch } from '../api'
+ import { useState, useEffect, useContext } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import TradeModal from '../components/TradeModal'
+ import { getStockName } from '../utils/stockNames'
+ import { UserContext } from '../context/UserContext'
+ 
+-const API = 'http://127.0.0.1:8000'
+ 
+ function Portfolio() {
+   const { t } = useTranslation()
+@@ -18,12 +18,12 @@ function Portfolio() {
+   const [tradeTicker, setTradeTicker] = useState(null)
+ 
+   const fetchData = async () => {
+-    const [holdingsRes, accountRes] = await Promise.all([
+-      fetch(`${API}/portfolio/holdings?user_id=${currentUserId}`),
+-      fetch(`${API}/portfolio/account?user_id=${currentUserId}`)
++    const [holdingsData, accountData] = await Promise.all([
++      apiFetch(`/portfolio/holdings?user_id=${currentUserId}`),
++      apiFetch(`/portfolio/account?user_id=${currentUserId}`)
+     ])
+-    setHoldings(await holdingsRes.json())
+-    setAccount(await accountRes.json())
++    if (holdingsData) setHoldings(holdingsData)
++    if (accountData) setAccount(accountData)
+   }
+ 
+   useEffect(() => { fetchData() }, [currentUserId])
+diff --git a/frontend/src/pages/ProfileSelect.jsx b/frontend/src/pages/ProfileSelect.jsx
+index e8209b4..96cacc9 100644
+--- a/frontend/src/pages/ProfileSelect.jsx
++++ b/frontend/src/pages/ProfileSelect.jsx
+@@ -1,8 +1,8 @@
++import { apiFetch, apiPost, apiDelete } from '../api'
+ import { useState, useEffect, useContext } from 'react';
+ import { UserContext } from '../context/UserContext';
+ import { useTranslation } from 'react-i18next';
+ 
+-const API = 'http://127.0.0.1:8000';
+ 
+ function ProfileSelect() {
+   const { t } = useTranslation();
+@@ -13,15 +13,16 @@ function ProfileSelect() {
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState('');
+ 
+-  const fetchUsers = () => {
++  const fetchUsers = async () => {
+     setLoading(true);
+-    fetch(`${API}/users`)
+-      .then(r => r.json())
+-      .then(data => {
+-        setUsers(data);
+-        setLoading(false);
+-      })
+-      .catch(() => setLoading(false));
++    const data = await apiFetch('/users', {}, (err) => {
++      setError(err);
++      setLoading(false);
++    });
++    if (data) {
++      setUsers(data);
++      setLoading(false);
++    }
+   };
+ 
+   useEffect(() => {
+@@ -37,41 +38,25 @@ function ProfileSelect() {
+     if (!newUsername.trim()) return;
+     
+     setError('');
+-    const res = await fetch(`${API}/users/new`, {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json' },
+-      body: JSON.stringify({ username: newUsername.trim() })
+-    });
++    const data = await apiPost('/users/new', { username: newUsername.trim() }, setError);
+     
+-    const data = await res.json();
+-    
+-    if (res.ok && !data.error) {
++    if (data && !data.error) {
+       setCurrentUserId(data.id);
+-    } else {
+-      setError(data.error || 'Failed to create profile');
++    } else if (data?.error) {
++      setError(data.error);
+     }
+   };
+ 
+-  // NEW: Handle deleting a user
+   const handleDeleteUser = async (e, userId, username) => {
+-    // Stop the click from triggering the parent button and logging us in
+     e.stopPropagation(); 
+     
+-    // Safety check before deleting
+     if (!window.confirm(`Are you sure you want to delete '${username}'?\nThis will permanently erase all game data, transactions, and history.`)) {
+       return;
+     }
+ 
+-    const res = await fetch(`${API}/users/${userId}`, {
+-      method: 'DELETE',
+-    });
+-
+-    if (res.ok) {
+-      // Remove the user from the list without having to refresh the page
++    const data = await apiDelete(`/users/${userId}`, setError);
++    if (data) {
+       setUsers(users.filter(u => u.id !== userId));
+-    } else {
+-      const data = await res.json();
+-      setError(data.error || 'Failed to delete profile');
+     }
+   };
+ 
+diff --git a/frontend/src/pages/SearchStock.jsx b/frontend/src/pages/SearchStock.jsx
+index a242225..ceaf3f1 100644
+--- a/frontend/src/pages/SearchStock.jsx
++++ b/frontend/src/pages/SearchStock.jsx
+@@ -1,3 +1,4 @@
++import { apiFetch, apiPost } from '../api'
+ import { useState, useEffect, useContext } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+@@ -5,7 +6,6 @@ import TradeModal from '../components/TradeModal'
+ import { getStockName } from '../utils/stockNames'
+ import { UserContext } from '../context/UserContext'
+ 
+-const API = 'http://127.0.0.1:8000'
+ 
+ function SearchStock() {
+   const { t } = useTranslation()
+@@ -24,10 +24,8 @@ function SearchStock() {
+     if (query.length < 1) { setResults([]); return }
+     const timer = setTimeout(async () => {
+       setSearching(true)
+-      // Search is public
+-      const res = await fetch(`${API}/stock/search/${encodeURIComponent(query)}`)
+-      const data = await res.json()
+-      setResults(data)
++      const data = await apiFetch(`/stock/search/${encodeURIComponent(query)}`)
++      if (data) setResults(data)
+       setSearching(false)
+     }, 300)
+     return () => clearTimeout(timer)
+@@ -35,9 +33,7 @@ function SearchStock() {
+ 
+   useEffect(() => {
+     if (!stock) return
+-    // History is public
+-    fetch(`${API}/stock/${stock.ticker}/history?period=${historyPeriod}`)
+-      .then(r => r.json())
++    apiFetch(`/stock/${stock.ticker}/history?period=${historyPeriod}`)
+       .then(data => { if (Array.isArray(data)) setHistory(data) })
+   }, [stock?.ticker, historyPeriod])
+ 
+@@ -45,19 +41,14 @@ function SearchStock() {
+     setResults([])
+     setQuery('')
+     setHistory([])
+-    // Stock info is public
+-    const res = await fetch(`${API}/stock/${ticker}`)
+-    const data = await res.json()
+-    if (!data.error) setStock(data)
++    const data = await apiFetch(`/stock/${ticker}`)
++    if (data && !data.error) setStock(data)
+   }
+ 
+   const addToWatchlist = async () => {
+     setMessage('')
+-    // Watchlist is private, add user_id
+-    const res = await fetch(`${API}/watchlist/add?ticker=${stock.ticker}&user_id=${currentUserId}`, { method: 'POST' })
+-    const data = await res.json()
+-    if (res.ok) setMessage(`${getStockName(stock.ticker, stock.name)} → ${t('watchlist.title')}`)
+-    else setMessage(data.detail)
++    const data = await apiFetch(`/watchlist/add?ticker=${stock.ticker}&user_id=${currentUserId}`, { method: 'POST' })
++    if (data) setMessage(`${getStockName(stock.ticker, stock.name)} → ${t('watchlist.title')}`)
+   }
+ 
+   const displayName = stock ? getStockName(stock.ticker, stock.name) : ''
+diff --git a/frontend/src/pages/Transactions.jsx b/frontend/src/pages/Transactions.jsx
+index daea878..9d097be 100644
+--- a/frontend/src/pages/Transactions.jsx
++++ b/frontend/src/pages/Transactions.jsx
+@@ -1,8 +1,8 @@
++import { apiGet } from '../api'
+ import { useState, useEffect, useContext } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import { UserContext } from '../context/UserContext'
+ 
+-const API = 'http://127.0.0.1:8000'
+ 
+ function Transactions() {
+   const { t } = useTranslation()
+@@ -12,9 +12,7 @@ function Transactions() {
+   const [filter, setFilter] = useState('ALL')
+ 
+   useEffect(() => {
+-    fetch(`${API}/portfolio/transactions?user_id=${currentUserId}`)
+-      .then(r => r.json())
+-      .then(setTransactions)
++    apiGet(`/portfolio/transactions?user_id=${currentUserId}`, setTransactions)
+   }, [currentUserId])
+ 
+   const filtered = filter === 'ALL'
+diff --git a/frontend/src/pages/Watchlist.jsx b/frontend/src/pages/Watchlist.jsx
+index dcac221..439db44 100644
+--- a/frontend/src/pages/Watchlist.jsx
++++ b/frontend/src/pages/Watchlist.jsx
+@@ -1,10 +1,10 @@
++import { apiFetch, apiDelete } from '../api'
+ import { useState, useEffect, useContext } from "react";
+ import { useTranslation } from "react-i18next";
+ import TradeModal from "../components/TradeModal";
+ import { getStockName } from "../utils/stockNames";
+ import { UserContext } from "../context/UserContext";
+ 
+-const API = "http://127.0.0.1:8000";
+ 
+ function Watchlist() {
+   const { t, i18n } = useTranslation();
+@@ -16,10 +16,8 @@ function Watchlist() {
+ 
+   const fetchWatchlist = async () => {
+     setLoading(true);
+-    // Add user_id to the query
+-    const res = await fetch(`${API}/watchlist/?user_id=${currentUserId}`);
+-    const data = await res.json();
+-    setWatchlist(data);
++    const data = await apiFetch(`/watchlist/?user_id=${currentUserId}`);
++    if (data) setWatchlist(data);
+     setLoading(false);
+   };
+ 
+@@ -29,8 +27,7 @@ function Watchlist() {
+ 
+   const remove = async (ticker, e) => {
+     e.stopPropagation();
+-    // Add user_id to the query
+-    await fetch(`${API}/watchlist/remove/${ticker}?user_id=${currentUserId}`, { method: "DELETE" });
++    await apiDelete(`/watchlist/remove/${ticker}?user_id=${currentUserId}`);
+     fetchWatchlist();
+   };
+ 

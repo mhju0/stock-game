@@ -1,3 +1,4 @@
+import { apiFetch, apiPost } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -5,7 +6,6 @@ import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/UserContext'
 
-const API = 'http://127.0.0.1:8000'
 
 function SearchStock() {
   const { t } = useTranslation()
@@ -24,10 +24,8 @@ function SearchStock() {
     if (query.length < 1) { setResults([]); return }
     const timer = setTimeout(async () => {
       setSearching(true)
-      // Search is public
-      const res = await fetch(`${API}/stock/search/${encodeURIComponent(query)}`)
-      const data = await res.json()
-      setResults(data)
+      const data = await apiFetch(`/stock/search/${encodeURIComponent(query)}`)
+      if (data) setResults(data)
       setSearching(false)
     }, 300)
     return () => clearTimeout(timer)
@@ -35,9 +33,7 @@ function SearchStock() {
 
   useEffect(() => {
     if (!stock) return
-    // History is public
-    fetch(`${API}/stock/${stock.ticker}/history?period=${historyPeriod}`)
-      .then(r => r.json())
+    apiFetch(`/stock/${stock.ticker}/history?period=${historyPeriod}`)
       .then(data => { if (Array.isArray(data)) setHistory(data) })
   }, [stock?.ticker, historyPeriod])
 
@@ -45,19 +41,14 @@ function SearchStock() {
     setResults([])
     setQuery('')
     setHistory([])
-    // Stock info is public
-    const res = await fetch(`${API}/stock/${ticker}`)
-    const data = await res.json()
-    if (!data.error) setStock(data)
+    const data = await apiFetch(`/stock/${ticker}`)
+    if (data && !data.error) setStock(data)
   }
 
   const addToWatchlist = async () => {
     setMessage('')
-    // Watchlist is private, add user_id
-    const res = await fetch(`${API}/watchlist/add?ticker=${stock.ticker}&user_id=${currentUserId}`, { method: 'POST' })
-    const data = await res.json()
-    if (res.ok) setMessage(`${getStockName(stock.ticker, stock.name)} → ${t('watchlist.title')}`)
-    else setMessage(data.detail)
+    const data = await apiFetch(`/watchlist/add?ticker=${stock.ticker}&user_id=${currentUserId}`, { method: 'POST' })
+    if (data) setMessage(`${getStockName(stock.ticker, stock.name)} → ${t('watchlist.title')}`)
   }
 
   const displayName = stock ? getStockName(stock.ticker, stock.name) : ''

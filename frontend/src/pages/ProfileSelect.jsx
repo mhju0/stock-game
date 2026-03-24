@@ -1,8 +1,8 @@
+import { apiFetch, apiPost, apiDelete } from '../api'
 import { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
 
-const API = 'http://127.0.0.1:8000';
 
 function ProfileSelect() {
   const { t } = useTranslation();
@@ -13,15 +13,16 @@ function ProfileSelect() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchUsers = () => {
+  const fetchUsers = async () => {
     setLoading(true);
-    fetch(`${API}/users`)
-      .then(r => r.json())
-      .then(data => {
-        setUsers(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const data = await apiFetch('/users', {}, (err) => {
+      setError(err);
+      setLoading(false);
+    });
+    if (data) {
+      setUsers(data);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -37,41 +38,25 @@ function ProfileSelect() {
     if (!newUsername.trim()) return;
     
     setError('');
-    const res = await fetch(`${API}/users/new`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: newUsername.trim() })
-    });
+    const data = await apiPost('/users/new', { username: newUsername.trim() }, setError);
     
-    const data = await res.json();
-    
-    if (res.ok && !data.error) {
+    if (data && !data.error) {
       setCurrentUserId(data.id);
-    } else {
-      setError(data.error || 'Failed to create profile');
+    } else if (data?.error) {
+      setError(data.error);
     }
   };
 
-  // NEW: Handle deleting a user
   const handleDeleteUser = async (e, userId, username) => {
-    // Stop the click from triggering the parent button and logging us in
     e.stopPropagation(); 
     
-    // Safety check before deleting
     if (!window.confirm(`Are you sure you want to delete '${username}'?\nThis will permanently erase all game data, transactions, and history.`)) {
       return;
     }
 
-    const res = await fetch(`${API}/users/${userId}`, {
-      method: 'DELETE',
-    });
-
-    if (res.ok) {
-      // Remove the user from the list without having to refresh the page
+    const data = await apiDelete(`/users/${userId}`, setError);
+    if (data) {
       setUsers(users.filter(u => u.id !== userId));
-    } else {
-      const data = await res.json();
-      setError(data.error || 'Failed to delete profile');
     }
   };
 

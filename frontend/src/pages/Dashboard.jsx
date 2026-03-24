@@ -1,3 +1,4 @@
+import { apiGet, apiPost } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -5,7 +6,6 @@ import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/UserContext'
 
-const API = 'http://127.0.0.1:8000'
 
 function Dashboard() {
   const { t } = useTranslation()
@@ -21,22 +21,24 @@ function Dashboard() {
   const [tradeTicker, setTradeTicker] = useState(null)
   const [sortBy, setSortBy] = useState('alloc_desc')
   const [filterMarket, setFilterMarket] = useState('ALL')
+  const [error, setError] = useState('')
 
   const fetchData = () => {
-    fetch(`${API}/portfolio/account?user_id=${currentUserId}`).then(r => r.json()).then(setAccount)
-    fetch(`${API}/portfolio/holdings?user_id=${currentUserId}`).then(r => r.json()).then(setHoldings)
+    setError('')
+    apiGet(`/portfolio/account?user_id=${currentUserId}`, setAccount, setError)
+    apiGet(`/portfolio/holdings?user_id=${currentUserId}`, setHoldings, setError)
   }
 
   useEffect(() => { fetchData() }, [currentUserId])
 
   const addFunds = async () => {
     setGodMessage('')
-    const res = await fetch(`${API}/admin/add-funds?user_id=${currentUserId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currency: godCurrency, amount: parseFloat(godAmount) }),
-    })
-    if (res.ok) {
+    const data = await apiPost(
+      `/admin/add-funds?user_id=${currentUserId}`,
+      { currency: godCurrency, amount: parseFloat(godAmount) },
+      (err) => setGodMessage(err)
+    )
+    if (data) {
       setGodMessage(`+${godCurrency === 'KRW' ? '₩' : '$'}${parseFloat(godAmount).toLocaleString()} added`)
       setGodAmount('')
       fetchData()
@@ -45,21 +47,19 @@ function Dashboard() {
 
   const removeFunds = async () => {
     setGodMessage('')
-    const res = await fetch(`${API}/admin/remove-funds?user_id=${currentUserId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currency: godCurrency, amount: parseFloat(godAmount) }),
-    })
-    const data = await res.json()
-    if (res.ok) {
+    const data = await apiPost(
+      `/admin/remove-funds?user_id=${currentUserId}`,
+      { currency: godCurrency, amount: parseFloat(godAmount) },
+      (err) => setGodMessage(err)
+    )
+    if (data) {
       setGodMessage(`-${godCurrency === 'KRW' ? '₩' : '$'}${parseFloat(godAmount).toLocaleString()} removed`)
       setGodAmount('')
       fetchData()
-    } else {
-      setGodMessage(data.detail)
     }
   }
 
+  if (error) return <div className="card" style={{ color: '#ff3b30', textAlign: 'center' }}>{error}</div>
   if (!account) return <p>{t('common.loading')}</p>
 
   // Formatting helper for Market Cap

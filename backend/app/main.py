@@ -21,17 +21,21 @@ models.Base.metadata.create_all(bind=engine)
 async def snapshot_loop():
     while True:
         await asyncio.sleep(3600)
-        db = SessionLocal()
-        try:
-            # Grab EVERY user and save a snapshot for their chart
-            users = db.query(models.User).all()
-            for user in users:
-                take_snapshot(db, user_id=user.id)
-            print(f"Portfolio snapshots saved for {len(users)} users")
-        except Exception as e:
-            print(f"Snapshot error: {e}")
-        finally:
-            db.close()
+        # Run the entire snapshot batch in a thread so yfinance
+        # HTTP calls don't block the FastAPI event loop
+        def _take_all_snapshots():
+            db = SessionLocal()
+            try:
+                users = db.query(models.User).all()
+                for user in users:
+                    take_snapshot(db, user_id=user.id)
+                print(f"Portfolio snapshots saved for {len(users)} users")
+            except Exception as e:
+                print(f"Snapshot error: {e}")
+            finally:
+                db.close()
+
+        await asyncio.to_thread(_take_all_snapshots)
 
 async def market_refresh_loop():
     while True:

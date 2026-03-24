@@ -1,8 +1,8 @@
+import { apiGet } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserContext } from '../context/UserContext'
 
-const API = 'http://127.0.0.1:8000'
 
 function Transactions() {
   const { t } = useTranslation()
@@ -12,9 +12,7 @@ function Transactions() {
   const [filter, setFilter] = useState('ALL')
 
   useEffect(() => {
-    fetch(`${API}/portfolio/transactions?user_id=${currentUserId}`)
-      .then(r => r.json())
-      .then(setTransactions)
+    apiGet(`/portfolio/transactions?user_id=${currentUserId}`, setTransactions)
   }, [currentUserId])
 
   const filtered = filter === 'ALL'

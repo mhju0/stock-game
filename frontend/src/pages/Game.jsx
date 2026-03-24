@@ -1,10 +1,10 @@
+import { apiGet, apiPost, apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/UserContext'
 
-const API = 'http://127.0.0.1:8000'
 
 function Game() {
   const { t } = useTranslation()
@@ -23,9 +23,9 @@ function Game() {
   const [showSummary, setShowSummary] = useState(false)
 
   const fetchData = () => {
-    fetch(`${API}/game/status?user_id=${currentUserId}`).then(r => r.json()).then(setStatus)
-    fetch(`${API}/game/history?user_id=${currentUserId}`).then(r => r.json()).then(setHistory)
-    fetch(`${API}/game/summary?user_id=${currentUserId}`).then(r => r.json()).then(setSummary)
+    apiGet(`/game/status?user_id=${currentUserId}`, setStatus)
+    apiGet(`/game/history?user_id=${currentUserId}`, setHistory)
+    apiGet(`/game/summary?user_id=${currentUserId}`, setSummary)
   }
 
   useEffect(() => { fetchData() }, [currentUserId])
@@ -34,14 +34,12 @@ function Game() {
     if (!status?.active) return
     const days = status.duration_days
 
-    fetch(`${API}/game/benchmark/${benchmarkIndex}?days=${days}`)
-      .then(r => r.json())
+    apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
       .then(data => { if (Array.isArray(data)) setBenchmarkData(data) })
 
-    fetch(`${API}/analytics/performance?user_id=${currentUserId}`)
-      .then(r => r.json())
+    apiFetch(`/analytics/performance?user_id=${currentUserId}`)
       .then(data => {
-        if (data.snapshots) {
+        if (data?.snapshots) {
           const startVal = data.starting_value
           setPortfolioData(data.snapshots.map(s => ({
             date: s.date.split('T')[0],
@@ -53,12 +51,11 @@ function Game() {
   }, [status?.active, benchmarkIndex, currentUserId])
 
   const startNewGame = async () => {
-    const res = await fetch(`${API}/game/new?user_id=${currentUserId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ starting_balance_krw: startingBalance, duration_days: duration }),
-    })
-    if (res.ok) {
+    const data = await apiPost(
+      `/game/new?user_id=${currentUserId}`,
+      { starting_balance_krw: startingBalance, duration_days: duration }
+    )
+    if (data) {
       setShowNewGame(false)
       setConfirmReset(false)
       setShowSummary(false)

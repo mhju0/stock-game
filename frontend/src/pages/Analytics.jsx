@@ -1,3 +1,4 @@
+import { apiGet } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,7 +9,6 @@ import { getStockName } from '../utils/stockNames'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/UserContext'
 
-const API = 'http://127.0.0.1:8000'
 const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
 
 function Analytics() {
@@ -25,10 +25,10 @@ function Analytics() {
   const [tradeTicker, setTradeTicker] = useState(null)
 
   useEffect(() => {
-    fetch(`${API}/analytics/performance?user_id=${currentUserId}`).then(r => r.json()).then(setPerformance)
-    fetch(`${API}/analytics/by-stock?user_id=${currentUserId}`).then(r => r.json()).then(setByStock)
-    fetch(`${API}/analytics/by-sector?user_id=${currentUserId}`).then(r => r.json()).then(setBySector)
-    fetch(`${API}/analytics/realized?user_id=${currentUserId}`).then(r => r.json()).then(setRealized)
+    apiGet(`/analytics/performance?user_id=${currentUserId}`, setPerformance)
+    apiGet(`/analytics/by-stock?user_id=${currentUserId}`, setByStock)
+    apiGet(`/analytics/by-sector?user_id=${currentUserId}`, setBySector)
+    apiGet(`/analytics/realized?user_id=${currentUserId}`, setRealized)
   }, [currentUserId])
 
   if (!performance) return <p>{t('common.loading')}</p>

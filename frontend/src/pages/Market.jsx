@@ -1,9 +1,9 @@
+import { apiFetch } from '../api'
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
 
-const API = "http://127.0.0.1:8000";
 
 function Market() {
   const { t, i18n } = useTranslation();
@@ -14,10 +14,9 @@ function Market() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API}/market/top30/${market}`)
-      .then((r) => r.json())
+    apiFetch(`/market/top30/${market}`)
       .then((data) => {
-        setStocks(data);
+        if (data) setStocks(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
