@@ -8,7 +8,7 @@ import { UserContext } from '../context/UserContext'
 
 
 function Dashboard() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { currentUserId } = useContext(UserContext)
 
@@ -59,7 +59,7 @@ function Dashboard() {
     }
   }
 
-  if (error) return <div className="card" style={{ color: '#ff3b30', textAlign: 'center' }}>{error}</div>
+  if (error) return <div className="card" style={{ color: 'var(--negative)', textAlign: 'center' }}>{error}</div>
   if (!account) return <p>{t('common.loading')}</p>
 
   // Formatting helper for Market Cap
@@ -81,8 +81,8 @@ function Dashboard() {
     const bValKRW = b.currency === 'USD' ? b.total_value * account.exchange_rate : b.total_value
 
     switch (sortBy) {
-      case 'name_asc': return getStockName(a.ticker, a.name).localeCompare(getStockName(b.ticker, b.name))
-      case 'name_desc': return getStockName(b.ticker, b.name).localeCompare(getStockName(a.ticker, a.name))
+      case 'name_asc': return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
+      case 'name_desc': return getStockName(b.ticker, b.name, i18n.language).localeCompare(getStockName(a.ticker, a.name, i18n.language))
       case 'alloc_desc': 
       case 'value_desc': return bValKRW - aValKRW
       case 'alloc_asc':
@@ -134,7 +134,7 @@ function Dashboard() {
             <button className="btn btn-buy" onClick={addFunds}>Add</button>
             <button className="btn btn-sell" onClick={removeFunds}>Remove</button>
           </div>
-          {godMessage && <p style={{ marginTop: 8, fontSize: 13, color: '#007aff' }}>{godMessage}</p>}
+          {godMessage && <p style={{ marginTop: 8, fontSize: 13, color: 'var(--accent)' }}>{godMessage}</p>}
         </div>
       )}
 
@@ -177,7 +177,7 @@ function Dashboard() {
           sorted.map(h => {
             const fmt = v => h.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
             const pnlPct = h.avg_price ? ((h.current_price - h.avg_price) / h.avg_price * 100).toFixed(2) : 0
-            const name = getStockName(h.ticker, h.name)
+            const name = getStockName(h.ticker, h.name, i18n.language)
             
             // Calculate Portfolio Weight (Allocation %)
             const hValKRW = h.currency === 'USD' ? h.total_value * account.exchange_rate : h.total_value
@@ -188,7 +188,7 @@ function Dashboard() {
                 <div style={{ flex: 1 }}>
                   <strong style={{ fontSize: 15 }}>{name}</strong>
                   <div className="holding-sub">
-                    <span style={{ color: '#007aff', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {h.ticker}
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {h.ticker}
                   </div>
                 </div>
                 

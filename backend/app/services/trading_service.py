@@ -212,6 +212,7 @@ def exchange_currency(
     )
     db.add(transaction)
     db.commit()
+    take_snapshot(db, user_id)
 
     return {
         "status": "success",

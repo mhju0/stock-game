@@ -12,7 +12,7 @@ import { UserContext } from '../context/UserContext'
 const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
 
 function Analytics() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { currentUserId } = useContext(UserContext)
   
   const [performance, setPerformance] = useState(null)
@@ -66,8 +66,8 @@ function Analytics() {
 
   const sortedStocks = [...byStock].sort((a, b) => {
     switch (stockSort) {
-      case 'name_asc': return getStockName(a.ticker, a.name).localeCompare(getStockName(b.ticker, b.name))
-      case 'name_desc': return getStockName(b.ticker, b.name).localeCompare(getStockName(a.ticker, a.name))
+      case 'name_asc': return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
+      case 'name_desc': return getStockName(b.ticker, b.name, i18n.language).localeCompare(getStockName(a.ticker, a.name, i18n.language))
       case 'alloc_desc':
       case 'value_desc': return b.total_value_krw - a.total_value_krw
       case 'alloc_asc':
@@ -132,11 +132,11 @@ function Analytics() {
 
         <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 16, height: 2, background: '#007aff', borderRadius: 1 }} />
+            <div style={{ width: 16, height: 2, background: 'var(--accent)', borderRadius: 1 }} />
             <span style={{ color: 'var(--text-secondary)' }}>Total change %</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 16, height: 2, background: '#34c759', borderRadius: 1, borderTop: '1px dashed #34c759' }} />
+            <div style={{ width: 16, height: 2, background: 'var(--positive)', borderRadius: 1, borderTop: '1px dashed var(--positive)' }} />
             <span style={{ color: 'var(--text-secondary)' }}>Holdings as % of starting</span>
           </div>
         </div>
@@ -146,15 +146,15 @@ function Analytics() {
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartData}>
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false}
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
                 tickFormatter={v => `${v.toFixed(1)}%`} />
               <Tooltip
                 formatter={(value, name) => {
                   if (name === 'total_pct') return [`${value.toFixed(2)}%`, 'Total change']
                   return [`${value.toFixed(2)}%`, 'Holdings ratio']
                 }}
-                labelStyle={{ fontSize: 12, color: '#86868b' }}
+                labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
               />
               <Line type="monotone" dataKey="total_pct" stroke="#007aff" strokeWidth={2} dot={false} name="total_pct" />
@@ -208,14 +208,14 @@ function Analytics() {
               {sortedStocks.map(s => {
                 const fmt = v => s.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
                 const isPositive = s.unrealized_pnl >= 0
-                const name = getStockName(s.ticker, s.name)
+                const name = getStockName(s.ticker, s.name, i18n.language)
                 const allocPct = ((s.total_value_krw / performance.current_value) * 100).toFixed(1)
                 
                 return (
                   <div key={s.ticker} onClick={() => setTradeTicker(s.ticker)} style={{
                     background: 'var(--bg-secondary)', borderRadius: 14, padding: 16,
                     cursor: 'pointer', transition: 'transform 0.1s',
-                    borderLeft: `4px solid ${isPositive ? '#34c759' : '#ff3b30'}`,
+                    borderLeft: `4px solid ${isPositive ? 'var(--positive)' : 'var(--negative)'}`,
                   }}
                     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
@@ -224,7 +224,7 @@ function Analytics() {
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                           <span style={{ color: '#007aff', fontWeight: 600 }}>{allocPct}%</span> · {s.ticker}
+                           <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}%</span> · {s.ticker}
                         </div>
                       </div>
                       <div className={isPositive ? 'positive' : 'negative'}
@@ -255,7 +255,7 @@ function Analytics() {
               {sortedStocks.map(s => {
                 const fmt = v => s.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
                 const isPositive = s.unrealized_pnl >= 0
-                const name = getStockName(s.ticker, s.name)
+                const name = getStockName(s.ticker, s.name, i18n.language)
                 const allocPct = ((s.total_value_krw / performance.current_value) * 100).toFixed(1)
 
                 return (
@@ -268,12 +268,12 @@ function Analytics() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{
                           width: 6, height: 6, borderRadius: 3,
-                          background: isPositive ? '#34c759' : '#ff3b30', flexShrink: 0,
+                          background: isPositive ? 'var(--positive)' : 'var(--negative)', flexShrink: 0,
                         }} />
                         <strong style={{ fontSize: 14 }}>{name}</strong>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 14 }}>
-                        <span style={{ color: '#007aff', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {s.ticker} · {s.sector} · {s.quantity} shares
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {s.ticker} · {s.sector} · {s.quantity} shares
                       </div>
                     </div>
                     

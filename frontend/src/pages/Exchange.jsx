@@ -64,7 +64,7 @@ function Exchange() {
         <div className="metric-card">
           <div className="metric-label">{t('exchange.currentRate')}</div>
           <div className="metric-value">₩{rate.toLocaleString()}</div>
-          <div style={{ fontSize: 11, color: '#86868b', marginTop: 2 }}>per $1 USD</div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>per $1 USD</div>
         </div>
       </div>
 
@@ -74,14 +74,14 @@ function Exchange() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <button className="btn" onClick={() => { setFromCurrency('KRW'); setAmount('') }} style={{
             flex: 1, minWidth: 120,
-            background: fromCurrency === 'KRW' ? '#007aff' : 'transparent',
-            color: fromCurrency === 'KRW' ? 'white' : '#1d1d1f',
+            background: fromCurrency === 'KRW' ? 'var(--accent)' : 'transparent',
+            color: fromCurrency === 'KRW' ? 'white' : 'var(--text-primary)',
             border: '1px solid #e5e5e7',
           }}>KRW → USD</button>
           <button className="btn" onClick={() => { setFromCurrency('USD'); setAmount('') }} style={{
             flex: 1, minWidth: 120,
-            background: fromCurrency === 'USD' ? '#007aff' : 'transparent',
-            color: fromCurrency === 'USD' ? 'white' : '#1d1d1f',
+            background: fromCurrency === 'USD' ? 'var(--accent)' : 'transparent',
+            color: fromCurrency === 'USD' ? 'white' : 'var(--text-primary)',
             border: '1px solid #e5e5e7',
           }}>USD → KRW</button>
         </div>
@@ -90,7 +90,7 @@ function Exchange() {
           {quickAmounts.map(v => (
             <button key={v} className="btn" onClick={() => setAmount(String(v))} style={{
               fontSize: 13, padding: '6px 12px',
-              background: parseFloat(amount) === v ? '#f0f0f0' : 'transparent',
+              background: parseFloat(amount) === v ? 'var(--border-light)' : 'transparent',
               border: '1px solid #e5e5e7',
             }}>
               {fmtQuick(v)}
@@ -99,7 +99,7 @@ function Exchange() {
           <button className="btn" onClick={() => {
             const max = fromCurrency === 'KRW' ? account.balance_krw : account.balance_usd
             setAmount(String(Math.floor(max)))
-          }} style={{ fontSize: 13, padding: '6px 12px', border: '1px solid #e5e5e7', color: '#007aff' }}>
+          }} style={{ fontSize: 13, padding: '6px 12px', border: '1px solid #e5e5e7', color: 'var(--accent)' }}>
             MAX
           </button>
         </div>
@@ -109,9 +109,9 @@ function Exchange() {
 
         {amount && (
           <div style={{
-            background: '#f5f5f7', borderRadius: 12, padding: 16, textAlign: 'center', marginBottom: 16,
+            background: 'var(--border-light)', borderRadius: 12, padding: 16, textAlign: 'center', marginBottom: 16,
           }}>
-            <div style={{ fontSize: 13, color: '#86868b' }}>{t('exchange.convertedAmount')}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('exchange.convertedAmount')}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>
               {toCurrency === 'USD' ? `$${converted.toFixed(2)}` : `₩${Math.round(converted).toLocaleString()}`}
             </div>
@@ -123,7 +123,7 @@ function Exchange() {
         </button>
 
         {message && (
-          <p style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? '#34c759' : '#ff3b30' }}>
+          <p style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? 'var(--positive)' : 'var(--negative)' }}>
             {message}
           </p>
         )}

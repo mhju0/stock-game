@@ -32,8 +32,8 @@ function Market() {
             onClick={() => setMarket(m)}
             style={{
               minWidth: 80,
-              background: market === m ? "#1d1d1f" : "transparent",
-              color: market === m ? "white" : "#86868b",
+              background: market === m ? 'var(--text-primary)' : "transparent",
+              color: market === m ? "white" : 'var(--text-secondary)',
               border: "1px solid #e5e5e7",
             }}
           >
@@ -65,7 +65,7 @@ function Market() {
                 }}
                 onClick={() => setTradeTicker(s.ticker)}
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "#fafafa")
+                  (e.currentTarget.style.background = 'var(--bg-tertiary)')
                 }
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.background = "transparent")
@@ -77,13 +77,13 @@ function Market() {
                       width: 28,
                       height: 28,
                       borderRadius: "50%",
-                      background: "#f5f5f7",
+                      background: 'var(--border-light)',
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 12,
                       fontWeight: 600,
-                      color: "#86868b",
+                      color: 'var(--text-secondary)',
                       flexShrink: 0,
                     }}
                   >
@@ -91,7 +91,7 @@ function Market() {
                   </span>
                   <div>
                     <strong style={{ fontSize: 14 }}>{name}</strong>
-                    <div style={{ fontSize: 12, color: "#86868b" }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                       {s.ticker}
                     </div>
                   </div>

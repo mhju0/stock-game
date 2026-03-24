@@ -40,8 +40,8 @@ function Transactions() {
             onClick={() => setFilter(f.key)}
             style={{
               fontSize: 13, padding: '6px 14px',
-              background: filter === f.key ? '#1d1d1f' : 'transparent',
-              color: filter === f.key ? 'white' : '#86868b',
+              background: filter === f.key ? 'var(--text-primary)' : 'transparent',
+              color: filter === f.key ? 'white' : 'var(--text-secondary)',
               border: '1px solid #e5e5e7',
             }}
           >
@@ -56,10 +56,10 @@ function Transactions() {
           const date = new Date(tx.created_at).toLocaleDateString('ko-KR', {
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
           })
-          const typeColor = tx.transaction_type === 'BUY' ? '#34c759'
-            : tx.transaction_type === 'SELL' ? '#ff3b30' : '#007aff'
-          const typeBg = tx.transaction_type === 'BUY' ? '#e8f8ed'
-            : tx.transaction_type === 'SELL' ? '#fde8e8' : '#e8f0fe'
+          const typeColor = tx.transaction_type === 'BUY' ? 'var(--positive)'
+            : tx.transaction_type === 'SELL' ? 'var(--negative)' : 'var(--accent)'
+          const typeBg = tx.transaction_type === 'BUY' ? 'var(--positive-bg)'
+            : tx.transaction_type === 'SELL' ? 'var(--negative-bg)' : 'var(--accent-bg)'
           const typeLabel = tx.transaction_type === 'BUY' ? t('transactions.buy')
             : tx.transaction_type === 'SELL' ? t('transactions.sell') : t('exchange.title')
 
@@ -80,7 +80,7 @@ function Transactions() {
                   <strong style={{ fontSize: 15 }}>
                     {tx.transaction_type === 'EXCHANGE' ? tx.ticker : tx.name}
                   </strong>
-                  <div style={{ fontSize: 12, color: '#86868b' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {tx.transaction_type === 'EXCHANGE'
                       ? `${t('exchange.currentRate')}: ₩${tx.price.toLocaleString()}`
                       : `${tx.quantity}${tx.quantity !== 1 ? '' : ''} × ${fmt(tx.price)}`}
@@ -89,9 +89,9 @@ function Transactions() {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{fmt(tx.total_amount)}</div>
-                <div style={{ fontSize: 12, color: '#86868b' }}>{date}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{date}</div>
                 {tx.realized_pnl !== 0 && (
-                  <div style={{ fontSize: 12, color: tx.realized_pnl > 0 ? '#34c759' : '#ff3b30' }}>
+                  <div style={{ fontSize: 12, color: tx.realized_pnl > 0 ? 'var(--positive)' : 'var(--negative)' }}>
                     {tx.realized_pnl > 0 ? '+' : ''}{fmt(Math.abs(tx.realized_pnl))}
                   </div>
                 )}

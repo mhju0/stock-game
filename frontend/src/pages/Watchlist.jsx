@@ -48,7 +48,7 @@ function Watchlist() {
           <div className="card-title" style={{ marginBottom: 0 }}>
             {t("watchlist.title")}
           </div>
-          <span style={{ fontSize: 11, color: "#86868b" }}>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
             Prices are 15-min delayed
           </span>
         </div>
@@ -62,12 +62,12 @@ function Watchlist() {
                 padding: "12px 0", borderBottom: "1px solid #f5f5f7", cursor: "pointer",
               }}
               onClick={() => setTradeTicker(item.ticker)}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#fafafa")}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <div>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
-                <div style={{ fontSize: 12, color: "#86868b" }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {item.ticker} · {item.market}
                 </div>
               </div>
@@ -82,7 +82,7 @@ function Watchlist() {
                 <button
                   className="btn"
                   onClick={(e) => remove(item.ticker, e)}
-                  style={{ fontSize: 12, color: "#ff3b30", border: "1px solid #fde8e8", padding: "4px 10px" }}
+                  style={{ fontSize: 12, color: 'var(--negative)', border: "1px solid #fde8e8", padding: "4px 10px" }}
                 >
                   {t("watchlist.remove")}
                 </button>

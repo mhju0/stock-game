@@ -6,7 +6,7 @@ import { UserContext } from "../context/UserContext";
 
 
 function TradeModal({ ticker, onClose, onComplete }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { currentUserId } = useContext(UserContext);
 
   const [stock, setStock] = useState(null);
@@ -70,7 +70,7 @@ function TradeModal({ ticker, onClose, onComplete }) {
     }
   };
 
-  const displayName = stock ? getStockName(ticker, stock.name) : ticker;
+  const displayName = stock ? getStockName(ticker, stock.name, i18n.language) : ticker;
   const fmt = (v) =>
     stock?.currency === "KRW"
       ? `₩${Math.round(v).toLocaleString()}`
@@ -159,7 +159,7 @@ function TradeModal({ ticker, onClose, onComplete }) {
                 style={{
                   textAlign: "center",
                   fontSize: 13,
-                  color: "#007aff",
+                  color: 'var(--accent)',
                   marginBottom: 16,
                   fontWeight: 500,
                 }}
@@ -190,7 +190,7 @@ function TradeModal({ ticker, onClose, onComplete }) {
                   marginTop: 12,
                   textAlign: "center",
                   fontSize: 14,
-                  color: isSuccess ? "#34c759" : "#ff3b30",
+                  color: isSuccess ? 'var(--positive)' : 'var(--negative)',
                 }}
               >
                 {message}

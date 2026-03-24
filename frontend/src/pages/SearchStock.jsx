@@ -8,7 +8,7 @@ import { UserContext } from '../context/UserContext'
 
 
 function SearchStock() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { currentUserId } = useContext(UserContext)
   
   const [query, setQuery] = useState('')
@@ -48,10 +48,10 @@ function SearchStock() {
   const addToWatchlist = async () => {
     setMessage('')
     const data = await apiFetch(`/watchlist/add?ticker=${stock.ticker}&user_id=${currentUserId}`, { method: 'POST' })
-    if (data) setMessage(`${getStockName(stock.ticker, stock.name)} → ${t('watchlist.title')}`)
+    if (data) setMessage(`${getStockName(stock.ticker, stock.name, i18n.language)} → ${t('watchlist.title')}`)
   }
 
-  const displayName = stock ? getStockName(stock.ticker, stock.name) : ''
+  const displayName = stock ? getStockName(stock.ticker, stock.name, i18n.language) : ''
   const fmt = (v) => stock?.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
 
   const chartData = history.map(h => ({
@@ -79,16 +79,16 @@ function SearchStock() {
           autoFocus
         />
 
-        {searching && <p style={{ padding: '12px 0', color: '#86868b', fontSize: 13 }}>{t('common.loading')}</p>}
+        {searching && <p style={{ padding: '12px 0', color: 'var(--text-secondary)', fontSize: 13 }}>{t('common.loading')}</p>}
 
         {results.length > 0 && (
           <div style={{ marginTop: 8 }}>
             {results.map(r => {
-              const name = getStockName(r.ticker, r.name_en || r.name)
+              const name = getStockName(r.ticker, r.name_en || r.name, i18n.language)
               return (
                 <div key={r.ticker} onClick={() => selectStock(r.ticker)} className="search-result-row">
                   <strong style={{ fontSize: 15 }}>{name}</strong>
-                  <div style={{ fontSize: 12, color: '#86868b' }}>{r.ticker} · {r.exchange}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.ticker} · {r.exchange}</div>
                 </div>
               )
             })}
@@ -97,7 +97,7 @@ function SearchStock() {
       </div>
 
       {message && (
-        <div className="card" style={{ color: '#34c759', fontSize: 14 }}>{message}</div>
+        <div className="card" style={{ color: 'var(--positive)', fontSize: 14 }}>{message}</div>
       )}
 
       {stock && (
@@ -105,7 +105,7 @@ function SearchStock() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <h2 style={{ fontSize: 20, fontWeight: 700 }}>{displayName}</h2>
-              <span style={{ color: '#86868b', fontSize: 14 }}>{stock.ticker} · {stock.market}</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{stock.ticker} · {stock.market}</span>
             </div>
             <button className="btn" onClick={addToWatchlist}
               style={{ fontSize: 13, border: '1px solid var(--border)' }}>
@@ -137,9 +137,9 @@ function SearchStock() {
               </div>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={chartData}>
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false}
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
                     interval={Math.max(0, Math.floor(chartData.length / 5) - 1)} />
-                  <YAxis tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false}
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
                     domain={['dataMin - 1', 'dataMax + 1']}
                     tickFormatter={v => stock.currency === 'KRW' ? `₩${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`} />
                   <Tooltip

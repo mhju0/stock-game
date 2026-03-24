@@ -13,7 +13,7 @@ const KR_NAMES = {
   "096770.KS": "SK이노베이션", "003550.KS": "LG",
 }
 
-export function getStockName(ticker, apiName) {
+export function getStockName(ticker, apiName, _lang) {
   if (ticker.endsWith('.KS') || ticker.endsWith('.KQ')) {
     return KR_NAMES[ticker] || apiName || ticker
   }

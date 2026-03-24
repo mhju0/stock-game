@@ -102,7 +102,7 @@ function ProfileSelect() {
                     padding: '0 16px',
                     border: '1px solid #fde8e8',
                     background: 'transparent',
-                    color: '#ff3b30'
+                    color: 'var(--negative)'
                   }}
                   title="Delete Profile"
                 >
@@ -124,7 +124,7 @@ function ProfileSelect() {
             onChange={(e) => setNewUsername(e.target.value)}
             maxLength={15}
           />
-          {error && <p style={{ color: '#ff3b30', fontSize: 13 }}>{error}</p>}
+          {error && <p style={{ color: 'var(--negative)', fontSize: 13 }}>{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={!newUsername.trim()}>
             Create & Play
           </button>

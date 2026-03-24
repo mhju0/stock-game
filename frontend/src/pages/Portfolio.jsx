@@ -7,7 +7,7 @@ import { UserContext } from '../context/UserContext'
 
 
 function Portfolio() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { currentUserId } = useContext(UserContext)
   
   const [account, setAccount] = useState(null)
@@ -51,8 +51,8 @@ function Portfolio() {
     const bValKRW = b.currency === 'USD' ? b.total_value * account.exchange_rate : b.total_value
 
     switch (sortBy) {
-      case 'name_asc': return getStockName(a.ticker, a.name).localeCompare(getStockName(b.ticker, b.name))
-      case 'name_desc': return getStockName(b.ticker, b.name).localeCompare(getStockName(a.ticker, a.name))
+      case 'name_asc': return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
+      case 'name_desc': return getStockName(b.ticker, b.name, i18n.language).localeCompare(getStockName(a.ticker, a.name, i18n.language))
       case 'alloc_desc': 
       case 'value_desc': return bValKRW - aValKRW
       case 'alloc_asc':
@@ -142,7 +142,7 @@ function Portfolio() {
         {sorted.map(h => {
           const fmt = v => h.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
           const pnlPct = h.avg_price ? ((h.current_price - h.avg_price) / h.avg_price * 100).toFixed(2) : 0
-          const name = getStockName(h.ticker, h.name)
+          const name = getStockName(h.ticker, h.name, i18n.language)
           const isPositive = h.unrealized_pnl >= 0
 
           // Calculate Portfolio Weight (Allocation %)
@@ -161,7 +161,7 @@ function Portfolio() {
               <div style={{ flex: 1 }}>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    <span style={{ color: '#007aff', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {h.ticker} · {h.sector}
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {h.ticker} · {h.sector}
                 </div>
               </div>
 

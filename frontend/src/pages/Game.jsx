@@ -7,7 +7,7 @@ import { UserContext } from '../context/UserContext'
 
 
 function Game() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { currentUserId } = useContext(UserContext)
   
   const [status, setStatus] = useState(null)
@@ -90,7 +90,7 @@ function Game() {
           <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 36, fontWeight: 700 }}>
             {isPositive ? '+' : ''}{summary.total_return_pct.toFixed(2)}%
           </div>
-          <div style={{ fontSize: 15, color: '#86868b', marginTop: 4 }}>
+          <div style={{ fontSize: 15, color: 'var(--text-secondary)', marginTop: 4 }}>
             {formatKRW(summary.starting_balance)} → {formatKRW(summary.current_value)}
           </div>
           <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 16, marginTop: 4 }}>
@@ -102,17 +102,17 @@ function Game() {
           <div className="metric-card">
             <div className="metric-label">Duration</div>
             <div className="metric-value">{Math.round(summary.days_elapsed)}d</div>
-            <div style={{ fontSize: 12, color: '#86868b' }}>of {summary.duration_days}d</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>of {summary.duration_days}d</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Total Trades</div>
             <div className="metric-value">{summary.total_trades}</div>
-            <div style={{ fontSize: 12, color: '#86868b' }}>{summary.total_buys} buys · {summary.total_sells} sells</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{summary.total_buys} buys · {summary.total_sells} sells</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Win Rate</div>
             <div className="metric-value">{summary.win_rate}%</div>
-            <div style={{ fontSize: 12, color: '#86868b' }}>{summary.winning_trades}W / {summary.losing_trades}L</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{summary.winning_trades}W / {summary.losing_trades}L</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Realized P&L</div>
@@ -135,20 +135,20 @@ function Game() {
 
         {summary.best_trade && (
           <div className="metric-grid">
-            <div className="metric-card" style={{ background: '#e8f8ed' }}>
+            <div className="metric-card" style={{ background: 'var(--positive-bg)' }}>
               <div className="metric-label">Best Trade</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#34c759' }}>
-                {getStockName(summary.best_trade.ticker, summary.best_trade.name)}
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--positive)' }}>
+                {getStockName(summary.best_trade.ticker, summary.best_trade.name, i18n.language)}
               </div>
-              <div style={{ fontSize: 13, color: '#34c759' }}>+{formatKRW(summary.best_trade.pnl)}</div>
+              <div style={{ fontSize: 13, color: 'var(--positive)' }}>+{formatKRW(summary.best_trade.pnl)}</div>
             </div>
             {summary.worst_trade && (
-              <div className="metric-card" style={{ background: '#fde8e8' }}>
+              <div className="metric-card" style={{ background: 'var(--negative-bg)' }}>
                 <div className="metric-label">Worst Trade</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#ff3b30' }}>
-                  {getStockName(summary.worst_trade.ticker, summary.worst_trade.name)}
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--negative)' }}>
+                  {getStockName(summary.worst_trade.ticker, summary.worst_trade.name, i18n.language)}
                 </div>
-                <div style={{ fontSize: 13, color: '#ff3b30' }}>{formatKRW(summary.worst_trade.pnl)}</div>
+                <div style={{ fontSize: 13, color: 'var(--negative)' }}>{formatKRW(summary.worst_trade.pnl)}</div>
               </div>
             )}
           </div>
@@ -195,14 +195,14 @@ function Game() {
             <div className="metric-card">
               <div className="metric-label">Days Remaining</div>
               <div className="metric-value">{status.is_expired ? 'Finished' : `${Math.round(status.days_remaining)}d`}</div>
-              <div style={{ fontSize: 12, color: '#86868b' }}>{Math.round(status.days_elapsed)}d / {status.duration_days}d</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{Math.round(status.days_elapsed)}d / {status.duration_days}d</div>
             </div>
           </div>
 
           <div className={`game-status-bar ${status.is_expired ? 'game-expired' : 'game-active'}`}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{status.is_expired ? 'Game Over!' : 'Game Active'}</div>
-              <div style={{ fontSize: 12, color: '#86868b' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {new Date(status.start_date).toLocaleDateString('ko-KR')} → {new Date(status.end_date).toLocaleDateString('ko-KR')}
               </div>
             </div>
@@ -235,9 +235,9 @@ function Game() {
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={mergeChartData()}>
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false}
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
                     tickFormatter={v => `${new Date(v).getMonth() + 1}/${new Date(v).getDate()}`} />
-                  <YAxis tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
                   <Tooltip formatter={(value, name) => [`${value?.toFixed(2)}%`, name]}
                     labelStyle={{ fontSize: 12 }} contentStyle={{ borderRadius: 12, border: '1px solid #e5e5e7', fontSize: 13 }} />
                   <Legend />
@@ -256,7 +256,7 @@ function Game() {
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
             {history.length > 0 ? 'Start a New Challenge' : 'Welcome to Stock Game'}
           </h2>
-          <p style={{ color: '#86868b', marginBottom: 24 }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
             Set your starting balance and time limit, then try to beat the market.
           </p>
           <button className="btn btn-primary" onClick={() => setShowNewGame(true)}>Start New Game</button>
@@ -273,7 +273,7 @@ function Game() {
                 {[5000000, 10000000, 50000000, 100000000].map(v => (
                   <button key={v} className="btn" onClick={() => setStartingBalance(v)} style={{
                     fontSize: 13, padding: '8px 14px',
-                    background: startingBalance === v ? '#007aff' : 'transparent',
+                    background: startingBalance === v ? 'var(--accent)' : 'transparent',
                     color: startingBalance === v ? 'white' : 'var(--text-primary)',
                     border: '1px solid var(--border)',
                   }}>₩{(v / 10000).toLocaleString()}만</button>
@@ -286,7 +286,7 @@ function Game() {
                 {[{ days: 7, label: '1 Week' }, { days: 30, label: '1 Month' }, { days: 90, label: '3 Months' }, { days: 180, label: '6 Months' }].map(v => (
                   <button key={v.days} className="btn" onClick={() => setDuration(v.days)} style={{
                     fontSize: 13, padding: '8px 14px',
-                    background: duration === v.days ? '#007aff' : 'transparent',
+                    background: duration === v.days ? 'var(--accent)' : 'transparent',
                     color: duration === v.days ? 'white' : 'var(--text-primary)',
                     border: '1px solid var(--border)',
                   }}>{v.label}</button>
@@ -295,11 +295,11 @@ function Game() {
             </div>
             <div className="setup-preview">
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ color: '#86868b' }}>Starting Balance</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Starting Balance</span>
                 <span style={{ fontWeight: 600 }}>{formatKRW(startingBalance)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#86868b' }}>Duration</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Duration</span>
                 <span style={{ fontWeight: 600 }}>{duration} days</span>
               </div>
             </div>
@@ -330,7 +330,7 @@ function Game() {
               }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>{formatKRW(game.starting_balance_krw)} · {game.duration_days} days</div>
-                  <div style={{ fontSize: 12, color: '#86868b' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {new Date(game.start_date).toLocaleDateString('ko-KR')} → {new Date(game.end_date).toLocaleDateString('ko-KR')}
                   </div>
                 </div>
