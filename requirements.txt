@@ -1,0 +1,3 @@
+cd /Users/michaelju/Workspace/Projects/stock-game/backend
+source venv/bin/activate
+pip freeze > requirements.txt

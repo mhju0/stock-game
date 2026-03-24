@@ -1,0 +1,76 @@
+{
+  "common": {
+    "appName": "Stock Game",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "search": "Search",
+    "krw": "KRW",
+    "usd": "USD"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "search": "Search Stocks",
+    "portfolio": "Portfolio",
+    "watchlist": "Watchlist",
+    "exchange": "Exchange",
+    "transactions": "Transactions",
+    "market": "Top 30",
+    "analytics": "Analytics",
+    "game": "Game"
+  },
+  "dashboard": {
+    "totalValue": "Total Assets",
+    "cashKRW": "Cash (KRW)",
+    "cashUSD": "Cash (USD)",
+    "exchangeRate": "Exchange Rate",
+    "holdings": "Holdings",
+    "recentTransactions": "Recent Transactions"
+  },
+  "stock": {
+    "buy": "Buy",
+    "sell": "Sell",
+    "price": "Current Price",
+    "quantity": "Quantity",
+    "sector": "Sector",
+    "industry": "Industry",
+    "avgPrice": "Avg. Buy Price",
+    "currentPrice": "Current Price",
+    "totalValue": "Total Value",
+    "unrealizedPnl": "Unrealized P&L",
+    "realizedPnl": "Realized P&L",
+    "notFound": "Stock not found"
+  },
+  "trade": {
+    "buySuccess": "Purchase complete",
+    "sellSuccess": "Sale complete",
+    "insufficientBalance": "Insufficient balance",
+    "insufficientShares": "Insufficient shares",
+    "enterQuantity": "Enter quantity"
+  },
+  "exchange": {
+    "title": "Currency Exchange",
+    "from": "From",
+    "to": "To",
+    "amount": "Amount",
+    "convertedAmount": "Converted Amount",
+    "currentRate": "Current Rate",
+    "execute": "Exchange"
+  },
+  "watchlist": {
+    "title": "Watchlist",
+    "empty": "No stocks in watchlist",
+    "add": "Add",
+    "remove": "Remove"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "empty": "No transactions yet",
+    "buy": "Buy",
+    "sell": "Sell",
+    "date": "Date",
+    "type": "Type",
+    "amount": "Amount"
+  }
+}

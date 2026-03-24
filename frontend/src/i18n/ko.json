@@ -1,0 +1,76 @@
+{
+  "common": {
+    "appName": "모의투자",
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "confirm": "확인",
+    "cancel": "취소",
+    "search": "검색",
+    "krw": "원",
+    "usd": "달러"
+  },
+  "nav": {
+    "dashboard": "대시보드",
+    "search": "종목 검색",
+    "portfolio": "포트폴리오",
+    "watchlist": "관심종목",
+    "exchange": "환전",
+    "transactions": "거래내역",
+    "market": "시가총액 Top 30",
+    "analytics": "투자 분석",
+    "game": "게임"
+  },
+  "dashboard": {
+    "totalValue": "총 자산",
+    "cashKRW": "보유 원화",
+    "cashUSD": "보유 달러",
+    "exchangeRate": "환율",
+    "holdings": "보유 종목",
+    "recentTransactions": "최근 거래"
+  },
+  "stock": {
+    "buy": "매수",
+    "sell": "매도",
+    "price": "현재가",
+    "quantity": "수량",
+    "sector": "섹터",
+    "industry": "업종",
+    "avgPrice": "평균 매수가",
+    "currentPrice": "현재가",
+    "totalValue": "평가금액",
+    "unrealizedPnl": "평가 손익",
+    "realizedPnl": "실현 손익",
+    "notFound": "종목을 찾을 수 없습니다"
+  },
+  "trade": {
+    "buySuccess": "매수 완료",
+    "sellSuccess": "매도 완료",
+    "insufficientBalance": "잔고가 부족합니다",
+    "insufficientShares": "보유 수량이 부족합니다",
+    "enterQuantity": "수량을 입력하세요"
+  },
+  "exchange": {
+    "title": "환전",
+    "from": "보내는 통화",
+    "to": "받는 통화",
+    "amount": "금액",
+    "convertedAmount": "환전 금액",
+    "currentRate": "현재 환율",
+    "execute": "환전하기"
+  },
+  "watchlist": {
+    "title": "관심종목",
+    "empty": "관심종목이 없습니다",
+    "add": "추가",
+    "remove": "삭제"
+  },
+  "transactions": {
+    "title": "거래내역",
+    "empty": "거래내역이 없습니다",
+    "buy": "매수",
+    "sell": "매도",
+    "date": "날짜",
+    "type": "유형",
+    "amount": "금액"
+  }
+}

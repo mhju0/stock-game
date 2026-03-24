@@ -1,0 +1,61 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models import Watchlist
+from app.services.stock_service import get_stock_info, get_stock_price
+
+router = APIRouter(prefix="/watchlist", tags=["watchlist"])
+
+
+@router.get("/")
+def get_watchlist(db: Session = Depends(get_db)):
+    items = db.query(Watchlist).filter(Watchlist.user_id == 1).all()
+    result = []
+    for item in items:
+        price = get_stock_price(item.ticker)
+        result.append({
+            "id": item.id,
+            "ticker": item.ticker,
+            "name": item.name,
+            "market": item.market,
+            "price": price,
+            "currency": "KRW" if item.market == "KRX" else "USD",
+        })
+    return result
+
+
+@router.post("/add")
+def add_to_watchlist(ticker: str, db: Session = Depends(get_db)):
+    existing = db.query(Watchlist).filter(
+        Watchlist.user_id == 1,
+        Watchlist.ticker == ticker
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Already in watchlist")
+
+    info = get_stock_info(ticker)
+    if not info:
+        raise HTTPException(status_code=404, detail="Stock not found")
+
+    item = Watchlist(
+        user_id=1,
+        ticker=ticker,
+        name=info["name"],
+        market=info["market"],
+    )
+    db.add(item)
+    db.commit()
+    return {"status": "success", "ticker": ticker}
+
+
+@router.delete("/remove/{ticker}")
+def remove_from_watchlist(ticker: str, db: Session = Depends(get_db)):
+    item = db.query(Watchlist).filter(
+        Watchlist.user_id == 1,
+        Watchlist.ticker == ticker
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Not in watchlist")
+    db.delete(item)
+    db.commit()
+    return {"status": "success", "ticker": ticker}
