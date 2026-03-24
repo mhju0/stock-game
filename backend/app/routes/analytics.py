@@ -2,27 +2,25 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Holding, Transaction, PortfolioSnapshot, GameSession
-from app.services.stock_service import get_stock_price
+from app.services.stock_service import get_stock_price, get_stock_info # <-- Added get_stock_info
 from app.services.exchange_service import get_exchange_rate
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
-
-def get_starting_value(db: Session) -> float:
+def get_starting_value(db: Session, user_id: int) -> float:
     session = db.query(GameSession).filter(
-        GameSession.user_id == 1,
+        GameSession.user_id == user_id,
         GameSession.is_active == True
     ).first()
     return session.starting_balance_krw if session else 10_000_000
 
-
 @router.get("/performance")
-def get_performance(db: Session = Depends(get_db)):
+def get_performance(user_id: int, db: Session = Depends(get_db)):
     snapshots = db.query(PortfolioSnapshot).filter(
-        PortfolioSnapshot.user_id == 1
+        PortfolioSnapshot.user_id == user_id
     ).order_by(PortfolioSnapshot.created_at.asc()).all()
 
-    starting_value = get_starting_value(db)
+    starting_value = get_starting_value(db, user_id)
     current = snapshots[-1].total_value_krw if snapshots else starting_value
     total_return = current - starting_value
     total_return_pct = (total_return / starting_value) * 100 if starting_value else 0
@@ -44,10 +42,9 @@ def get_performance(db: Session = Depends(get_db)):
         ],
     }
 
-
 @router.get("/by-stock")
-def performance_by_stock(db: Session = Depends(get_db)):
-    holdings = db.query(Holding).filter(Holding.user_id == 1).all()
+def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
+    holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     rate = get_exchange_rate()
 
     results = []
@@ -55,6 +52,10 @@ def performance_by_stock(db: Session = Depends(get_db)):
         current_price = get_stock_price(h.ticker)
         if not current_price:
             continue
+            
+        info = get_stock_info(h.ticker) or {}
+        market_cap = info.get("marketCap", 0)
+        
         unrealized_pnl = (current_price - h.avg_price) * h.quantity
         pnl_pct = ((current_price - h.avg_price) / h.avg_price) * 100 if h.avg_price else 0
         total_value = current_price * h.quantity
@@ -74,15 +75,16 @@ def performance_by_stock(db: Session = Depends(get_db)):
             "total_value_krw": round(total_value_krw, 2),
             "unrealized_pnl": round(unrealized_pnl, 2),
             "unrealized_pnl_pct": round(pnl_pct, 2),
+            "market_cap": market_cap, # <-- Added to response
         })
 
+    # Default sort
     results.sort(key=lambda x: x["unrealized_pnl_pct"], reverse=True)
     return results
 
-
 @router.get("/by-sector")
-def performance_by_sector(db: Session = Depends(get_db)):
-    holdings = db.query(Holding).filter(Holding.user_id == 1).all()
+def performance_by_sector(user_id: int, db: Session = Depends(get_db)):
+    holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     rate = get_exchange_rate()
 
     sectors = {}
@@ -126,11 +128,10 @@ def performance_by_sector(db: Session = Depends(get_db)):
     results.sort(key=lambda x: x["total_value_krw"], reverse=True)
     return results
 
-
 @router.get("/realized")
-def realized_performance(db: Session = Depends(get_db)):
+def realized_performance(user_id: int, db: Session = Depends(get_db)):
     sells = db.query(Transaction).filter(
-        Transaction.user_id == 1,
+        Transaction.user_id == user_id,
         Transaction.transaction_type == "SELL"
     ).order_by(Transaction.created_at.desc()).all()
 

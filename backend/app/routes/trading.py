@@ -8,27 +8,30 @@ router = APIRouter(prefix="/trade", tags=["trading"])
 
 
 @router.post("/buy")
-def buy(request: BuyRequest, db: Session = Depends(get_db)):
+def buy(request: BuyRequest, user_id: int, db: Session = Depends(get_db)): # Added user_id
     try:
-        result = buy_stock(db, user_id=1, ticker=request.ticker, quantity=request.quantity)
+        # Pass the dynamic user_id to the service instead of 1
+        result = buy_stock(db, user_id=user_id, ticker=request.ticker, quantity=request.quantity)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/sell")
-def sell(request: SellRequest, db: Session = Depends(get_db)):
+def sell(request: SellRequest, user_id: int, db: Session = Depends(get_db)): # Added user_id
     try:
-        result = sell_stock(db, user_id=1, ticker=request.ticker, quantity=request.quantity)
+        # Pass the dynamic user_id to the service instead of 1
+        result = sell_stock(db, user_id=user_id, ticker=request.ticker, quantity=request.quantity)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/exchange")
-def exchange(request: ExchangeRequest, db: Session = Depends(get_db)):
+def exchange(request: ExchangeRequest, user_id: int, db: Session = Depends(get_db)): # Added user_id
     try:
-        result = exchange_currency(db, user_id=1, from_currency=request.from_currency, to_currency=request.to_currency, amount=request.amount)
+        # Pass the dynamic user_id to the service instead of 1
+        result = exchange_currency(db, user_id=user_id, from_currency=request.from_currency, to_currency=request.to_currency, amount=request.amount)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

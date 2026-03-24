@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { UserContext } from '../context/UserContext'
 
 const API = 'http://127.0.0.1:8000'
 
 function Exchange() {
   const { t } = useTranslation()
+  const { currentUserId } = useContext(UserContext)
+  
   const [rate, setRate] = useState(null)
   const [account, setAccount] = useState(null)
   const [fromCurrency, setFromCurrency] = useState('KRW')
@@ -12,11 +15,13 @@ function Exchange() {
   const [message, setMessage] = useState('')
 
   const fetchData = () => {
+    // Exchange rate is public, no user_id needed
     fetch(`${API}/exchange-rate`).then(r => r.json()).then(d => setRate(d.usd_to_krw))
-    fetch(`${API}/portfolio/account`).then(r => r.json()).then(setAccount)
+    // Account details are private, needs user_id
+    fetch(`${API}/portfolio/account?user_id=${currentUserId}`).then(r => r.json()).then(setAccount)
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData() }, [currentUserId])
 
   const toCurrency = fromCurrency === 'KRW' ? 'USD' : 'KRW'
   const converted = amount && rate
@@ -25,7 +30,7 @@ function Exchange() {
 
   const execute = async () => {
     setMessage('')
-    const res = await fetch(`${API}/trade/exchange`, {
+    const res = await fetch(`${API}/trade/exchange?user_id=${currentUserId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ from_currency: fromCurrency, to_currency: toCurrency, amount: parseFloat(amount) }),

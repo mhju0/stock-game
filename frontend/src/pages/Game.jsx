@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
+import { UserContext } from '../context/UserContext'
 
 const API = 'http://127.0.0.1:8000'
 
 function Game() {
   const { t } = useTranslation()
+  const { currentUserId } = useContext(UserContext)
+  
   const [status, setStatus] = useState(null)
   const [history, setHistory] = useState([])
   const [summary, setSummary] = useState(null)
@@ -20,12 +23,12 @@ function Game() {
   const [showSummary, setShowSummary] = useState(false)
 
   const fetchData = () => {
-    fetch(`${API}/game/status`).then(r => r.json()).then(setStatus)
-    fetch(`${API}/game/history`).then(r => r.json()).then(setHistory)
-    fetch(`${API}/game/summary`).then(r => r.json()).then(setSummary)
+    fetch(`${API}/game/status?user_id=${currentUserId}`).then(r => r.json()).then(setStatus)
+    fetch(`${API}/game/history?user_id=${currentUserId}`).then(r => r.json()).then(setHistory)
+    fetch(`${API}/game/summary?user_id=${currentUserId}`).then(r => r.json()).then(setSummary)
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData() }, [currentUserId])
 
   useEffect(() => {
     if (!status?.active) return
@@ -35,7 +38,7 @@ function Game() {
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setBenchmarkData(data) })
 
-    fetch(`${API}/analytics/performance`)
+    fetch(`${API}/analytics/performance?user_id=${currentUserId}`)
       .then(r => r.json())
       .then(data => {
         if (data.snapshots) {
@@ -47,10 +50,10 @@ function Game() {
           })))
         }
       })
-  }, [status?.active, benchmarkIndex])
+  }, [status?.active, benchmarkIndex, currentUserId])
 
   const startNewGame = async () => {
-    const res = await fetch(`${API}/game/new`, {
+    const res = await fetch(`${API}/game/new?user_id=${currentUserId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ starting_balance_krw: startingBalance, duration_days: duration }),

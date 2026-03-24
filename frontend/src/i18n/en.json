@@ -21,12 +21,14 @@
     "game": "Game"
   },
   "dashboard": {
-    "totalValue": "Total Assets",
+    "totalValue": "Total Value",
     "cashKRW": "Cash (KRW)",
     "cashUSD": "Cash (USD)",
     "exchangeRate": "Exchange Rate",
     "holdings": "Holdings",
-    "recentTransactions": "Recent Transactions"
+    "holdingsValue": "Holdings Value",
+    "recentTransactions": "Recent Transactions",
+    "myHoldings": "My Holdings"
   },
   "stock": {
     "buy": "Buy",

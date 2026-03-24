@@ -1,43 +1,66 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
+import { UserContext } from '../context/UserContext'
 
 const API = 'http://127.0.0.1:8000'
 
 function Portfolio() {
   const { t } = useTranslation()
+  const { currentUserId } = useContext(UserContext)
+  
+  const [account, setAccount] = useState(null)
   const [holdings, setHoldings] = useState([])
-  const [sortBy, setSortBy] = useState('name')
+  const [sortBy, setSortBy] = useState('alloc_desc')
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [filterSector, setFilterSector] = useState('ALL')
   const [tradeTicker, setTradeTicker] = useState(null)
 
-  const fetchHoldings = async () => {
-    const res = await fetch(`${API}/portfolio/holdings`)
-    const data = await res.json()
-    setHoldings(data)
+  const fetchData = async () => {
+    const [holdingsRes, accountRes] = await Promise.all([
+      fetch(`${API}/portfolio/holdings?user_id=${currentUserId}`),
+      fetch(`${API}/portfolio/account?user_id=${currentUserId}`)
+    ])
+    setHoldings(await holdingsRes.json())
+    setAccount(await accountRes.json())
   }
 
-  useEffect(() => { fetchHoldings() }, [])
+  useEffect(() => { fetchData() }, [currentUserId])
 
-  if (holdings.length === 0) {
+  if (!account || holdings.length === 0) {
     return <div className="empty-state">{t('stock.notFound')}</div>
   }
 
-  const sectors = [...new Set(holdings.map(h => h.sector))].sort()
+  // Formatting helper for Market Cap
+  const formatMcap = (val, currency) => {
+    if (!val) return '-'
+    const prefix = currency === 'KRW' ? '₩' : '$'
+    if (val >= 1e12) return `${prefix}${(val / 1e12).toFixed(2)}T`
+    if (val >= 1e9) return `${prefix}${(val / 1e9).toFixed(2)}B`
+    if (val >= 1e6) return `${prefix}${(val / 1e6).toFixed(2)}M`
+    return `${prefix}${val.toLocaleString()}`
+  }
 
   let filtered = holdings
   if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
   if (filterSector !== 'ALL') filtered = filtered.filter(h => h.sector === filterSector)
 
   const sorted = [...filtered].sort((a, b) => {
+    const aValKRW = a.currency === 'USD' ? a.total_value * account.exchange_rate : a.total_value
+    const bValKRW = b.currency === 'USD' ? b.total_value * account.exchange_rate : b.total_value
+
     switch (sortBy) {
-      case 'name': return getStockName(a.ticker, a.name).localeCompare(getStockName(b.ticker, b.name))
-      case 'value_desc': return b.total_value - a.total_value
-      case 'value_asc': return a.total_value - b.total_value
+      case 'name_asc': return getStockName(a.ticker, a.name).localeCompare(getStockName(b.ticker, b.name))
+      case 'name_desc': return getStockName(b.ticker, b.name).localeCompare(getStockName(a.ticker, a.name))
+      case 'alloc_desc': 
+      case 'value_desc': return bValKRW - aValKRW
+      case 'alloc_asc':
+      case 'value_asc': return aValKRW - bValKRW
       case 'pnl_desc': return b.unrealized_pnl - a.unrealized_pnl
       case 'pnl_asc': return a.unrealized_pnl - b.unrealized_pnl
+      case 'mcap_desc': return (b.market_cap || 0) - (a.market_cap || 0)
+      case 'mcap_asc': return (a.market_cap || 0) - (b.market_cap || 0)
       default: return 0
     }
   })
@@ -79,11 +102,8 @@ function Portfolio() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {Object.entries(totalBySector).map(([sector, data]) => (
             <div key={sector} style={{
-              background: 'var(--bg-secondary)',
-              borderRadius: 10,
-              padding: '8px 14px',
-              fontSize: 13,
-              cursor: 'pointer',
+              background: 'var(--bg-secondary)', borderRadius: 10, padding: '8px 14px',
+              fontSize: 13, cursor: 'pointer',
               border: filterSector === sector ? '2px solid #007aff' : '2px solid transparent',
             }}
               onClick={() => setFilterSector(filterSector === sector ? 'ALL' : sector)}
@@ -105,11 +125,16 @@ function Portfolio() {
           <option value="KRX">KRX</option>
         </select>
         <select className="input" style={{ width: 'auto', minWidth: 160 }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
-          <option value="name">Sort: Name</option>
-          <option value="value_desc">Sort: Value ↓</option>
-          <option value="value_asc">Sort: Value ↑</option>
-          <option value="pnl_desc">Sort: Best P&L</option>
-          <option value="pnl_asc">Sort: Worst P&L</option>
+          <option value="alloc_desc">Allocation (High → Low)</option>
+          <option value="alloc_asc">Allocation (Low → High)</option>
+          <option value="mcap_desc">Market Cap (High → Low)</option>
+          <option value="mcap_asc">Market Cap (Low → High)</option>
+          <option value="name_asc">Name (A → Z)</option>
+          <option value="name_desc">Name (Z → A)</option>
+          <option value="value_desc">Value (High → Low)</option>
+          <option value="value_asc">Value (Low → High)</option>
+          <option value="pnl_desc">P&L (High → Low)</option>
+          <option value="pnl_asc">P&L (Low → High)</option>
         </select>
       </div>
 
@@ -120,6 +145,10 @@ function Portfolio() {
           const name = getStockName(h.ticker, h.name)
           const isPositive = h.unrealized_pnl >= 0
 
+          // Calculate Portfolio Weight (Allocation %)
+          const hValKRW = h.currency === 'USD' ? h.total_value * account.exchange_rate : h.total_value
+          const allocPct = ((hValKRW / account.total_value_krw) * 100).toFixed(1)
+
           return (
             <div key={h.ticker} onClick={() => setTradeTicker(h.ticker)} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -129,11 +158,19 @@ function Portfolio() {
               onMouseEnter={e => e.currentTarget.style.background = 'var(--hover-bg)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <div>
+              <div style={{ flex: 1 }}>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{h.ticker} · {h.sector} · {h.quantity} shares</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    <span style={{ color: '#007aff', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {h.ticker} · {h.sector}
+                </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
+
+              <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ fontSize: 13 }}>{h.quantity} shares</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Cap: {formatMcap(h.market_cap, h.currency)}</div>
+              </div>
+
+              <div style={{ flex: 1, textAlign: 'right' }}>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{fmt(h.current_price)}</div>
                 <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 13 }}>
                   {isPositive ? '+' : ''}{fmt(h.unrealized_pnl)} ({pnlPct}%)
@@ -148,7 +185,7 @@ function Portfolio() {
       {tradeTicker && (
         <TradeModal ticker={tradeTicker}
           onClose={() => setTradeTicker(null)}
-          onComplete={() => { setTradeTicker(null); fetchHoldings() }} />
+          onComplete={() => { setTradeTicker(null); fetchData() }} />
       )}
     </div>
   )

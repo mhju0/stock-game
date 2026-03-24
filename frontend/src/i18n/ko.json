@@ -26,7 +26,8 @@
     "cashUSD": "보유 달러",
     "exchangeRate": "환율",
     "holdings": "보유 종목",
-    "recentTransactions": "최근 거래"
+    "recentTransactions": "최근 거래",
+    "myHoldings": "보유 종목"
   },
   "stock": {
     "buy": "매수",

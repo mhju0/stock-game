@@ -6,10 +6,9 @@ from app.services.stock_service import get_stock_info, get_stock_price
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
-
 @router.get("/")
-def get_watchlist(db: Session = Depends(get_db)):
-    items = db.query(Watchlist).filter(Watchlist.user_id == 1).all()
+def get_watchlist(user_id: int, db: Session = Depends(get_db)):
+    items = db.query(Watchlist).filter(Watchlist.user_id == user_id).all() 
     result = []
     for item in items:
         price = get_stock_price(item.ticker)
@@ -23,11 +22,10 @@ def get_watchlist(db: Session = Depends(get_db)):
         })
     return result
 
-
 @router.post("/add")
-def add_to_watchlist(ticker: str, db: Session = Depends(get_db)):
+def add_to_watchlist(ticker: str, user_id: int, db: Session = Depends(get_db)):
     existing = db.query(Watchlist).filter(
-        Watchlist.user_id == 1,
+        Watchlist.user_id == user_id,
         Watchlist.ticker == ticker
     ).first()
     if existing:
@@ -38,7 +36,7 @@ def add_to_watchlist(ticker: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Stock not found")
 
     item = Watchlist(
-        user_id=1,
+        user_id=user_id, 
         ticker=ticker,
         name=info["name"],
         market=info["market"],
@@ -47,11 +45,10 @@ def add_to_watchlist(ticker: str, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success", "ticker": ticker}
 
-
 @router.delete("/remove/{ticker}")
-def remove_from_watchlist(ticker: str, db: Session = Depends(get_db)):
+def remove_from_watchlist(ticker: str, user_id: int, db: Session = Depends(get_db)): 
     item = db.query(Watchlist).filter(
-        Watchlist.user_id == 1,
+        Watchlist.user_id == user_id, 
         Watchlist.ticker == ticker
     ).first()
     if not item:

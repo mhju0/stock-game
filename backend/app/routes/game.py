@@ -17,19 +17,17 @@ from app.services.snapshot_service import take_snapshot
 
 router = APIRouter(prefix="/game", tags=["game"])
 
-
 class NewGameRequest(BaseModel):
     starting_balance_krw: float = 10_000_000
     duration_days: int = 90
 
-
 @router.post("/new")
-def start_new_game(request: NewGameRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == 1).first()
+def start_new_game(request: NewGameRequest, user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
 
     active_session = (
         db.query(GameSession)
-        .filter(GameSession.user_id == 1, GameSession.is_active == True)
+        .filter(GameSession.user_id == user_id, GameSession.is_active == True)
         .first()
     )
 
@@ -42,17 +40,17 @@ def start_new_game(request: NewGameRequest, db: Session = Depends(get_db)):
             * 100
         )
 
-    db.query(Holding).filter(Holding.user_id == 1).delete()
-    db.query(Transaction).filter(Transaction.user_id == 1).delete()
-    db.query(Watchlist).filter(Watchlist.user_id == 1).delete()
-    db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == 1).delete()
+    db.query(Holding).filter(Holding.user_id == user_id).delete()
+    db.query(Transaction).filter(Transaction.user_id == user_id).delete()
+    db.query(Watchlist).filter(Watchlist.user_id == user_id).delete()
+    db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user_id).delete()
 
     user.balance_krw = request.starting_balance_krw
     user.balance_usd = 0.0
 
     now = datetime.now(timezone.utc)
     session = GameSession(
-        user_id=1,
+        user_id=user_id,
         starting_balance_krw=request.starting_balance_krw,
         starting_balance_usd=0.0,
         duration_days=request.duration_days,
@@ -63,7 +61,7 @@ def start_new_game(request: NewGameRequest, db: Session = Depends(get_db)):
     db.add(session)
     db.commit()
 
-    take_snapshot(db, user_id=1)
+    take_snapshot(db, user_id=user_id)
 
     return {
         "status": "success",
@@ -76,12 +74,11 @@ def start_new_game(request: NewGameRequest, db: Session = Depends(get_db)):
         },
     }
 
-
 @router.get("/status")
-def game_status(db: Session = Depends(get_db)):
+def game_status(user_id: int, db: Session = Depends(get_db)):
     session = (
         db.query(GameSession)
-        .filter(GameSession.user_id == 1, GameSession.is_active == True)
+        .filter(GameSession.user_id == user_id, GameSession.is_active == True)
         .first()
     )
 
@@ -104,10 +101,10 @@ def game_status(db: Session = Depends(get_db)):
     days_remaining = max(0, remaining / 86400)
     days_elapsed = session.duration_days - days_remaining
 
-    user = db.query(User).filter(User.id == 1).first()
+    user = db.query(User).filter(User.id == user_id).first()
     snapshots = (
         db.query(PortfolioSnapshot)
-        .filter(PortfolioSnapshot.user_id == 1)
+        .filter(PortfolioSnapshot.user_id == user_id)
         .order_by(PortfolioSnapshot.created_at.desc())
         .first()
     )
@@ -133,12 +130,11 @@ def game_status(db: Session = Depends(get_db)):
         "is_expired": remaining <= 0,
     }
 
-
 @router.get("/history")
-def game_history(db: Session = Depends(get_db)):
+def game_history(user_id: int, db: Session = Depends(get_db)):
     sessions = (
         db.query(GameSession)
-        .filter(GameSession.user_id == 1, GameSession.is_active == False)
+        .filter(GameSession.user_id == user_id, GameSession.is_active == False)
         .order_by(GameSession.start_date.desc())
         .all()
     )
@@ -156,20 +152,19 @@ def game_history(db: Session = Depends(get_db)):
         for s in sessions
     ]
 
-
 @router.get("/benchmark/{index}")
 def benchmark(index: str, days: int = 90):
+    # Benchmark doesn't need user_id as it just fetches public market data
     data = get_benchmark_data(index, days)
     if not data:
         return {"error": "Could not fetch benchmark data"}
     return data
 
-
 @router.get("/summary")
-def game_summary(db: Session = Depends(get_db)):
+def game_summary(user_id: int, db: Session = Depends(get_db)):
     session = (
         db.query(GameSession)
-        .filter(GameSession.user_id == 1, GameSession.is_active == True)
+        .filter(GameSession.user_id == user_id, GameSession.is_active == True)
         .first()
     )
 
@@ -179,10 +174,10 @@ def game_summary(db: Session = Depends(get_db)):
     from app.models import Transaction, Holding, PortfolioSnapshot
     from app.services.stock_service import get_stock_price
 
-    user = db.query(User).filter(User.id == 1).first()
+    user = db.query(User).filter(User.id == user_id).first()
     rate = get_exchange_rate()
 
-    holdings = db.query(Holding).filter(Holding.user_id == 1).all()
+    holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     holdings_value_krw = 0
     for h in holdings:
         price = get_stock_price(h.ticker)
@@ -196,7 +191,7 @@ def game_summary(db: Session = Depends(get_db)):
     total_return = current_value - session.starting_balance_krw
     total_return_pct = (total_return / session.starting_balance_krw) * 100
 
-    all_transactions = db.query(Transaction).filter(Transaction.user_id == 1).all()
+    all_transactions = db.query(Transaction).filter(Transaction.user_id == user_id).all()
 
     buys = [t for t in all_transactions if t.transaction_type == "BUY"]
     sells = [t for t in all_transactions if t.transaction_type == "SELL"]
@@ -232,7 +227,7 @@ def game_summary(db: Session = Depends(get_db)):
 
     snapshots = (
         db.query(PortfolioSnapshot)
-        .filter(PortfolioSnapshot.user_id == 1)
+        .filter(PortfolioSnapshot.user_id == user_id)
         .order_by(PortfolioSnapshot.created_at.asc())
         .all()
     )

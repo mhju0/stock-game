@@ -1,16 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { UserContext } from '../context/UserContext'
 
 const API = 'http://127.0.0.1:8000'
 
 function Transactions() {
   const { t } = useTranslation()
+  const { currentUserId } = useContext(UserContext)
+  
   const [transactions, setTransactions] = useState([])
   const [filter, setFilter] = useState('ALL')
 
   useEffect(() => {
-    fetch(`${API}/portfolio/transactions`).then(r => r.json()).then(setTransactions)
-  }, [])
+    fetch(`${API}/portfolio/transactions?user_id=${currentUserId}`)
+      .then(r => r.json())
+      .then(setTransactions)
+  }, [currentUserId])
 
   const filtered = filter === 'ALL'
     ? transactions
@@ -36,8 +41,7 @@ function Transactions() {
             className="btn"
             onClick={() => setFilter(f.key)}
             style={{
-              fontSize: 13,
-              padding: '6px 14px',
+              fontSize: 13, padding: '6px 14px',
               background: filter === f.key ? '#1d1d1f' : 'transparent',
               color: filter === f.key ? 'white' : '#86868b',
               border: '1px solid #e5e5e7',
@@ -63,22 +67,14 @@ function Transactions() {
 
           return (
             <div key={tx.id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '14px 0',
-              borderBottom: '1px solid #f5f5f7',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 0', borderBottom: '1px solid #f5f5f7',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: typeBg,
-                  color: typeColor,
-                  minWidth: 40,
-                  textAlign: 'center',
+                  padding: '4px 10px', borderRadius: 6, fontSize: 12,
+                  fontWeight: 600, background: typeBg, color: typeColor,
+                  minWidth: 40, textAlign: 'center',
                 }}>
                   {typeLabel}
                 </span>

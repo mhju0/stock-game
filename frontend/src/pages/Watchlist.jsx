@@ -1,19 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
+import { UserContext } from "../context/UserContext";
 
 const API = "http://127.0.0.1:8000";
 
 function Watchlist() {
   const { t, i18n } = useTranslation();
+  const { currentUserId } = useContext(UserContext); // Get user ID
+  
   const [watchlist, setWatchlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tradeTicker, setTradeTicker] = useState(null);
 
   const fetchWatchlist = async () => {
     setLoading(true);
-    const res = await fetch(`${API}/watchlist/`);
+    // Add user_id to the query
+    const res = await fetch(`${API}/watchlist/?user_id=${currentUserId}`);
     const data = await res.json();
     setWatchlist(data);
     setLoading(false);
@@ -21,11 +25,12 @@ function Watchlist() {
 
   useEffect(() => {
     fetchWatchlist();
-  }, []);
+  }, [currentUserId]);
 
   const remove = async (ticker, e) => {
     e.stopPropagation();
-    await fetch(`${API}/watchlist/remove/${ticker}`, { method: "DELETE" });
+    // Add user_id to the query
+    await fetch(`${API}/watchlist/remove/${ticker}?user_id=${currentUserId}`, { method: "DELETE" });
     fetchWatchlist();
   };
 
@@ -42,14 +47,7 @@ function Watchlist() {
   return (
     <div>
       <div className="card">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div className="card-title" style={{ marginBottom: 0 }}>
             {t("watchlist.title")}
           </div>
@@ -63,20 +61,12 @@ function Watchlist() {
             <div
               key={item.ticker}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "12px 0",
-                borderBottom: "1px solid #f5f5f7",
-                cursor: "pointer",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "12px 0", borderBottom: "1px solid #f5f5f7", cursor: "pointer",
               }}
               onClick={() => setTradeTicker(item.ticker)}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "#fafafa")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "transparent")
-              }
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#fafafa")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <div>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
@@ -95,12 +85,7 @@ function Watchlist() {
                 <button
                   className="btn"
                   onClick={(e) => remove(item.ticker, e)}
-                  style={{
-                    fontSize: 12,
-                    color: "#ff3b30",
-                    border: "1px solid #fde8e8",
-                    padding: "4px 10px",
-                  }}
+                  style={{ fontSize: 12, color: "#ff3b30", border: "1px solid #fde8e8", padding: "4px 10px" }}
                 >
                   {t("watchlist.remove")}
                 </button>
