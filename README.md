@@ -32,7 +32,6 @@
 
 ---
 ## 🛠 기술 스택 (Tech Stack)
- 
 * **Backend:** Python, FastAPI, SQLAlchemy, SQLite, yfinance
 * **Frontend:** React 19, Vite, Recharts, react-i18next, React Router
 * **Deployment:** Vercel (Frontend), Render (Backend API)
@@ -56,7 +55,6 @@ cd frontend
 npm install && npm run dev
 # → http://localhost:5173 접속
 ```
- 
 > **Note:** 백엔드는 별도의 환경 변수 설정 없이 SQLite DB가 자동 생성됩니다. 프론트엔드의 경우 `frontend/.env.local` 파일에 `VITE_API_URL=http://127.0.0.1:8000`를 추가해 주세요.
 
 ---
