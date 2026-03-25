@@ -27,8 +27,8 @@ function Dashboard() {
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [error, setError] = useState('')
 
-  const { data: account, isLoading: accountLoading } = useAccountQuery(currentUserId)
-  const { data: holdings = [], isLoading: holdingsLoading } = useHoldingsQuery(currentUserId)
+  const { data: account, isLoading: accountLoading, isError: accountError } = useAccountQuery(currentUserId)
+  const { data: holdings = [], isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId)
 
   const fetchData = () => {
     setError('')
@@ -67,7 +67,13 @@ function Dashboard() {
   }
 
   if (error) return <div className="card" style={{ color: 'var(--negative)', textAlign: 'center' }}>{error}</div>
-  if (accountLoading || holdingsLoading || !account) return <p>{t('common.loading')}</p>
+  if (accountLoading || holdingsLoading) return <p>{t('common.loading')}</p>
+  if (accountError || holdingsError || !account) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load dashboard data. Is the backend running?</p>
+      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+    </div>
+  )
 
   const sorted = useMemo(() => {
     let filtered = holdings

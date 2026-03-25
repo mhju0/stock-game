@@ -1,4 +1,4 @@
-import { apiGet } from '../api'
+import { apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserContext } from '../context/UserContext'
@@ -11,10 +11,14 @@ function Transactions() {
   const { currentUserId } = useContext(UserContext)
   
   const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
 
   useEffect(() => {
-    apiGet(`/portfolio/transactions?user_id=${currentUserId}`, setTransactions)
+    setLoading(true)
+    apiFetch(`/portfolio/transactions?user_id=${currentUserId}`)
+      .then(data => { if (data) setTransactions(data) })
+      .finally(() => setLoading(false))
   }, [currentUserId])
 
   const filtered = filter === 'ALL'
@@ -28,6 +32,7 @@ function Transactions() {
     { key: 'EXCHANGE', label: t('exchange.title') },
   ]
 
+  if (loading) return <p>{t('common.loading')}</p>
   if (transactions.length === 0) {
     return <div className="empty-state">{t('transactions.empty')}</div>
   }
@@ -44,7 +49,7 @@ function Transactions() {
               fontSize: 13, padding: '6px 14px',
               background: filter === f.key ? 'var(--text-primary)' : 'transparent',
               color: filter === f.key ? 'white' : 'var(--text-secondary)',
-              border: '1px solid #e5e5e7',
+              border: '1px solid var(--border)',
             }}
           >
             {f.label}
@@ -67,7 +72,7 @@ function Transactions() {
           return (
             <div key={tx.id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '14px 0', borderBottom: '1px solid #f5f5f7',
+              padding: '14px 0', borderBottom: '1px solid var(--border-light)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{

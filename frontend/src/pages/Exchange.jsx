@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../api'
+import { apiFetch, apiPost } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserContext } from '../context/UserContext'
@@ -10,14 +10,18 @@ function Exchange() {
   
   const [rate, setRate] = useState(null)
   const [account, setAccount] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [fromCurrency, setFromCurrency] = useState('KRW')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
 
   const fetchData = () => {
-    apiGet('/exchange-rate', (d) => setRate(d.usd_to_krw))
-    apiGet(`/portfolio/account?user_id=${currentUserId}`, setAccount)
+    setLoading(true)
+    Promise.all([
+      apiFetch('/exchange-rate').then(d => { if (d) setRate(d.usd_to_krw) }),
+      apiFetch(`/portfolio/account?user_id=${currentUserId}`).then(d => { if (d) setAccount(d) }),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchData() }, [currentUserId])
@@ -43,7 +47,13 @@ function Exchange() {
     }
   }
 
-  if (!rate || !account) return <p>{t('common.loading')}</p>
+  if (loading) return <p>{t('common.loading')}</p>
+  if (!rate || !account) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load exchange data. Is the backend running?</p>
+      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+    </div>
+  )
 
   const krwQuick = [10000, 50000, 100000, 500000, 1000000]
   const usdQuick = [100, 500, 1000, 5000]
