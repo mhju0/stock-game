@@ -258,6 +258,10 @@ function Analytics() {
                 const isPositive = s.unrealized_pnl >= 0
                 const name = getStockName(s.ticker, s.name, i18n.language)
                 const allocPct = ((s.total_value_krw / (performance.current_value || 1)) * 100).toFixed(1)
+                
+                return (
+                  <div key={s.ticker} onClick={() => setTradeTicker(s.ticker)} style={{
+                    background: 'var(--bg-secondary)', borderRadius: 14, padding: 16,
                     cursor: 'pointer', transition: 'transform 0.1s',
                     borderLeft: `4px solid ${isPositive ? 'var(--positive)' : 'var(--negative)'}`,
                   }}
