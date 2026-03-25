@@ -34,13 +34,6 @@ function Analytics() {
     apiGet(`/analytics/realized?user_id=${currentUserId}`, setRealized)
   }, [currentUserId])
 
-  if (perfLoading) return <p>{t('common.loading')}</p>
-  if (perfError || !performance) return (
-    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load analytics data. Is the backend running?</p>
-    </div>
-  )
-
   const filterSnapshots = (snapshots) => {
     if (timeRange === 'ALL') return snapshots
     const cutoff = new Date()
@@ -97,6 +90,13 @@ function Analytics() {
       default: return 0
     }
   }), [byStock, stockSort, i18n.language])
+
+  if (perfLoading) return <p>{t('common.loading')}</p>
+  if (perfError || !performance) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load analytics data. Is the backend running?</p>
+    </div>
+  )
 
   return (
     <div>
