@@ -64,7 +64,7 @@ function Exchange() {
         <div className="metric-card">
           <div className="metric-label">{t('exchange.currentRate')}</div>
           <div className="metric-value">₩{rate.toLocaleString()}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>per $1 USD</div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{t('exchange.perUsd')}</div>
         </div>
       </div>
 

@@ -79,7 +79,7 @@ function App() {
                 border: "1px solid var(--border)",
               }}
             >
-              {i18n.language === "ko" ? "게임 목록" : "My Games"}
+              {t("nav.myGames")}
             </button>
             <button className="lang-toggle" onClick={toggleLanguage}>
               {i18n.language === "ko" ? "EN" : "한국어"}

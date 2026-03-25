@@ -7,7 +7,9 @@
     "cancel": "Cancel",
     "search": "Search",
     "krw": "KRW",
-    "usd": "USD"
+    "usd": "USD",
+    "back": "Back",
+    "delete": "Delete"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -18,7 +20,8 @@
     "transactions": "Transactions",
     "market": "Top 30",
     "analytics": "Analytics",
-    "game": "Progress"
+    "game": "Progress",
+    "myGames": "My Games"
   },
   "dashboard": {
     "totalValue": "Total Value",
@@ -28,7 +31,35 @@
     "holdings": "Holdings",
     "holdingsValue": "Holdings Value",
     "recentTransactions": "Recent Transactions",
-    "myHoldings": "My Holdings"
+    "myHoldings": "My Holdings",
+    "today": "Today",
+    "godMode": "God Mode (Testing)",
+    "godModeHide": "Hide God Mode",
+    "added": "added",
+    "removed": "removed"
+  },
+  "sort": {
+    "allocDesc": "Allocation ↓",
+    "allocAsc": "Allocation ↑",
+    "mcapDesc": "Market Cap ↓",
+    "mcapAsc": "Market Cap ↑",
+    "nameAsc": "Name A→Z",
+    "nameDesc": "Name Z→A",
+    "valueDesc": "Value ↓",
+    "valueAsc": "Value ↑",
+    "pnlDesc": "P&L ↓",
+    "pnlAsc": "P&L ↑"
+  },
+  "filter": {
+    "allMarkets": "All",
+    "usOnly": "US",
+    "krxOnly": "KRX"
+  },
+  "holdings": {
+    "shares": "shares",
+    "avgPrice": "avg",
+    "ofPortfolio": "of portfolio",
+    "cap": "Cap"
   },
   "stock": {
     "buy": "Buy",
@@ -49,7 +80,8 @@
     "sellSuccess": "Sale complete",
     "insufficientBalance": "Insufficient balance",
     "insufficientShares": "Insufficient shares",
-    "enterQuantity": "Enter quantity"
+    "enterQuantity": "Enter quantity",
+    "availableCash": "Available Cash"
   },
   "exchange": {
     "title": "Currency Exchange",
@@ -59,13 +91,15 @@
     "convertedAmount": "Converted Amount",
     "currentRate": "Current Rate",
     "execute": "Exchange",
-    "allFunds": "ALL"
+    "allFunds": "ALL",
+    "perUsd": "per $1 USD"
   },
   "watchlist": {
     "title": "Watchlist",
     "empty": "No stocks in watchlist",
     "add": "Add",
-    "remove": "Remove"
+    "remove": "Remove",
+    "delayed": "Prices are 15-min delayed"
   },
   "transactions": {
     "title": "Transactions",
@@ -75,5 +109,45 @@
     "date": "Date",
     "type": "Type",
     "amount": "Amount"
+  },
+  "analytics": {
+    "totalReturn": "Total Return",
+    "winRate": "Win Rate",
+    "realizedPnl": "Realized P&L",
+    "portfolioOverTime": "Portfolio Value Over Time",
+    "byStock": "Performance by Stock",
+    "totalChangePct": "Total change %",
+    "holdingsRatio": "Holdings as % of starting",
+    "grid": "Grid",
+    "list": "List"
+  },
+  "market": {
+    "loadingData": "Loading market data... Please wait",
+    "us": "US",
+    "kr": "Korea"
+  },
+  "game": {
+    "startingBalance": "Starting Balance",
+    "currentValue": "Current Value",
+    "return": "Return",
+    "daysLeft": "Days Left",
+    "done": "Done",
+    "gameOver": "Game Over",
+    "gameActive": "Game Active",
+    "summary": "Summary",
+    "progress": "Current Progress",
+    "duration": "Duration",
+    "totalTrades": "Total Trades",
+    "peakValue": "Peak Value",
+    "lowestValue": "Lowest Value",
+    "bestTrade": "Best Trade",
+    "worstTrade": "Worst Trade",
+    "noActive": "No Active Game",
+    "noActiveDesc": "Create a new game from the game hub",
+    "makeTradesPrompt": "Make some trades to compare your performance",
+    "day1Title": "Game just started!",
+    "day1Desc": "Start trading to track your progress here",
+    "myPortfolio": "My Portfolio",
+    "vsBenchmark": "My Portfolio vs Benchmark"
   }
 }

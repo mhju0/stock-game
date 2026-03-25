@@ -37,7 +37,7 @@ function Market() {
               border: "1px solid #e5e5e7",
             }}
           >
-            {m === "US" ? "US" : "Korea"}
+            {m === "US" ? t("market.us") : t("market.kr")}
           </button>
         ))}
       </div>
@@ -46,7 +46,7 @@ function Market() {
         <div className="empty-state">{t("common.loading")}</div>
       ) : stocks.length === 0 ? (
         <div className="empty-state">
-          Loading market data... try again in 30 seconds
+          {t('market.loadingData')}
         </div>
       ) : (
         <div className="card">

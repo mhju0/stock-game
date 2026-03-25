@@ -166,7 +166,7 @@ function TradeModal({ ticker, onClose, onComplete }) {
                   fontWeight: 500,
                 }}
               >
-                Available Cash:{" "}
+                {t("trade.availableCash")}:{" "}
                 {stock.currency === "KRW"
                   ? `₩${Math.round(account.balance_krw).toLocaleString()}`
                   : `$${account.balance_usd.toFixed(2)}`}

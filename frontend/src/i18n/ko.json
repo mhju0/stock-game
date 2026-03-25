@@ -7,7 +7,9 @@
     "cancel": "취소",
     "search": "검색",
     "krw": "원",
-    "usd": "달러"
+    "usd": "달러",
+    "back": "돌아가기",
+    "delete": "삭제"
   },
   "nav": {
     "dashboard": "대시보드",
@@ -18,7 +20,8 @@
     "transactions": "거래내역",
     "market": "시가총액 Top 30",
     "analytics": "투자 분석",
-    "game": "현황"
+    "game": "현황",
+    "myGames": "게임 목록"
   },
   "dashboard": {
     "totalValue": "총 자산",
@@ -26,8 +29,37 @@
     "cashUSD": "보유 달러",
     "exchangeRate": "환율",
     "holdings": "보유 종목",
+    "holdingsValue": "보유 평가액",
     "recentTransactions": "최근 거래",
-    "myHoldings": "보유 종목"
+    "myHoldings": "보유 종목",
+    "today": "오늘",
+    "godMode": "갓모드 (테스트)",
+    "godModeHide": "갓모드 닫기",
+    "added": "추가됨",
+    "removed": "제거됨"
+  },
+  "sort": {
+    "allocDesc": "비중 ↓",
+    "allocAsc": "비중 ↑",
+    "mcapDesc": "시가총액 ↓",
+    "mcapAsc": "시가총액 ↑",
+    "nameAsc": "이름 ㄱ→ㅎ",
+    "nameDesc": "이름 ㅎ→ㄱ",
+    "valueDesc": "평가액 ↓",
+    "valueAsc": "평가액 ↑",
+    "pnlDesc": "손익 ↓",
+    "pnlAsc": "손익 ↑"
+  },
+  "filter": {
+    "allMarkets": "전체",
+    "usOnly": "미국",
+    "krxOnly": "한국"
+  },
+  "holdings": {
+    "shares": "주",
+    "avgPrice": "평균",
+    "ofPortfolio": "비중",
+    "cap": "시총"
   },
   "stock": {
     "buy": "매수",
@@ -48,7 +80,8 @@
     "sellSuccess": "매도 완료",
     "insufficientBalance": "잔고가 부족합니다",
     "insufficientShares": "보유 수량이 부족합니다",
-    "enterQuantity": "수량을 입력하세요"
+    "enterQuantity": "수량을 입력하세요",
+    "availableCash": "주문 가능 금액"
   },
   "exchange": {
     "title": "환전",
@@ -58,13 +91,15 @@
     "convertedAmount": "환전 금액",
     "currentRate": "현재 환율",
     "execute": "환전하기",
-    "allFunds": "전액"
+    "allFunds": "전액",
+    "perUsd": "1달러 기준"
   },
   "watchlist": {
     "title": "관심종목",
     "empty": "관심종목이 없습니다",
     "add": "추가",
-    "remove": "삭제"
+    "remove": "삭제",
+    "delayed": "시세는 15분 지연됩니다"
   },
   "transactions": {
     "title": "거래내역",
@@ -74,5 +109,45 @@
     "date": "날짜",
     "type": "유형",
     "amount": "금액"
+  },
+  "analytics": {
+    "totalReturn": "총 수익",
+    "winRate": "승률",
+    "realizedPnl": "실현 손익",
+    "portfolioOverTime": "포트폴리오 추이",
+    "byStock": "종목별 수익률",
+    "totalChangePct": "총 변동률",
+    "holdingsRatio": "투자 비율",
+    "grid": "그리드",
+    "list": "리스트"
+  },
+  "market": {
+    "loadingData": "시세 데이터 로딩 중... 잠시만 기다려주세요",
+    "us": "미국",
+    "kr": "한국"
+  },
+  "game": {
+    "startingBalance": "시작 자금",
+    "currentValue": "현재 평가액",
+    "return": "수익률",
+    "daysLeft": "남은 기간",
+    "done": "종료",
+    "gameOver": "게임 종료",
+    "gameActive": "게임 진행 중",
+    "summary": "요약",
+    "progress": "현재 진행 상황",
+    "duration": "기간",
+    "totalTrades": "총 거래",
+    "peakValue": "최고 평가액",
+    "lowestValue": "최저 평가액",
+    "bestTrade": "최고 수익 거래",
+    "worstTrade": "최저 수익 거래",
+    "noActive": "활성 게임이 없습니다",
+    "noActiveDesc": "게임 목록에서 새 게임을 만들어보세요",
+    "makeTradesPrompt": "거래를 하면 수익률을 비교할 수 있어요",
+    "day1Title": "게임이 시작되었습니다!",
+    "day1Desc": "매매를 시작하면 여기서 진행 상황을 확인할 수 있어요",
+    "myPortfolio": "내 포트폴리오",
+    "vsBenchmark": "내 포트폴리오 vs 벤치마크"
   }
 }

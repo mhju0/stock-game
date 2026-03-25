@@ -3,6 +3,8 @@ import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
+import SortSelect from '../components/SortSelect'
+import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/UserContext'
 
 
@@ -119,23 +121,8 @@ function Portfolio() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <select className="input" style={{ width: 'auto', minWidth: 140 }} value={filterMarket} onChange={e => setFilterMarket(e.target.value)}>
-          <option value="ALL">All Markets</option>
-          <option value="US">US</option>
-          <option value="KRX">KRX</option>
-        </select>
-        <select className="input" style={{ width: 'auto', minWidth: 160 }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
-          <option value="alloc_desc">Allocation (High → Low)</option>
-          <option value="alloc_asc">Allocation (Low → High)</option>
-          <option value="mcap_desc">Market Cap (High → Low)</option>
-          <option value="mcap_asc">Market Cap (Low → High)</option>
-          <option value="name_asc">Name (A → Z)</option>
-          <option value="name_desc">Name (Z → A)</option>
-          <option value="value_desc">Value (High → Low)</option>
-          <option value="value_asc">Value (Low → High)</option>
-          <option value="pnl_desc">P&L (High → Low)</option>
-          <option value="pnl_asc">P&L (Low → High)</option>
-        </select>
+        <MarketFilter value={filterMarket} onChange={e => setFilterMarket(e.target.value)} style={{ minWidth: 100 }} />
+        <SortSelect value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ minWidth: 120 }} />
       </div>
 
       <div className="card">
@@ -161,12 +148,12 @@ function Portfolio() {
               <div style={{ flex: 1 }}>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {h.ticker} · {h.sector}
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {h.ticker} · {h.sector}
                 </div>
               </div>
 
               <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13 }}>{h.quantity} shares</div>
+                  <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Cap: {formatMcap(h.market_cap, h.currency)}</div>
               </div>
 
@@ -175,7 +162,7 @@ function Portfolio() {
                 <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 13 }}>
                   {isPositive ? '+' : ''}{fmt(h.unrealized_pnl)} ({pnlPct}%)
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>avg {fmt(h.avg_price)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t('holdings.avgPrice')} {fmt(h.avg_price)}</div>
               </div>
             </div>
           )
