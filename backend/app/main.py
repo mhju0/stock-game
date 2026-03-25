@@ -16,7 +16,16 @@ from app.routes.stocks import router as stocks_router
 from app.services.market_service import schedule_refresh
 from app.services.snapshot_service import take_snapshot
 
+import os
+
 models.Base.metadata.create_all(bind=engine)
+
+# CORS: allow localhost for dev, plus any production frontend URL
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+if os.environ.get("FRONTEND_URL"):
+    ALLOWED_ORIGINS.append(os.environ["FRONTEND_URL"])
 
 
 async def snapshot_loop():
@@ -64,7 +73,7 @@ app = FastAPI(title="Stock Game API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
