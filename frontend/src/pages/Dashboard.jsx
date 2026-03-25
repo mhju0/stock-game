@@ -28,7 +28,8 @@ function Dashboard() {
   const [error, setError] = useState('')
 
   const { data: account, isLoading: accountLoading, isError: accountError } = useAccountQuery(currentUserId)
-  const { data: holdings = [], isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId)
+  const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId)
+  const holdingsSafe = Array.isArray(holdings) ? holdings : []
 
   const fetchData = () => {
     setError('')
@@ -68,7 +69,7 @@ function Dashboard() {
 
   if (error) return <div className="card" style={{ color: 'var(--negative)', textAlign: 'center' }}>{error}</div>
   if (accountLoading || holdingsLoading) return <p>{t('common.loading')}</p>
-  if (accountError || holdingsError || !account) return (
+  if (accountError || holdingsError || !account || !Array.isArray(holdings)) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
       <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load dashboard data. Is the backend running?</p>
       <button className="btn btn-primary" onClick={fetchData}>Retry</button>
@@ -76,7 +77,7 @@ function Dashboard() {
   )
 
   const sorted = useMemo(() => {
-    let filtered = holdings
+    let filtered = holdingsSafe
     if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
     return [...filtered].sort((a, b) => {
     // Standardize everything to KRW to calculate true Value and Allocation sorts
@@ -98,7 +99,7 @@ function Dashboard() {
       default: return 0
     }
     })
-  }, [holdings, filterMarket, sortBy, account?.exchange_rate, i18n.language])
+  }, [holdingsSafe, filterMarket, sortBy, account?.exchange_rate, i18n.language])
 
   return (
     <div>

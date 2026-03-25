@@ -27,8 +27,8 @@ function Portfolio() {
       apiFetch(`/portfolio/holdings?user_id=${currentUserId}`),
       apiFetch(`/portfolio/account?user_id=${currentUserId}`)
     ])
-    if (holdingsData) setHoldings(holdingsData)
-    if (accountData) setAccount(accountData)
+    setHoldings(Array.isArray(holdingsData) ? holdingsData : [])
+    setAccount(accountData || null)
     setLoading(false)
   }
 
