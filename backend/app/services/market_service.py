@@ -20,6 +20,19 @@ KR_CANDIDATES = [
     "377300.KS", "086790.KS", "010130.KS", "096770.KS", "003550.KS",
 ]
 
+US_NAMES = {
+    "AAPL": "Apple Inc.", "MSFT": "Microsoft", "GOOGL": "Alphabet", "AMZN": "Amazon",
+    "NVDA": "NVIDIA", "META": "Meta Platforms", "TSLA": "Tesla", "BRK-B": "Berkshire Hathaway",
+    "LLY": "Eli Lilly", "V": "Visa", "JPM": "JPMorgan Chase", "UNH": "UnitedHealth",
+    "XOM": "Exxon Mobil", "MA": "Mastercard", "JNJ": "Johnson & Johnson", "PG": "Procter & Gamble",
+    "AVGO": "Broadcom", "HD": "Home Depot", "COST": "Costco", "MRK": "Merck",
+    "ABBV": "AbbVie", "CRM": "Salesforce", "AMD": "AMD", "NFLX": "Netflix",
+    "KO": "Coca-Cola", "PEP": "PepsiCo", "TMO": "Thermo Fisher", "ADBE": "Adobe",
+    "WMT": "Walmart", "ORCL": "Oracle", "CSCO": "Cisco", "ACN": "Accenture",
+    "IBM": "IBM", "INTC": "Intel", "QCOM": "Qualcomm", "TXN": "Texas Instruments",
+    "NOW": "ServiceNow", "UBER": "Uber", "DIS": "Disney", "BA": "Boeing",
+}
+
 KR_NAMES = {
     "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "373220.KS": "LG에너지솔루션",
     "207940.KS": "삼성바이오로직스", "006400.KS": "삼성SDI", "005380.KS": "현대자동차",
@@ -42,44 +55,55 @@ cache = {
 
 
 def fetch_top_30(market: str) -> list:
+    """Batch-download prices for all candidates in 1 API call instead of 70+."""
     candidates = US_CANDIDATES if market == "US" else KR_CANDIDATES
+    names = US_NAMES if market == "US" else KR_NAMES
+
+    try:
+        # Single batch download — massively faster than per-ticker calls
+        data = yf.download(candidates, period="2d", group_by="ticker", threads=True, progress=False)
+    except Exception as e:
+        print(f"Batch download failed for {market}: {e}")
+        return []
+
+    if data.empty:
+        return []
+
     stocks = []
-
-    for ticker in candidates:
+    for rank, ticker in enumerate(candidates):
         try:
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            market_cap = info.get("marketCap", 0)
-            if not market_cap:
+            # For single ticker, yf.download returns flat columns
+            if len(candidates) == 1:
+                ticker_data = data
+            else:
+                if ticker not in data.columns.get_level_values(0):
+                    continue
+                ticker_data = data[ticker]
+
+            closes = ticker_data["Close"].dropna()
+            if closes.empty:
                 continue
 
-            data = stock.history(period="2d")
-            if data.empty:
-                continue
-
-            current = data["Close"].iloc[-1]
-            prev = data["Close"].iloc[-2] if len(data) >= 2 else current
+            current = float(closes.iloc[-1])
+            prev = float(closes.iloc[-2]) if len(closes) >= 2 else current
             change = current - prev
             change_pct = (change / prev) * 100 if prev else 0
 
-            if market == "KR":
-                name = KR_NAMES.get(ticker, info.get("shortName", ticker))
-            else:
-                name = info.get("shortName", ticker)
-
             stocks.append({
                 "ticker": ticker,
-                "name": name,
+                "name": names.get(ticker, ticker),
                 "price": round(current, 2),
                 "change": round(change, 2),
                 "change_pct": round(change_pct, 2),
-                "market_cap": market_cap,
+                "market_cap": 0,  # Skip per-ticker .info calls for speed
                 "currency": "KRW" if market == "KR" else "USD",
+                "rank": rank,
             })
         except Exception:
             continue
 
-    stocks.sort(key=lambda x: x["market_cap"], reverse=True)
+    # Candidates are already ordered by market cap, so preserve that order
+    stocks.sort(key=lambda x: x["rank"])
     return stocks[:30]
 
 

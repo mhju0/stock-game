@@ -45,10 +45,10 @@ function Exchange() {
 
   if (!rate || !account) return <p>{t('common.loading')}</p>
 
-  const krwQuick = [100000, 500000, 1000000, 5000000]
+  const krwQuick = [10000, 50000, 100000, 500000, 1000000]
   const usdQuick = [100, 500, 1000, 5000]
   const quickAmounts = fromCurrency === 'KRW' ? krwQuick : usdQuick
-  const fmtQuick = (v) => fromCurrency === 'KRW' ? `₩${(v / 10000).toLocaleString()}만` : `$${v.toLocaleString()}`
+  const fmtQuick = (v) => fromCurrency === 'KRW' ? `${(v / 10000).toLocaleString()}만원` : `$${v.toLocaleString()}`
 
   return (
     <div>
@@ -76,13 +76,13 @@ function Exchange() {
             flex: 1, minWidth: 120,
             background: fromCurrency === 'KRW' ? 'var(--accent)' : 'transparent',
             color: fromCurrency === 'KRW' ? 'white' : 'var(--text-primary)',
-            border: '1px solid #e5e5e7',
+            border: '1px solid var(--border)',
           }}>KRW → USD</button>
           <button className="btn" onClick={() => { setFromCurrency('USD'); setAmount('') }} style={{
             flex: 1, minWidth: 120,
             background: fromCurrency === 'USD' ? 'var(--accent)' : 'transparent',
             color: fromCurrency === 'USD' ? 'white' : 'var(--text-primary)',
-            border: '1px solid #e5e5e7',
+            border: '1px solid var(--border)',
           }}>USD → KRW</button>
         </div>
 
@@ -91,7 +91,7 @@ function Exchange() {
             <button key={v} className="btn" onClick={() => setAmount(String(v))} style={{
               fontSize: 13, padding: '6px 12px',
               background: parseFloat(amount) === v ? 'var(--border-light)' : 'transparent',
-              border: '1px solid #e5e5e7',
+              border: '1px solid var(--border)',
             }}>
               {fmtQuick(v)}
             </button>
@@ -99,8 +99,8 @@ function Exchange() {
           <button className="btn" onClick={() => {
             const max = fromCurrency === 'KRW' ? account.balance_krw : account.balance_usd
             setAmount(String(Math.floor(max)))
-          }} style={{ fontSize: 13, padding: '6px 12px', border: '1px solid #e5e5e7', color: 'var(--accent)' }}>
-            MAX
+          }} style={{ fontSize: 13, padding: '6px 12px', border: '1px solid var(--border)', color: 'var(--accent)', fontWeight: 600 }}>
+            {t('exchange.allFunds')}
           </button>
         </div>
 

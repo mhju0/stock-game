@@ -19,6 +19,7 @@ function SearchStock() {
   const [searching, setSearching] = useState(false)
   const [tradeTicker, setTradeTicker] = useState(null)
   const [message, setMessage] = useState('')
+  const [loadingStock, setLoadingStock] = useState(false)
 
   useEffect(() => {
     if (query.length < 1) { setResults([]); return }
@@ -41,7 +42,10 @@ function SearchStock() {
     setResults([])
     setQuery('')
     setHistory([])
+    setStock(null)
+    setLoadingStock(true)
     const data = await apiFetch(`/stock/${ticker}`)
+    setLoadingStock(false)
     if (data && !data.error) setStock(data)
   }
 
@@ -98,6 +102,12 @@ function SearchStock() {
 
       {message && (
         <div className="card" style={{ color: 'var(--positive)', fontSize: 14 }}>{message}</div>
+      )}
+
+      {loadingStock && (
+        <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>
+          {t('common.loading')}
+        </div>
       )}
 
       {stock && (
