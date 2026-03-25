@@ -254,14 +254,10 @@ function Analytics() {
               gap: 10,
             }}>
               {sortedStocks.map(s => {
-                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
+                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : `$${(Number(v) || 0).toFixed(2)}`
                 const isPositive = s.unrealized_pnl >= 0
                 const name = getStockName(s.ticker, s.name, i18n.language)
-                const allocPct = ((s.total_value_krw / performance.current_value) * 100).toFixed(1)
-                
-                return (
-                  <div key={s.ticker} onClick={() => setTradeTicker(s.ticker)} style={{
-                    background: 'var(--bg-secondary)', borderRadius: 14, padding: 16,
+                const allocPct = ((s.total_value_krw / (performance.current_value || 1)) * 100).toFixed(1)
                     cursor: 'pointer', transition: 'transform 0.1s',
                     borderLeft: `4px solid ${isPositive ? 'var(--positive)' : 'var(--negative)'}`,
                   }}
@@ -301,10 +297,10 @@ function Analytics() {
           ) : (
             <div>
               {sortedStocks.map(s => {
-                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
+                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : `$${(Number(v) || 0).toFixed(2)}`
                 const isPositive = s.unrealized_pnl >= 0
                 const name = getStockName(s.ticker, s.name, i18n.language)
-                const allocPct = ((s.total_value_krw / performance.current_value) * 100).toFixed(1)
+                const allocPct = ((s.total_value_krw / (performance.current_value || 1)) * 100).toFixed(1)
 
                 return (
                   <div key={s.ticker} onClick={() => setTradeTicker(s.ticker)} style={{

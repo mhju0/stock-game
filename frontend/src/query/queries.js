@@ -21,8 +21,9 @@ export function useAccountQuery(userId) {
     queryKey: queryKeys.account(userId),
     queryFn: () => apiFetchOrThrow(`/portfolio/account?user_id=${userId}`),
     enabled: !!userId,
-    staleTime: 15000,
-    retry: 1,
+    staleTime: 30000,
+    retry: 2,
+    retryDelay: 2000,
   })
 }
 
@@ -31,8 +32,9 @@ export function useHoldingsQuery(userId) {
     queryKey: queryKeys.holdings(userId),
     queryFn: () => apiFetchOrThrow(`/portfolio/holdings?user_id=${userId}`),
     enabled: !!userId,
-    staleTime: 15000,
-    retry: 1,
+    staleTime: 30000,
+    retry: 2,
+    retryDelay: 2000,
   })
 }
 
@@ -41,8 +43,9 @@ export function useWatchlistQuery(userId) {
     queryKey: queryKeys.watchlist(userId),
     queryFn: () => apiFetchOrThrow(`/watchlist/?user_id=${userId}`),
     enabled: !!userId,
-    staleTime: 15000,
-    retry: 1,
+    staleTime: 30000,
+    retry: 2,
+    retryDelay: 2000,
   })
 }
 
@@ -51,8 +54,9 @@ export function useAnalyticsPerformanceQuery(userId) {
     queryKey: queryKeys.analyticsPerformance(userId),
     queryFn: () => apiFetchOrThrow(`/analytics/performance?user_id=${userId}`),
     enabled: !!userId,
-    staleTime: 20000,
-    retry: 1,
+    staleTime: 30000,
+    retry: 2,
+    retryDelay: 2000,
   })
 }
 
@@ -61,8 +65,9 @@ export function useWatchlistContainsQuery(userId, ticker) {
     queryKey: queryKeys.watchlistContains(userId, ticker),
     queryFn: () => apiFetchOrThrow(`/watchlist/contains?ticker=${ticker}&user_id=${userId}`),
     enabled: !!userId && !!ticker,
-    staleTime: 15000,
-    retry: 1,
+    staleTime: 30000,
+    retry: 2,
+    retryDelay: 2000,
   })
 }
 

@@ -50,8 +50,9 @@ function Portfolio() {
     if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
     if (filterSector !== 'ALL') filtered = filtered.filter(h => h.sector === filterSector)
     return [...filtered].sort((a, b) => {
-    const aValKRW = a.currency === 'USD' ? a.total_value * account.exchange_rate : a.total_value
-    const bValKRW = b.currency === 'USD' ? b.total_value * account.exchange_rate : b.total_value
+    const rate = account?.exchange_rate || 1350
+    const aValKRW = a.currency === 'USD' ? a.total_value * rate : a.total_value
+    const bValKRW = b.currency === 'USD' ? b.total_value * rate : b.total_value
 
     switch (sortBy) {
       case 'name_asc': return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
@@ -67,7 +68,7 @@ function Portfolio() {
       default: return 0
     }
     })
-  }, [holdings, filterMarket, filterSector, sortBy, account.exchange_rate, i18n.language])
+  }, [holdings, filterMarket, filterSector, sortBy, account?.exchange_rate, i18n.language])
 
   const totalByMarket = useMemo(() => holdings.reduce((acc, h) => {
     const key = h.market
@@ -135,8 +136,8 @@ function Portfolio() {
           const isPositive = h.unrealized_pnl >= 0
 
           // Calculate Portfolio Weight (Allocation %)
-          const hValKRW = h.currency === 'USD' ? h.total_value * account.exchange_rate : h.total_value
-          const allocPct = ((hValKRW / account.total_value_krw) * 100).toFixed(1)
+          const hValKRW = h.currency === 'USD' ? h.total_value * (account?.exchange_rate || 1350) : h.total_value
+          const allocPct = ((hValKRW / (account.total_value_krw || 1)) * 100).toFixed(1)
 
           return (
             <div key={h.ticker} onClick={() => setTradeTicker(h.ticker)} style={{

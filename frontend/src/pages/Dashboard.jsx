@@ -80,8 +80,9 @@ function Dashboard() {
     if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
     return [...filtered].sort((a, b) => {
     // Standardize everything to KRW to calculate true Value and Allocation sorts
-    const aValKRW = a.currency === 'USD' ? a.total_value * account.exchange_rate : a.total_value
-    const bValKRW = b.currency === 'USD' ? b.total_value * account.exchange_rate : b.total_value
+    const rate = account?.exchange_rate || 1350
+    const aValKRW = a.currency === 'USD' ? a.total_value * rate : a.total_value
+    const bValKRW = b.currency === 'USD' ? b.total_value * rate : b.total_value
 
     switch (sortBy) {
       case 'name_asc': return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
@@ -97,7 +98,7 @@ function Dashboard() {
       default: return 0
     }
     })
-  }, [holdings, filterMarket, sortBy, account.exchange_rate, i18n.language])
+  }, [holdings, filterMarket, sortBy, account?.exchange_rate, i18n.language])
 
   return (
     <div>
@@ -119,7 +120,7 @@ function Dashboard() {
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashUSD')}</div>
-          <div className="metric-value">${account.balance_usd.toFixed(2)}</div>
+          <div className="metric-value">${(account.balance_usd ?? 0).toFixed(2)}</div>
         </div>
       </div>
 
@@ -169,8 +170,8 @@ function Dashboard() {
             const name = getStockName(h.ticker, h.name, i18n.language)
             
             // Calculate Portfolio Weight (Allocation %)
-            const hValKRW = h.currency === 'USD' ? h.total_value * account.exchange_rate : h.total_value
-            const allocPct = ((hValKRW / account.total_value_krw) * 100).toFixed(1)
+            const hValKRW = h.currency === 'USD' ? h.total_value * (account?.exchange_rate || 1350) : h.total_value
+            const allocPct = ((hValKRW / (account.total_value_krw || 1)) * 100).toFixed(1)
 
             return (
               <div key={h.ticker} className="holding-row" onClick={() => setTradeTicker(h.ticker)}>

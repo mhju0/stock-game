@@ -11,6 +11,7 @@ import Exchange from "./pages/Exchange";
 import Watchlist from "./pages/Watchlist";
 import Market from "./pages/Market";
 import Analytics from "./pages/Analytics";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Game from "./pages/Game";
 import "./App.css";
 
@@ -37,8 +38,7 @@ function App() {
         <nav className="nav">
           <div className="nav-left">
             <span className="nav-logo">{t("common.appName")}</span>
-            
-            {/* NavLinks updated to match the new Routes */}
+
             <NavLink to="/dashboard" className="nav-link">
               {t("nav.dashboard")}
             </NavLink>
@@ -67,7 +67,7 @@ function App() {
               {t("nav.game") || "Game"}
             </NavLink>
           </div>
-          
+
           {/* New div wrapper to keep the right-side buttons organized */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
@@ -98,6 +98,19 @@ function App() {
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/" element={<Game />} />
           </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/search" element={<SearchStock />} />
+              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/watchlist" element={<Watchlist />} />
+              <Route path="/market" element={<Market />} />
+              <Route path="/exchange" element={<Exchange />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/" element={<Game />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
       </div>
     </BrowserRouter>
