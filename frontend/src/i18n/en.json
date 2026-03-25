@@ -11,7 +11,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "search": "Search Stocks",
+    "search": "Stocks",
     "portfolio": "Portfolio",
     "watchlist": "Watchlist",
     "exchange": "Exchange",
@@ -58,7 +58,8 @@
     "amount": "Amount",
     "convertedAmount": "Converted Amount",
     "currentRate": "Current Rate",
-    "execute": "Exchange"
+    "execute": "Exchange",
+    "allFunds": "ALL"
   },
   "watchlist": {
     "title": "Watchlist",

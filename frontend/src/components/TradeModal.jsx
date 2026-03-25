@@ -15,12 +15,14 @@ function TradeModal({ ticker, onClose, onComplete }) {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState(null); // "BUY" or "SELL"
 
   useEffect(() => {
     if (!ticker) return;
     setLoading(true);
     setMessage("");
     setIsSuccess(false);
+    setConfirmAction(null);
     setQuantity(1);
 
     Promise.all([
@@ -171,18 +173,46 @@ function TradeModal({ ticker, onClose, onComplete }) {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn btn-buy" style={{ flex: 1 }} onClick={buy}>
-                {t("stock.buy")}
-              </button>
-              <button
-                className="btn btn-sell"
-                style={{ flex: 1 }}
-                onClick={sell}
-              >
-                {t("stock.sell")}
-              </button>
-            </div>
+            {confirmAction ? (
+              <div>
+                <div style={{
+                  background: 'var(--bg-secondary)', borderRadius: 12, padding: 16,
+                  marginBottom: 12, textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                    {confirmAction === 'BUY' ? t("stock.buy") : t("stock.sell")}
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
+                    {displayName} × {quantity}
+                  </div>
+                  <div style={{ fontSize: 16, color: 'var(--text-secondary)', marginTop: 4 }}>
+                    {fmt(stock.price * quantity)}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn" style={{ flex: 1, border: '1px solid var(--border)' }}
+                    onClick={() => setConfirmAction(null)}>
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    className={confirmAction === 'BUY' ? "btn btn-buy" : "btn btn-sell"}
+                    style={{ flex: 1 }}
+                    onClick={() => { confirmAction === 'BUY' ? buy() : sell(); setConfirmAction(null); }}
+                  >
+                    {t("common.confirm")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-buy" style={{ flex: 1 }} onClick={() => setConfirmAction('BUY')}>
+                  {t("stock.buy")}
+                </button>
+                <button className="btn btn-sell" style={{ flex: 1 }} onClick={() => setConfirmAction('SELL')}>
+                  {t("stock.sell")}
+                </button>
+              </div>
+            )}
 
             {message && (
               <p

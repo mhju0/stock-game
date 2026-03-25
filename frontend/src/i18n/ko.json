@@ -11,7 +11,7 @@
   },
   "nav": {
     "dashboard": "대시보드",
-    "search": "종목 검색",
+    "search": "종목",
     "portfolio": "포트폴리오",
     "watchlist": "관심종목",
     "exchange": "환전",
@@ -57,7 +57,8 @@
     "amount": "금액",
     "convertedAmount": "환전 금액",
     "currentRate": "현재 환율",
-    "execute": "환전하기"
+    "execute": "환전하기",
+    "allFunds": "전액"
   },
   "watchlist": {
     "title": "관심종목",
