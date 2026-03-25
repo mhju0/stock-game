@@ -4,7 +4,7 @@ import time
 
 # ── Caches ──────────────────────────────────────────────────────────
 _price_cache: dict[str, dict] = {}
-PRICE_CACHE_TTL = 60
+PRICE_CACHE_TTL = 300
 
 _info_cache: dict[str, dict] = {}
 INFO_CACHE_TTL = 600
