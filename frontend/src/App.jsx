@@ -87,17 +87,6 @@ function App() {
           </div>
         </nav>
         <main className="main">
-          <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/search" element={<SearchStock />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/market" element={<Market />} />
-            <Route path="/exchange" element={<Exchange />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/" element={<Game />} />
-          </Routes>
           <ErrorBoundary>
             <Routes>
               <Route path="/dashboard" element={<Dashboard />} />

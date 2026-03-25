@@ -43,8 +43,8 @@ function Analytics() {
     return snapshots.filter(s => new Date(s.date) >= cutoff)
   }
 
-  const startVal = performance.starting_value || 0
-  const snapshots = performance.snapshots || []
+  const startVal = performance?.starting_value || 0
+  const snapshots = performance?.snapshots || []
   const filtered = useMemo(
     () => filterSnapshots(snapshots),
     [snapshots, timeRange]
@@ -92,7 +92,12 @@ function Analytics() {
   }), [byStock, stockSort, i18n.language])
 
   if (perfLoading) return <p>{t('common.loading')}</p>
-  if (perfError || !performance) return (
+  if (
+    perfError ||
+    !performance ||
+    performance.starting_value === undefined ||
+    !Array.isArray(performance.snapshots)
+  ) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
       <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load analytics data. Is the backend running?</p>
     </div>
