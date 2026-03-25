@@ -14,7 +14,9 @@ function ProfileSelect() {
 
   // New game form state
   const [gameName, setGameName] = useState('');
-  const [startingBalance, setStartingBalance] = useState(10000000);
+  const [startingCurrency, setStartingCurrency] = useState('KRW');
+  const [startingBalanceKrw, setStartingBalanceKrw] = useState(10000000);
+  const [startingBalanceUsd, setStartingBalanceUsd] = useState(10000);
   const [duration, setDuration] = useState(90);
 
   const fetchGames = async () => {
@@ -38,7 +40,9 @@ function ProfileSelect() {
     setError('');
     const data = await apiPost('/users/new', {
       name: gameName.trim(),
-      starting_balance_krw: startingBalance,
+      starting_currency: startingCurrency,
+      starting_balance_krw: startingCurrency === 'KRW' ? startingBalanceKrw : 0,
+      starting_balance_usd: startingCurrency === 'USD' ? startingBalanceUsd : 0,
       duration_days: duration,
     }, setError);
     
@@ -61,6 +65,7 @@ function ProfileSelect() {
   };
 
   const formatKRW = (v) => `₩${Math.round(v).toLocaleString()}`;
+  const formatUSD = (v) => `$${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   const formatBalance = (v) => {
     if (v >= 100000000) return `${(v / 100000000).toFixed(0)}억원`;
     if (v >= 10000) return `${(v / 10000).toLocaleString()}만원`;
@@ -195,16 +200,74 @@ function ProfileSelect() {
               <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
                 {i18n.language === 'ko' ? '시작 자금' : 'Starting Balance'}
               </label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {[5000000, 10000000, 50000000, 100000000].map(v => (
-                  <button key={v} type="button" className="btn" onClick={() => setStartingBalance(v)} style={{
-                    fontSize: 13, padding: '8px 14px',
-                    background: startingBalance === v ? 'var(--accent)' : 'transparent',
-                    color: startingBalance === v ? 'white' : 'var(--text-primary)',
-                    border: '1px solid var(--border)',
-                  }}>{formatBalance(v)}</button>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                {[
+                  { key: 'KRW', label: 'KRW' },
+                  { key: 'USD', label: 'USD' },
+                ].map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className="btn"
+                    onClick={() => setStartingCurrency(opt.key)}
+                    style={{
+                      fontSize: 13,
+                      padding: '8px 14px',
+                      background: startingCurrency === opt.key ? 'var(--accent)' : 'transparent',
+                      color: startingCurrency === opt.key ? 'white' : 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
                 ))}
               </div>
+
+              {startingCurrency === 'KRW' ? (
+                <>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {[5000000, 10000000, 50000000, 100000000].map(v => (
+                      <button key={v} type="button" className="btn" onClick={() => setStartingBalanceKrw(v)} style={{
+                        fontSize: 13, padding: '8px 14px',
+                        background: startingBalanceKrw === v ? 'var(--accent)' : 'transparent',
+                        color: startingBalanceKrw === v ? 'white' : 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                      }}>{formatBalance(v)}</button>
+                    ))}
+                  </div>
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="100000"
+                    value={startingBalanceKrw}
+                    onChange={(e) => setStartingBalanceKrw(parseFloat(e.target.value) || 0)}
+                    style={{ textAlign: 'center' }}
+                  />
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {[5000, 10000, 50000, 100000].map(v => (
+                      <button key={v} type="button" className="btn" onClick={() => setStartingBalanceUsd(v)} style={{
+                        fontSize: 13, padding: '8px 14px',
+                        background: startingBalanceUsd === v ? 'var(--accent)' : 'transparent',
+                        color: startingBalanceUsd === v ? 'white' : 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                      }}>{formatUSD(v)}</button>
+                    ))}
+                  </div>
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={startingBalanceUsd}
+                    onChange={(e) => setStartingBalanceUsd(parseFloat(e.target.value) || 0)}
+                    style={{ textAlign: 'center' }}
+                  />
+                </>
+              )}
             </div>
 
             <div>
@@ -213,6 +276,7 @@ function ProfileSelect() {
               </label>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {[
+                  { days: 1, ko: '1일 (24h)', en: '1 Day (24h)' },
                   { days: 7, ko: '1주', en: '1 Week' },
                   { days: 30, ko: '1개월', en: '1 Month' },
                   { days: 90, ko: '3개월', en: '3 Months' },
@@ -233,11 +297,18 @@ function ProfileSelect() {
             <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, fontSize: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{i18n.language === 'ko' ? '시작 자금' : 'Balance'}</span>
-                <span style={{ fontWeight: 600 }}>{formatKRW(startingBalance)}</span>
+                <span style={{ fontWeight: 600 }}>
+                  {startingCurrency === 'KRW' ? formatKRW(startingBalanceKrw) : formatUSD(startingBalanceUsd)}
+                </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{i18n.language === 'ko' ? '기간' : 'Duration'}</span>
-                <span style={{ fontWeight: 600 }}>{duration}{i18n.language === 'ko' ? '일' : ' days'}</span>
+                <span style={{ fontWeight: 600 }}>
+                  {duration}
+                  {i18n.language === 'ko'
+                    ? (duration === 1 ? '일 (24시간)' : '일')
+                    : (duration === 1 ? ' day (24h)' : ' days')}
+                </span>
               </div>
             </div>
 

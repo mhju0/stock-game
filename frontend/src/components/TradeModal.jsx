@@ -3,19 +3,26 @@ import { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/UserContext";
+import { useQueryClient } from '@tanstack/react-query'
+import { useAccountQuery, useWatchlistContainsQuery, useWatchlistToggleMutation, queryKeys } from '../query/queries'
 
 
-function TradeModal({ ticker, onClose, onComplete }) {
+function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
   const { t, i18n } = useTranslation();
   const { currentUserId } = useContext(UserContext);
+  const queryClient = useQueryClient()
 
   const [stock, setStock] = useState(null);
-  const [account, setAccount] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [confirmAction, setConfirmAction] = useState(null); // "BUY" or "SELL"
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const { data: account } = useAccountQuery(currentUserId)
+  const { data: watchlistContains } = useWatchlistContainsQuery(currentUserId, ticker)
+  const toggleWatchlistMutation = useWatchlistToggleMutation(currentUserId)
+  const isInWatchlist = !!watchlistContains?.in_watchlist
 
   useEffect(() => {
     if (!ticker) return;
@@ -27,11 +34,9 @@ function TradeModal({ ticker, onClose, onComplete }) {
 
     Promise.all([
       apiFetch(`/stock/${ticker}`),
-      apiFetch(`/portfolio/account?user_id=${currentUserId}`),
     ])
-      .then(([stockData, accountData]) => {
+      .then(([stockData]) => {
         setStock(stockData);
-        setAccount(accountData);
         setLoading(false);
       })
       .catch(() => {
@@ -53,6 +58,9 @@ function TradeModal({ ticker, onClose, onComplete }) {
     if (data) {
       setMessage(t("trade.buySuccess"));
       setIsSuccess(true);
+      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId) })
       if (onComplete) setTimeout(onComplete, 800);
     }
   };
@@ -68,9 +76,28 @@ function TradeModal({ ticker, onClose, onComplete }) {
     if (data) {
       setMessage(t("trade.sellSuccess"));
       setIsSuccess(true);
+      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId) })
       if (onComplete) setTimeout(onComplete, 800);
     }
   };
+
+  const toggleWatchlist = async () => {
+    setMessage("")
+    setIsSuccess(false)
+    if (!currentUserId || !ticker) return
+
+    setWatchlistLoading(true)
+    try {
+      await toggleWatchlistMutation.mutateAsync({ ticker, isInWatchlist })
+      setMessage(isInWatchlist ? t("watchlist.remove") : t("watchlist.add"))
+      setIsSuccess(true)
+      if (onWatchlistUpdated) onWatchlistUpdated()
+    } finally {
+      setWatchlistLoading(false)
+    }
+  }
 
   const displayName = stock ? getStockName(ticker, stock.name, i18n.language) : ticker;
   const fmt = (v) =>
@@ -87,11 +114,37 @@ function TradeModal({ ticker, onClose, onComplete }) {
           <p>{t("stock.notFound")}</p>
         ) : (
           <>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{displayName}</div>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                {ticker} · {stock.market}
+            <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {displayName}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                  {ticker} · {stock.market}
+                </div>
               </div>
+
+              <button
+                type="button"
+                className="btn"
+                onClick={toggleWatchlist}
+                disabled={watchlistLoading}
+                title={isInWatchlist ? t("watchlist.remove") : t("watchlist.add")}
+                aria-label={isInWatchlist ? t("watchlist.remove") : t("watchlist.add")}
+                style={{
+                  flexShrink: 0,
+                  width: 40,
+                  height: 36,
+                  padding: 0,
+                  fontSize: 18,
+                  borderRadius: 10,
+                  border: `1px solid ${isInWatchlist ? "var(--accent)" : "var(--border)"}`,
+                  background: isInWatchlist ? "var(--accent-bg)" : "transparent",
+                  color: isInWatchlist ? "var(--accent)" : "var(--text-primary)",
+                }}
+              >
+                {isInWatchlist ? "★" : "☆"}
+              </button>
             </div>
 
             <div

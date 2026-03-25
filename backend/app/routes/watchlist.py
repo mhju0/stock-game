@@ -2,16 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Watchlist
-from app.services.stock_service import get_stock_info, get_stock_price
+from app.services.stock_service import get_stock_info
+from app.services.valuation_service import get_prices_for_tickers
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
 @router.get("/")
 def get_watchlist(user_id: int, db: Session = Depends(get_db)):
     items = db.query(Watchlist).filter(Watchlist.user_id == user_id).all() 
+    prices = get_prices_for_tickers([item.ticker for item in items])
     result = []
     for item in items:
-        price = get_stock_price(item.ticker)
+        price = prices.get(item.ticker)
         result.append({
             "id": item.id,
             "ticker": item.ticker,
@@ -21,6 +23,15 @@ def get_watchlist(user_id: int, db: Session = Depends(get_db)):
             "currency": "KRW" if item.market == "KRX" else "USD",
         })
     return result
+
+
+@router.get("/contains")
+def contains_watchlist_item(ticker: str, user_id: int, db: Session = Depends(get_db)):
+    item = db.query(Watchlist).filter(
+        Watchlist.user_id == user_id,
+        Watchlist.ticker == ticker
+    ).first()
+    return {"ticker": ticker, "in_watchlist": bool(item)}
 
 @router.post("/add")
 def add_to_watchlist(ticker: str, user_id: int, db: Session = Depends(get_db)):

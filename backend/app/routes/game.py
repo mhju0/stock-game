@@ -14,6 +14,7 @@ from app.models import (
 )
 from app.services.benchmark_service import get_benchmark_data
 from app.services.snapshot_service import take_snapshot
+from app.services.valuation_service import get_prices_for_tickers, compute_user_total_value_krw
 
 router = APIRouter(prefix="/game", tags=["game"])
 
@@ -131,11 +132,13 @@ def game_status(user_id: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/history")
-def game_history(user_id: int, db: Session = Depends(get_db)):
+def game_history(user_id: int, limit: int = 100, offset: int = 0, db: Session = Depends(get_db)):
     sessions = (
         db.query(GameSession)
         .filter(GameSession.user_id == user_id, GameSession.is_active == False)
         .order_by(GameSession.start_date.desc())
+        .offset(max(0, offset))
+        .limit(max(1, min(limit, 1000)))
         .all()
     )
 
@@ -172,22 +175,13 @@ def game_summary(user_id: int, db: Session = Depends(get_db)):
         return {"active": False}
 
     from app.models import Transaction, Holding, PortfolioSnapshot
-    from app.services.stock_service import get_stock_price
 
     user = db.query(User).filter(User.id == user_id).first()
     rate = get_exchange_rate()
 
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
-    holdings_value_krw = 0
-    for h in holdings:
-        price = get_stock_price(h.ticker)
-        if price:
-            val = price * h.quantity
-            if h.currency == "USD":
-                val *= rate
-            holdings_value_krw += val
-
-    current_value = user.balance_krw + (user.balance_usd * rate) + holdings_value_krw
+    prices = get_prices_for_tickers([h.ticker for h in holdings])
+    current_value = compute_user_total_value_krw(user, holdings, rate, prices)
     total_return = current_value - session.starting_balance_krw
     total_return_pct = (total_return / session.starting_balance_krw) * 100
 
@@ -216,7 +210,7 @@ def game_summary(user_id: int, db: Session = Depends(get_db)):
 
     sectors = {}
     for h in holdings:
-        price = get_stock_price(h.ticker)
+        price = prices.get(h.ticker)
         if not price:
             continue
         val = price * h.quantity

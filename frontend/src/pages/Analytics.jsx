@@ -1,14 +1,16 @@
 import { apiGet } from '../api'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts'
 import { getStockName } from '../utils/stockNames'
+import { formatMoney, formatMarketCap, formatDateTime } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/UserContext'
+import { useAnalyticsPerformanceQuery } from '../query/queries'
 
 const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
 
@@ -16,7 +18,6 @@ function Analytics() {
   const { t, i18n } = useTranslation()
   const { currentUserId } = useContext(UserContext)
   
-  const [performance, setPerformance] = useState(null)
   const [byStock, setByStock] = useState([])
   const [bySector, setBySector] = useState([])
   const [realized, setRealized] = useState(null)
@@ -25,24 +26,15 @@ function Analytics() {
   const [stockSort, setStockSort] = useState('alloc_desc')
   const [tradeTicker, setTradeTicker] = useState(null)
 
+  const { data: performance } = useAnalyticsPerformanceQuery(currentUserId)
+
   useEffect(() => {
-    apiGet(`/analytics/performance?user_id=${currentUserId}`, setPerformance)
     apiGet(`/analytics/by-stock?user_id=${currentUserId}`, setByStock)
     apiGet(`/analytics/by-sector?user_id=${currentUserId}`, setBySector)
     apiGet(`/analytics/realized?user_id=${currentUserId}`, setRealized)
   }, [currentUserId])
 
   if (!performance) return <p>{t('common.loading')}</p>
-
-  // Formatting helper for Market Cap
-  const formatMcap = (val, currency) => {
-    if (!val) return '-'
-    const prefix = currency === 'KRW' ? '₩' : '$'
-    if (val >= 1e12) return `${prefix}${(val / 1e12).toFixed(2)}T`
-    if (val >= 1e9) return `${prefix}${(val / 1e9).toFixed(2)}B`
-    if (val >= 1e6) return `${prefix}${(val / 1e6).toFixed(2)}M`
-    return `${prefix}${val.toLocaleString()}`
-  }
 
   const filterSnapshots = (snapshots) => {
     if (timeRange === 'ALL') return snapshots
@@ -54,32 +46,37 @@ function Analytics() {
   }
 
   const startVal = performance.starting_value
-  const filtered = filterSnapshots(performance.snapshots)
-  const chartDataReturn = filtered.map(s => ({
-    date: new Date(s.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+  const filtered = useMemo(
+    () => filterSnapshots(performance.snapshots),
+    [performance.snapshots, timeRange]
+  )
+  const chartDataReturn = useMemo(() => filtered.map(s => ({
+    date: formatDateTime(s.date, i18n.language === 'ko' ? 'ko-KR' : 'en-US'),
     total_pct: ((s.value - startVal) / startVal) * 100,
     total_value: s.value,
     absolute_change: s.value - startVal,
-  }))
-  const chartDataAllocation = filtered.map(s => {
+  })), [filtered, startVal, i18n.language])
+  const chartDataAllocation = useMemo(() => filtered.map(s => {
     const v = s.value || 1
     const hv = s.holdings_value ?? 0
     return {
-      date: new Date(s.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      date: formatDateTime(s.date, i18n.language === 'ko' ? 'ko-KR' : 'en-US'),
       stocks_pct: (hv / v) * 100,
       cash_pct: Math.max(0, ((v - hv) / v) * 100),
     }
-  })
+  }), [filtered, i18n.language])
 
-  const formatKRW = (v) => `₩${Math.round(v).toLocaleString()}`
-  const returnValues = chartDataReturn.map(p => p.total_pct)
-  const returnMin = returnValues.length ? Math.min(...returnValues) : 0
-  const returnMax = returnValues.length ? Math.max(...returnValues) : 0
-  const returnSpan = Math.abs(returnMax - returnMin)
-  const returnPadding = Math.max(0.05, returnSpan * 0.2)
-  const returnDomain = [returnMin - returnPadding, returnMax + returnPadding]
+  const formatKRW = (v) => formatMoney(v, 'KRW')
+  const returnDomain = useMemo(() => {
+    const returnValues = chartDataReturn.map(p => p.total_pct)
+    const returnMin = returnValues.length ? Math.min(...returnValues) : 0
+    const returnMax = returnValues.length ? Math.max(...returnValues) : 0
+    const returnSpan = Math.abs(returnMax - returnMin)
+    const returnPadding = Math.max(0.05, returnSpan * 0.2)
+    return [returnMin - returnPadding, returnMax + returnPadding]
+  }, [chartDataReturn])
 
-  const sortedStocks = [...byStock].sort((a, b) => {
+  const sortedStocks = useMemo(() => [...byStock].sort((a, b) => {
     switch (stockSort) {
       case 'name_asc': return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
       case 'name_desc': return getStockName(b.ticker, b.name, i18n.language).localeCompare(getStockName(a.ticker, a.name, i18n.language))
@@ -93,7 +90,7 @@ function Analytics() {
       case 'mcap_asc': return (a.market_cap || 0) - (b.market_cap || 0)
       default: return 0
     }
-  })
+  }), [byStock, stockSort, i18n.language])
 
   return (
     <div>
@@ -289,7 +286,7 @@ function Analytics() {
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
                       <span>{s.sector} · {s.market}</span>
-                      <span>Cap: {formatMcap(s.market_cap, s.currency)}</span>
+                      <span>Cap: {formatMarketCap(s.market_cap, s.currency)}</span>
                     </div>
                   </div>
                 )
@@ -323,7 +320,7 @@ function Analytics() {
                     </div>
                     
                     <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
-                        Cap: {formatMcap(s.market_cap, s.currency)}
+                        Cap: {formatMarketCap(s.market_cap, s.currency)}
                     </div>
                     
                     <div style={{ flex: 1, textAlign: 'right' }}>

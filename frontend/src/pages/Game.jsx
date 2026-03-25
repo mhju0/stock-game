@@ -1,9 +1,10 @@
 import { apiGet, apiFetch } from '../api'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/UserContext'
+import { formatMoney } from '../utils/formatters'
 
 function Game() {
   const { t, i18n } = useTranslation()
@@ -43,7 +44,7 @@ function Game() {
       })
   }, [status?.active, benchmarkIndex, currentUserId])
 
-  const mergeChartData = () => {
+  const mergedChartData = useMemo(() => {
     const map = {}
     benchmarkData.forEach(b => { map[b.date] = { date: b.date, benchmark: b.change_pct } })
     portfolioData.forEach(p => {
@@ -52,9 +53,9 @@ function Game() {
       else map[date] = { date, portfolio: p.change_pct }
     })
     return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
-  }
+  }, [benchmarkData, portfolioData])
 
-  const formatKRW = (v) => `₩${Math.round(v).toLocaleString()}`
+  const formatKRW = (v) => formatMoney(v, 'KRW')
   const isKo = i18n.language === 'ko'
 
   if (!status) return <p>{t('common.loading')}</p>
@@ -196,7 +197,7 @@ function Game() {
             {status.is_expired ? (t('game.gameOver')) : (t('game.gameActive'))}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {new Date(status.start_date).toLocaleDateString('ko-KR')} → {new Date(status.end_date).toLocaleDateString('ko-KR')}
+            {new Date(status.start_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')} → {new Date(status.end_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -223,7 +224,7 @@ function Game() {
           </div>
         </div>
 
-        {mergeChartData().length < 2 ? (
+        {mergedChartData.length < 2 ? (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('game.day1Title')}</div>
@@ -245,7 +246,7 @@ function Game() {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={mergeChartData()}>
+            <LineChart data={mergedChartData}>
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false}
                 tickFormatter={v => `${new Date(v).getMonth() + 1}/${new Date(v).getDate()}`} />
               <YAxis tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
