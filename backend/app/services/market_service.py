@@ -1,6 +1,7 @@
 import yfinance as yf
 import time
 import threading
+from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 
 US_CANDIDATES = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B",
@@ -8,6 +9,8 @@ US_CANDIDATES = [
     "HD", "COST", "MRK", "ABBV", "CRM", "AMD", "NFLX", "KO",
     "PEP", "TMO", "ADBE", "WMT", "ORCL", "CSCO", "ACN", "IBM",
     "INTC", "QCOM", "TXN", "NOW", "UBER", "DIS", "BA",
+    "ISRG", "AMGN", "GS", "MS", "BLK", "SPGI", "AXP",
+    "SBUX", "CVX", "NEE",
 ]
 
 KR_CANDIDATES = [
@@ -18,20 +21,13 @@ KR_CANDIDATES = [
     "034020.KS", "030200.KS", "012330.KS", "259960.KS", "352820.KS",
     "036570.KS", "323410.KS", "009150.KS", "018260.KS", "033780.KS",
     "377300.KS", "086790.KS", "010130.KS", "096770.KS", "003550.KS",
+    "042660.KS", "009540.KS", "329180.KS", "034730.KS", "316140.KS",
+    "015760.KS", "000810.KS", "138040.KS", "097950.KS", "090430.KS",
+    "247540.KS", "086520.KS", "003490.KS", "011070.KS", "042700.KS",
 ]
 
-US_NAMES = {
-    "AAPL": "Apple Inc.", "MSFT": "Microsoft", "GOOGL": "Alphabet", "AMZN": "Amazon",
-    "NVDA": "NVIDIA", "META": "Meta Platforms", "TSLA": "Tesla", "BRK-B": "Berkshire Hathaway",
-    "LLY": "Eli Lilly", "V": "Visa", "JPM": "JPMorgan Chase", "UNH": "UnitedHealth",
-    "XOM": "Exxon Mobil", "MA": "Mastercard", "JNJ": "Johnson & Johnson", "PG": "Procter & Gamble",
-    "AVGO": "Broadcom", "HD": "Home Depot", "COST": "Costco", "MRK": "Merck",
-    "ABBV": "AbbVie", "CRM": "Salesforce", "AMD": "AMD", "NFLX": "Netflix",
-    "KO": "Coca-Cola", "PEP": "PepsiCo", "TMO": "Thermo Fisher", "ADBE": "Adobe",
-    "WMT": "Walmart", "ORCL": "Oracle", "CSCO": "Cisco", "ACN": "Accenture",
-    "IBM": "IBM", "INTC": "Intel", "QCOM": "Qualcomm", "TXN": "Texas Instruments",
-    "NOW": "ServiceNow", "UBER": "Uber", "DIS": "Disney", "BA": "Boeing",
-}
+# Use imported name dicts from stock_service (single source of truth)
+US_NAMES = US_STOCK_NAMES_EN
 
 KR_NAMES = {
     "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "373220.KS": "LG에너지솔루션",
@@ -46,6 +42,14 @@ KR_NAMES = {
     "009150.KS": "삼성전기", "018260.KS": "삼성SDS", "033780.KS": "KT&G",
     "377300.KS": "카카오페이", "086790.KS": "하나금융지주", "010130.KS": "고려아연",
     "096770.KS": "SK이노베이션", "003550.KS": "LG",
+    "042660.KS": "한화오션", "009540.KS": "HD한국조선해양",
+    "329180.KS": "HD현대중공업", "034730.KS": "SK",
+    "316140.KS": "우리금융지주", "015760.KS": "한국전력",
+    "000810.KS": "삼성화재", "138040.KS": "메리츠금융지주",
+    "097950.KS": "CJ제일제당", "090430.KS": "아모레퍼시픽",
+    "247540.KS": "에코프로비엠", "086520.KS": "에코프로",
+    "003490.KS": "대한항공", "011070.KS": "LG이노텍",
+    "042700.KS": "한미반도체",
 }
 
 cache = {
