@@ -105,10 +105,13 @@ def sell_stock(db: Session, user_id: int, ticker: str, quantity: int) -> dict:
     )
 
     if not holding:
-        raise ValueError(f"You don't own any {ticker}")
+        # Try to get a human-readable name for the error message
+        info = get_stock_info(ticker)
+        name = info["name"] if info else ticker
+        raise ValueError(f"You don't own any {name}")
     if holding.quantity < quantity:
         raise ValueError(
-            f"Not enough shares. Own {holding.quantity}, trying to sell {quantity}"
+            f"Not enough shares of {holding.name or ticker}. Own {holding.quantity}, trying to sell {quantity}"
         )
 
     price = get_stock_price(ticker)

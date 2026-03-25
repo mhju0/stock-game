@@ -6,6 +6,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import { getStockName } from '../utils/stockNames'
+import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/UserContext'
 
@@ -88,7 +89,7 @@ function Analytics() {
           <div className="metric-value">{formatKRW(performance.current_value)}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">Total Return</div>
+          <div className="metric-label">{t("analytics.totalReturn")}</div>
           <div className={`metric-value ${performance.total_return >= 0 ? 'positive' : 'negative'}`}>
             {performance.total_return >= 0 ? '+' : ''}{formatKRW(performance.total_return)}
           </div>
@@ -99,14 +100,14 @@ function Analytics() {
         {realized && (
           <>
             <div className="metric-card">
-              <div className="metric-label">Win Rate</div>
+              <div className="metric-label">{t("analytics.winRate")}</div>
               <div className="metric-value">{realized.win_rate}%</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
                 {realized.winning_trades}W / {realized.losing_trades}L
               </div>
             </div>
             <div className="metric-card">
-              <div className="metric-label">Realized P&L</div>
+              <div className="metric-label">{t("analytics.realizedPnl")}</div>
               <div className={`metric-value ${realized.total_realized_pnl >= 0 ? 'positive' : 'negative'}`}>
                 {realized.total_realized_pnl >= 0 ? '+' : ''}{formatKRW(realized.total_realized_pnl)}
               </div>
@@ -117,7 +118,7 @@ function Analytics() {
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div className="card-title" style={{ marginBottom: 0 }}>Portfolio Value Over Time</div>
+          <div className="card-title" style={{ marginBottom: 0 }}>{t("analytics.portfolioOverTime")}</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {['1W', '1M', '3M', 'ALL'].map(range => (
               <button key={range} className="btn" onClick={() => setTimeRange(range)} style={{
@@ -133,11 +134,11 @@ function Analytics() {
         <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 16, height: 2, background: 'var(--accent)', borderRadius: 1 }} />
-            <span style={{ color: 'var(--text-secondary)' }}>Total change %</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.totalChangePct')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 16, height: 2, background: 'var(--positive)', borderRadius: 1, borderTop: '1px dashed var(--positive)' }} />
-            <span style={{ color: 'var(--text-secondary)' }}>Holdings as % of starting</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.holdingsRatio')}</span>
           </div>
         </div>
 
@@ -168,34 +169,22 @@ function Analytics() {
       {byStock.length > 0 && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div className="card-title" style={{ marginBottom: 0 }}>Performance by Stock ({byStock.length})</div>
+            <div className="card-title" style={{ marginBottom: 0 }}>{t('analytics.byStock')} ({byStock.length})</div>
             <div style={{ display: 'flex', gap: 4 }}>
               <button className="btn" onClick={() => setStockView('grid')} style={{
                 fontSize: 12, padding: '4px 10px',
                 background: stockView === 'grid' ? 'var(--text-primary)' : 'transparent',
                 color: stockView === 'grid' ? 'var(--bg-primary)' : 'var(--text-secondary)',
                 border: '1px solid var(--border)',
-              }}>Grid</button>
+              }}>{t('analytics.grid')}</button>
               <button className="btn" onClick={() => setStockView('list')} style={{
                 fontSize: 12, padding: '4px 10px',
                 background: stockView === 'list' ? 'var(--text-primary)' : 'transparent',
                 color: stockView === 'list' ? 'var(--bg-primary)' : 'var(--text-secondary)',
                 border: '1px solid var(--border)',
-              }}>List</button>
+              }}>{t('analytics.list')}</button>
               
-              <select className="input" style={{ width: 'auto', fontSize: 12, padding: '4px 8px' }}
-                value={stockSort} onChange={e => setStockSort(e.target.value)}>
-                <option value="alloc_desc">Allocation (High → Low)</option>
-                <option value="alloc_asc">Allocation (Low → High)</option>
-                <option value="mcap_desc">Market Cap (High → Low)</option>
-                <option value="mcap_asc">Market Cap (Low → High)</option>
-                <option value="name_asc">Name (A → Z)</option>
-                <option value="name_desc">Name (Z → A)</option>
-                <option value="value_desc">Value (High → Low)</option>
-                <option value="value_asc">Value (Low → High)</option>
-                <option value="pnl_desc">P&L (High → Low)</option>
-                <option value="pnl_asc">P&L (Low → High)</option>
-              </select>
+              <SortSelect value={stockSort} onChange={e => setStockSort(e.target.value)} />
             </div>
           </div>
 
@@ -233,11 +222,11 @@ function Analytics() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
-                      <span>{s.quantity} shares</span>
+                      <span>{s.quantity} {t('holdings.shares')}</span>
                       <span>{fmt(s.current_price)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>avg {fmt(s.avg_price)}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{t('holdings.avgPrice')} {fmt(s.avg_price)}</span>
                       <span className={isPositive ? 'positive' : 'negative'}>
                         {isPositive ? '+' : ''}{fmt(s.unrealized_pnl)}
                       </span>
@@ -273,7 +262,7 @@ function Analytics() {
                         <strong style={{ fontSize: 14 }}>{name}</strong>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 14 }}>
-                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {s.ticker} · {s.sector} · {s.quantity} shares
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {s.ticker} · {s.sector} · {s.quantity} shares
                       </div>
                     </div>
                     

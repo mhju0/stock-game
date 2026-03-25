@@ -49,7 +49,7 @@ function Watchlist() {
             {t("watchlist.title")}
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-            Prices are 15-min delayed
+            {t('watchlist.delayed')}
           </span>
         </div>
         {watchlist.map((item) => {

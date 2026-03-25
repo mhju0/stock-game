@@ -7,6 +7,13 @@ from app.services.market_service import get_top_30
 router = APIRouter(tags=["stocks"])
 
 
+# IMPORTANT: /stock/search must come BEFORE /stock/{ticker}
+# otherwise FastAPI matches "search" as a ticker
+@router.get("/stock/search/{query}")
+def stock_search(query: str):
+    return search_stocks(query)
+
+
 @router.get("/stock/{ticker}/history")
 def stock_history(ticker: str, period: str = "1mo"):
     valid_periods = {"1d": "1d", "1w": "5d", "1mo": "1mo", "3mo": "3mo", "1y": "1y"}
@@ -37,11 +44,6 @@ def stock_info_endpoint(ticker: str):
     if not info:
         return {"error": "Stock not found"}
     return info
-
-
-@router.get("/stock/search/{query}")
-def stock_search(query: str):
-    return search_stocks(query)
 
 
 @router.get("/exchange-rate")

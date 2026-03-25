@@ -64,13 +64,13 @@ function Game() {
       <div style={{ textAlign: 'center', padding: '48px 24px' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>🎮</div>
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-          {isKo ? '활성 게임이 없습니다' : 'No Active Game'}
+          {t('game.noActive')}
         </h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-          {isKo ? '게임 목록에서 새 게임을 만들어보세요' : 'Create a new game from the game hub'}
+          {t('game.noActiveDesc')}
         </p>
         <button className="btn btn-primary" onClick={() => setCurrentUserId(null)}>
-          {isKo ? '게임 목록' : 'My Games'}
+          {t('nav.myGames')}
         </button>
       </div>
     )
@@ -84,7 +84,7 @@ function Game() {
         <div className="card" style={{ textAlign: 'center', padding: 32 }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>{isPositive ? '📈' : '📉'}</div>
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
-            {status.is_expired ? (isKo ? '게임 종료' : 'Game Over') : (isKo ? '현재 진행 상황' : 'Current Progress')}
+            {status.is_expired ? (t('game.gameOver')) : (t('game.progress'))}
           </h2>
           <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 36, fontWeight: 700 }}>
             {isPositive ? '+' : ''}{summary.total_return_pct.toFixed(2)}%
@@ -99,24 +99,24 @@ function Game() {
 
         <div className="metric-grid">
           <div className="metric-card">
-            <div className="metric-label">{isKo ? '기간' : 'Duration'}</div>
+            <div className="metric-label">{t('game.duration')}</div>
             <div className="metric-value">{Math.round(summary.days_elapsed)}{isKo ? '일' : 'd'}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>/ {summary.duration_days}{isKo ? '일' : 'd'}</div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">{isKo ? '총 거래' : 'Total Trades'}</div>
+            <div className="metric-label">{t('game.totalTrades')}</div>
             <div className="metric-value">{summary.total_trades}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              {isKo ? `매수 ${summary.total_buys} · 매도 ${summary.total_sells}` : `${summary.total_buys} buys · ${summary.total_sells} sells`}
+              {isKo ? `${t('transactions.buy')} ${summary.total_buys} · ${t('transactions.sell')} ${summary.total_sells}` : `${summary.total_buys} buys · ${summary.total_sells} sells`}
             </div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">{isKo ? '승률' : 'Win Rate'}</div>
+            <div className="metric-label">{t('analytics.winRate')}</div>
             <div className="metric-value">{summary.win_rate}%</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{summary.winning_trades}W / {summary.losing_trades}L</div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">{isKo ? '실현 손익' : 'Realized P&L'}</div>
+            <div className="metric-label">{t('analytics.realizedPnl')}</div>
             <div className={`metric-value ${summary.realized_pnl >= 0 ? 'positive' : 'negative'}`}>
               {summary.realized_pnl >= 0 ? '+' : ''}{formatKRW(summary.realized_pnl)}
             </div>
@@ -125,11 +125,11 @@ function Game() {
 
         <div className="metric-grid">
           <div className="metric-card">
-            <div className="metric-label">{isKo ? '최고 평가액' : 'Peak Value'}</div>
+            <div className="metric-label">{t('game.peakValue')}</div>
             <div className="metric-value" style={{ fontSize: 18 }}>{formatKRW(summary.peak_value)}</div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">{isKo ? '최저 평가액' : 'Lowest Value'}</div>
+            <div className="metric-label">{t('game.lowestValue')}</div>
             <div className="metric-value" style={{ fontSize: 18 }}>{formatKRW(summary.trough_value)}</div>
           </div>
         </div>
@@ -137,7 +137,7 @@ function Game() {
         {summary.best_trade && (
           <div className="metric-grid">
             <div className="metric-card" style={{ background: 'var(--positive-bg)' }}>
-              <div className="metric-label">{isKo ? '최고 수익 거래' : 'Best Trade'}</div>
+              <div className="metric-label">{t('game.bestTrade')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--positive)' }}>
                 {getStockName(summary.best_trade.ticker, summary.best_trade.name, i18n.language)}
               </div>
@@ -145,7 +145,7 @@ function Game() {
             </div>
             {summary.worst_trade && (
               <div className="metric-card" style={{ background: 'var(--negative-bg)' }}>
-                <div className="metric-label">{isKo ? '최저 수익 거래' : 'Worst Trade'}</div>
+                <div className="metric-label">{t('game.worstTrade')}</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--negative)' }}>
                   {getStockName(summary.worst_trade.ticker, summary.worst_trade.name, i18n.language)}
                 </div>
@@ -157,9 +157,9 @@ function Game() {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button className="btn" style={{ flex: 1, border: '1px solid var(--border)' }}
-            onClick={() => setShowSummary(false)}>{isKo ? '돌아가기' : 'Back'}</button>
+            onClick={() => setShowSummary(false)}>{t('common.back')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }}
-            onClick={() => setCurrentUserId(null)}>{isKo ? '게임 목록' : 'My Games'}</button>
+            onClick={() => setCurrentUserId(null)}>{t('nav.myGames')}</button>
         </div>
       </div>
     )
@@ -170,22 +170,22 @@ function Game() {
       {/* Game Status */}
       <div className="metric-grid">
         <div className="metric-card">
-          <div className="metric-label">{isKo ? '시작 자금' : 'Starting Balance'}</div>
+          <div className="metric-label">{t('game.startingBalance')}</div>
           <div className="metric-value">{formatKRW(status.starting_balance_krw)}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">{isKo ? '현재 평가액' : 'Current Value'}</div>
+          <div className="metric-label">{t('game.currentValue')}</div>
           <div className="metric-value">{formatKRW(status.current_value_krw)}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">{isKo ? '수익률' : 'Return'}</div>
+          <div className="metric-label">{t('game.return')}</div>
           <div className={`metric-value ${status.current_return_pct >= 0 ? 'positive' : 'negative'}`}>
             {status.current_return_pct >= 0 ? '+' : ''}{status.current_return_pct}%
           </div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">{isKo ? '남은 기간' : 'Days Left'}</div>
-          <div className="metric-value">{status.is_expired ? (isKo ? '종료' : 'Done') : `${Math.round(status.days_remaining)}${isKo ? '일' : 'd'}`}</div>
+          <div className="metric-label">{t('game.daysLeft')}</div>
+          <div className="metric-value">{status.is_expired ? (t('game.done')) : `${Math.round(status.days_remaining)}${isKo ? '일' : 'd'}`}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{Math.round(status.days_elapsed)}{isKo ? '일' : 'd'} / {status.duration_days}{isKo ? '일' : 'd'}</div>
         </div>
       </div>
@@ -193,7 +193,7 @@ function Game() {
       <div className={`game-status-bar ${status.is_expired ? 'game-expired' : 'game-active'}`}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>
-            {status.is_expired ? (isKo ? '게임 종료' : 'Game Over') : (isKo ? '게임 진행 중' : 'Game Active')}
+            {status.is_expired ? (t('game.gameOver')) : (t('game.gameActive'))}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {new Date(status.start_date).toLocaleDateString('ko-KR')} → {new Date(status.end_date).toLocaleDateString('ko-KR')}
@@ -201,16 +201,16 @@ function Game() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}
-            onClick={() => setShowSummary(true)}>{isKo ? '요약' : 'Summary'}</button>
+            onClick={() => setShowSummary(true)}>{t('game.summary')}</button>
           <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}
-            onClick={() => setCurrentUserId(null)}>{isKo ? '게임 목록' : 'My Games'}</button>
+            onClick={() => setCurrentUserId(null)}>{t('nav.myGames')}</button>
         </div>
       </div>
 
       {/* Benchmark Chart */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div className="card-title" style={{ marginBottom: 0 }}>{isKo ? '내 포트폴리오 vs 벤치마크' : 'My Portfolio vs Benchmark'}</div>
+          <div className="card-title" style={{ marginBottom: 0 }}>{t('game.vsBenchmark')}</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {['SP500', 'KOSPI'].map(idx => (
               <button key={idx} className="btn" onClick={() => setBenchmarkIndex(idx)} style={{
@@ -224,8 +224,24 @@ function Game() {
         </div>
 
         {mergeChartData().length < 2 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>
-            {isKo ? '거래를 하면 수익률을 비교할 수 있어요' : 'Make some trades to compare your performance'}
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('game.day1Title')}</div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('game.day1Desc')}</div>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, textAlign: 'left', fontSize: 14 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 18 }}>1️⃣</span>
+                <span>{isKo ? '종목 탭에서 관심 종목을 검색하세요' : 'Search for stocks in the Stocks tab'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 18 }}>2️⃣</span>
+                <span>{isKo ? '미국 주식이라면 먼저 환전하세요' : 'Exchange KRW to USD for US stocks'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 18 }}>3️⃣</span>
+                <span>{isKo ? '매수 후 여기서 벤치마크와 비교하세요' : 'Buy stocks and compare vs benchmarks here'}</span>
+              </div>
+            </div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
@@ -236,7 +252,7 @@ function Game() {
               <Tooltip formatter={(value, name) => [`${value?.toFixed(2)}%`, name]}
                 labelStyle={{ fontSize: 12 }} contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13 }} />
               <Legend />
-              <Line type="monotone" dataKey="portfolio" stroke="#007aff" strokeWidth={2} dot={false} name={isKo ? '내 포트폴리오' : 'My Portfolio'} connectNulls />
+              <Line type="monotone" dataKey="portfolio" stroke="#007aff" strokeWidth={2} dot={false} name={t('game.myPortfolio')} connectNulls />
               <Line type="monotone" dataKey="benchmark" stroke="#86868b" strokeWidth={1.5} dot={false} strokeDasharray="4 4"
                 name={benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'} connectNulls />
             </LineChart>

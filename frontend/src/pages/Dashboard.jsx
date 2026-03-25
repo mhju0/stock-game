@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
+import SortSelect from '../components/SortSelect'
+import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/UserContext'
 
 
@@ -102,7 +104,7 @@ function Dashboard() {
           <div className="metric-label">{t('dashboard.totalValue')}</div>
           <div className="metric-value">₩{Math.round(account.total_value_krw).toLocaleString()}</div>
           <div className={account.daily_change_pct >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
-            {account.daily_change_pct >= 0 ? '+' : ''}{account.daily_change_pct}% Today
+            {account.daily_change_pct >= 0 ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}
           </div>
         </div>
         <div className="metric-card">
@@ -120,7 +122,7 @@ function Dashboard() {
       </div>
 
       <button className="btn" onClick={() => setShowGodMode(!showGodMode)} style={{ marginBottom: 16, fontSize: 12, border: '1px solid var(--border)' }}>
-        {showGodMode ? 'Hide God Mode' : 'God Mode (Testing)'}
+        {showGodMode ? t('dashboard.godModeHide') : t('dashboard.godMode')}
       </button>
 
       {showGodMode && (
@@ -143,24 +145,9 @@ function Dashboard() {
           <div className="card-title" style={{ marginBottom: 0 }}>{t('dashboard.myHoldings')}</div>
           
           <div style={{ display: 'flex', gap: 8 }}>
-            <select className="input" style={{ width: 'auto', fontSize: 12, padding: '4px 8px' }} value={filterMarket} onChange={e => setFilterMarket(e.target.value)}>
-              <option value="ALL">All Markets</option>
-              <option value="US">US Only</option>
-              <option value="KRX">KRX Only</option>
-            </select>
+            <MarketFilter value={filterMarket} onChange={e => setFilterMarket(e.target.value)} />
             
-            <select className="input" style={{ width: 'auto', fontSize: 12, padding: '4px 8px' }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
-              <option value="alloc_desc">Allocation (High → Low)</option>
-              <option value="alloc_asc">Allocation (Low → High)</option>
-              <option value="mcap_desc">Market Cap (High → Low)</option>
-              <option value="mcap_asc">Market Cap (Low → High)</option>
-              <option value="name_asc">Name (A → Z)</option>
-              <option value="name_desc">Name (Z → A)</option>
-              <option value="value_desc">Value (High → Low)</option>
-              <option value="value_asc">Value (Low → High)</option>
-              <option value="pnl_desc">P&L (High → Low)</option>
-              <option value="pnl_asc">P&L (Low → High)</option>
-            </select>
+            <SortSelect value={sortBy} onChange={e => setSortBy(e.target.value)} />
           </div>
         </div>
 
@@ -188,12 +175,12 @@ function Dashboard() {
                 <div style={{ flex: 1 }}>
                   <strong style={{ fontSize: 15 }}>{name}</strong>
                   <div className="holding-sub">
-                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% of Portfolio</span> · {h.ticker}
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {h.ticker}
                   </div>
                 </div>
                 
                 <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13 }}>{h.quantity} shares</div>
+                    <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
                     <div className="holding-sub">Cap: {formatMcap(h.market_cap, h.currency)}</div>
                 </div>
 
