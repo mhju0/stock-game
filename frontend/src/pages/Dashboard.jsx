@@ -67,6 +67,40 @@ function Dashboard() {
     }
   }
 
+  const sorted = useMemo(() => {
+    let filtered = holdingsSafe
+    if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
+    return [...filtered].sort((a, b) => {
+      // Standardize everything to KRW to calculate true Value and Allocation sorts
+      const rate = account?.exchange_rate || 1350
+      const aValKRW = a.currency === 'USD' ? a.total_value * rate : a.total_value
+      const bValKRW = b.currency === 'USD' ? b.total_value * rate : b.total_value
+
+      switch (sortBy) {
+        case 'name_asc':
+          return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
+        case 'name_desc':
+          return getStockName(b.ticker, b.name, i18n.language).localeCompare(getStockName(a.ticker, a.name, i18n.language))
+        case 'alloc_desc':
+        case 'value_desc':
+          return bValKRW - aValKRW
+        case 'alloc_asc':
+        case 'value_asc':
+          return aValKRW - bValKRW
+        case 'pnl_desc':
+          return b.unrealized_pnl - a.unrealized_pnl
+        case 'pnl_asc':
+          return a.unrealized_pnl - b.unrealized_pnl
+        case 'mcap_desc':
+          return (b.market_cap || 0) - (a.market_cap || 0)
+        case 'mcap_asc':
+          return (a.market_cap || 0) - (b.market_cap || 0)
+        default:
+          return 0
+      }
+    })
+  }, [holdingsSafe, filterMarket, sortBy, account?.exchange_rate, i18n.language])
+
   if (error) return <div className="card" style={{ color: 'var(--negative)', textAlign: 'center' }}>{error}</div>
   if (accountLoading || holdingsLoading) return <p>{t('common.loading')}</p>
   if (accountError || holdingsError || !account || !Array.isArray(holdings)) return (
@@ -75,31 +109,6 @@ function Dashboard() {
       <button className="btn btn-primary" onClick={fetchData}>Retry</button>
     </div>
   )
-
-  const sorted = useMemo(() => {
-    let filtered = holdingsSafe
-    if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
-    return [...filtered].sort((a, b) => {
-    // Standardize everything to KRW to calculate true Value and Allocation sorts
-    const rate = account?.exchange_rate || 1350
-    const aValKRW = a.currency === 'USD' ? a.total_value * rate : a.total_value
-    const bValKRW = b.currency === 'USD' ? b.total_value * rate : b.total_value
-
-    switch (sortBy) {
-      case 'name_asc': return getStockName(a.ticker, a.name, i18n.language).localeCompare(getStockName(b.ticker, b.name, i18n.language))
-      case 'name_desc': return getStockName(b.ticker, b.name, i18n.language).localeCompare(getStockName(a.ticker, a.name, i18n.language))
-      case 'alloc_desc': 
-      case 'value_desc': return bValKRW - aValKRW
-      case 'alloc_asc':
-      case 'value_asc': return aValKRW - bValKRW
-      case 'pnl_desc': return b.unrealized_pnl - a.unrealized_pnl
-      case 'pnl_asc': return a.unrealized_pnl - b.unrealized_pnl
-      case 'mcap_desc': return (b.market_cap || 0) - (a.market_cap || 0)
-      case 'mcap_asc': return (a.market_cap || 0) - (b.market_cap || 0)
-      default: return 0
-    }
-    })
-  }, [holdingsSafe, filterMarket, sortBy, account?.exchange_rate, i18n.language])
 
   return (
     <div>

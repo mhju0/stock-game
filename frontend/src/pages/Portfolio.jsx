@@ -34,17 +34,6 @@ function Portfolio() {
 
   useEffect(() => { fetchData() }, [currentUserId])
 
-  if (loading) return <p>{t('common.loading')}</p>
-  if (!account) return (
-    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load portfolio data. Is the backend running?</p>
-      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
-    </div>
-  )
-  if (holdings.length === 0) {
-    return <div className="empty-state">{t('stock.notFound')}</div>
-  }
-
   const sorted = useMemo(() => {
     let filtered = holdings
     if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
@@ -85,6 +74,17 @@ function Portfolio() {
     acc[h.sector].count++
     return acc
   }, {}), [holdings])
+
+  if (loading) return <p>{t('common.loading')}</p>
+  if (!account) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load portfolio data. Is the backend running?</p>
+      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+    </div>
+  )
+  if (holdings.length === 0) {
+    return <div className="empty-state">{t('stock.notFound')}</div>
+  }
 
   return (
     <div>
