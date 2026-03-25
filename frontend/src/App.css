@@ -18,21 +18,21 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: #1c1c1e;
-    --bg-secondary: #2c2c2e;
-    --bg-tertiary: #242426;
+    --bg-primary: #16181d;
+    --bg-secondary: #1d2128;
+    --bg-tertiary: #252b34;
     --text-primary: #f5f5f7;
-    --text-secondary: #98989d;
-    --border: #38383a;
-    --border-light: #2c2c2e;
-    --card-bg: #2c2c2e;
-    --hover-bg: #3a3a3c;
+    --text-secondary: #a5adbc;
+    --border: #3d4654;
+    --border-light: #313948;
+    --card-bg: #222831;
+    --hover-bg: #2b323d;
     --accent: #0a84ff;
     --positive: #30d158;
     --negative: #ff453a;
-    --positive-bg: #1a3a2a;
-    --negative-bg: #3a1a1a;
-    --accent-bg: #1a2a3a;
+    --positive-bg: #1d3a2a;
+    --negative-bg: #3d2121;
+    --accent-bg: #1b3044;
   }
 }
 
@@ -109,6 +109,7 @@ body {
 
 .card {
   background: var(--card-bg);
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 16px;
@@ -130,6 +131,7 @@ body {
 
 .metric-card {
   background: var(--card-bg);
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 16px 20px;
 }
@@ -178,6 +180,8 @@ body {
 .table th { text-align: left; font-size: 13px; font-weight: 500; color: var(--text-secondary); padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .table td { padding: 12px; font-size: 14px; border-bottom: 1px solid var(--border-light); }
 .table tr:hover { background: var(--hover-bg); }
+
+.table th, .table td { background-clip: padding-box; }
 
 .empty-state { text-align: center; padding: 48px 24px; color: var(--text-secondary); font-size: 15px; }
 
@@ -238,6 +242,7 @@ body {
 
 .price-hero {
   background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 20px;
   text-align: center;
@@ -263,7 +268,7 @@ body {
 .game-expired div:first-child > div:first-child { color: var(--negative); }
 
 .setup-label { font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 6px; }
-.setup-preview { background: var(--bg-secondary); border-radius: 12px; padding: 16px; font-size: 14px; }
+.setup-preview { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 12px; padding: 16px; font-size: 14px; }
 
 /* Trade Modal */
 .modal-overlay {

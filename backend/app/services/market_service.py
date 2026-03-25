@@ -1,6 +1,8 @@
 import yfinance as yf
 import time
 import threading
+from datetime import datetime, time as dt_time
+from zoneinfo import ZoneInfo
 from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 
 US_CANDIDATES = [
@@ -53,13 +55,56 @@ KR_NAMES = {
 }
 
 cache = {
-    "US": {"data": [], "timestamp": 0},
-    "KR": {"data": [], "timestamp": 0},
+    "US": {"data": [], "timestamp": 0, "session_date": None},
+    "KR": {"data": [], "timestamp": 0, "session_date": None},
+}
+
+MARKET_OPEN_CONFIG = {
+    "US": {"tz": ZoneInfo("America/New_York"), "open": dt_time(9, 30)},
+    "KR": {"tz": ZoneInfo("Asia/Seoul"), "open": dt_time(9, 0)},
 }
 
 
+def _is_trading_day(local_now: datetime) -> bool:
+    return local_now.weekday() < 5
+
+
+def _session_date_if_open(market: str) -> str | None:
+    cfg = MARKET_OPEN_CONFIG[market]
+    local_now = datetime.now(cfg["tz"])
+    if not _is_trading_day(local_now):
+        return None
+    market_open = local_now.replace(
+        hour=cfg["open"].hour,
+        minute=cfg["open"].minute,
+        second=0,
+        microsecond=0,
+    )
+    if local_now >= market_open:
+        return local_now.date().isoformat()
+    return None
+
+
+def _get_market_cap(ticker: str) -> int:
+    try:
+        fast_info = yf.Ticker(ticker).fast_info
+        cap = fast_info.get("market_cap") or fast_info.get("marketCap") or 0
+        if cap:
+            return int(cap)
+    except Exception:
+        pass
+
+    # Fallback for tickers that don't expose market cap in fast_info
+    try:
+        info = yf.Ticker(ticker).info
+        cap = info.get("marketCap", 0)
+        return int(cap) if cap else 0
+    except Exception:
+        return 0
+
+
 def fetch_top_30(market: str) -> list:
-    """Batch-download prices for all candidates in 1 API call instead of 70+."""
+    """Download prices in batch, then rank by live market cap."""
     candidates = US_CANDIDATES if market == "US" else KR_CANDIDATES
     names = US_NAMES if market == "US" else KR_NAMES
 
@@ -74,7 +119,7 @@ def fetch_top_30(market: str) -> list:
         return []
 
     stocks = []
-    for rank, ticker in enumerate(candidates):
+    for ticker in candidates:
         try:
             # For single ticker, yf.download returns flat columns
             if len(candidates) == 1:
@@ -92,6 +137,7 @@ def fetch_top_30(market: str) -> list:
             prev = float(closes.iloc[-2]) if len(closes) >= 2 else current
             change = current - prev
             change_pct = (change / prev) * 100 if prev else 0
+            market_cap = _get_market_cap(ticker)
 
             stocks.append({
                 "ticker": ticker,
@@ -99,16 +145,17 @@ def fetch_top_30(market: str) -> list:
                 "price": round(current, 2),
                 "change": round(change, 2),
                 "change_pct": round(change_pct, 2),
-                "market_cap": 0,  # Skip per-ticker .info calls for speed
+                "market_cap": market_cap,
                 "currency": "KRW" if market == "KR" else "USD",
-                "rank": rank,
             })
         except Exception:
             continue
 
-    # Candidates are already ordered by market cap, so preserve that order
-    stocks.sort(key=lambda x: x["rank"])
-    return stocks[:30]
+    stocks.sort(key=lambda x: x["market_cap"], reverse=True)
+    top_30 = stocks[:30]
+    for i, stock in enumerate(top_30, start=1):
+        stock["rank"] = i
+    return top_30
 
 
 def refresh_cache(market: str):
@@ -117,6 +164,7 @@ def refresh_cache(market: str):
         if data:
             cache[market]["data"] = data
             cache[market]["timestamp"] = time.time()
+            cache[market]["session_date"] = _session_date_if_open(market)
             print(f"Top 30 {market} cache refreshed: {len(data)} stocks")
     except Exception as e:
         print(f"Cache refresh error for {market}: {e}")
@@ -124,7 +172,16 @@ def refresh_cache(market: str):
 
 def get_top_30(market: str) -> list:
     twelve_hours = 12 * 3600
-    if cache[market]["data"] and (time.time() - cache[market]["timestamp"] < twelve_hours):
+    session_date = _session_date_if_open(market)
+    session_needs_refresh = (
+        session_date is not None and cache[market].get("session_date") != session_date
+    )
+
+    if (
+        cache[market]["data"]
+        and (time.time() - cache[market]["timestamp"] < twelve_hours)
+        and not session_needs_refresh
+    ):
         return cache[market]["data"]
 
     refresh_cache(market)
