@@ -54,14 +54,20 @@ function Analytics() {
   }
 
   const startVal = performance.starting_value
-  const chartData = filterSnapshots(performance.snapshots).map(s => ({
+  const filtered = filterSnapshots(performance.snapshots)
+  const chartDataReturn = filtered.map(s => ({
     date: new Date(s.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
     total_pct: ((s.value - startVal) / startVal) * 100,
-    holdings_pct: ((s.holdings_value - 0) / (startVal || 1)) * 100,
-    total_value: s.value,
-    holdings_value: s.holdings_value,
-    cash: s.cash_krw,
   }))
+  const chartDataAllocation = filtered.map(s => {
+    const v = s.value || 1
+    const hv = s.holdings_value ?? 0
+    return {
+      date: new Date(s.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      stocks_pct: (hv / v) * 100,
+      cash_pct: Math.max(0, ((v - hv) / v) * 100),
+    }
+  })
 
   const formatKRW = (v) => `₩${Math.round(v).toLocaleString()}`
 
@@ -117,8 +123,8 @@ function Analytics() {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div className="card-title" style={{ marginBottom: 0 }}>{t("analytics.portfolioOverTime")}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div className="card-title" style={{ marginBottom: 0 }}>{t('analytics.portfolioOverTime')}</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {['1W', '1M', '3M', 'ALL'].map(range => (
               <button key={range} className="btn" onClick={() => setTimeRange(range)} style={{
@@ -131,36 +137,66 @@ function Analytics() {
           </div>
         </div>
 
+        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{t('analytics.returnOverTime')}</div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 16, height: 2, background: 'var(--accent)', borderRadius: 1 }} />
             <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.totalChangePct')}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 16, height: 2, background: 'var(--positive)', borderRadius: 1, borderTop: '1px dashed var(--positive)' }} />
-            <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.holdingsRatio')}</span>
-          </div>
         </div>
 
-        {chartData.length < 2 ? (
+        {chartDataReturn.length < 2 ? (
           <div className="empty-state" style={{ padding: '24px 0' }}>Make some trades to see your performance chart</div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={chartData}>
+            <LineChart data={chartDataReturn}>
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
                 tickFormatter={v => `${v.toFixed(1)}%`} />
               <Tooltip
-                formatter={(value, name) => {
-                  if (name === 'total_pct') return [`${value.toFixed(2)}%`, 'Total change']
-                  return [`${value.toFixed(2)}%`, 'Holdings ratio']
-                }}
+                formatter={(value) => [`${Number(value).toFixed(2)}%`, t('analytics.totalChangePct')]}
                 labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
               />
               <Line type="monotone" dataKey="total_pct" stroke="#007aff" strokeWidth={2} dot={false} name="total_pct" />
-              <Line type="monotone" dataKey="holdings_pct" stroke="#34c759" strokeWidth={1.5} dot={false}
-                strokeDasharray="4 4" name="holdings_pct" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+
+        <div style={{ borderTop: '1px solid var(--border-light)', margin: '24px 0' }} />
+
+        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>{t('analytics.allocationOverTime')}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>{t('analytics.allocationOverTimeHint')}</div>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 16, height: 2, background: '#34c759', borderRadius: 1 }} />
+            <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.stocksShare')}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 16, height: 2, background: '#8e8e93', borderRadius: 1, borderTop: '1px dashed #8e8e93' }} />
+            <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.cashShare')}</span>
+          </div>
+        </div>
+
+        {chartDataAllocation.length < 2 ? (
+          <div className="empty-state" style={{ padding: '24px 0' }}>Make some trades to see your performance chart</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={chartDataAllocation}>
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
+                tickFormatter={v => `${v.toFixed(0)}%`} />
+              <Tooltip
+                formatter={(value, name) => {
+                  const label = name === 'stocks_pct' ? t('analytics.stocksShare') : t('analytics.cashShare')
+                  return [`${Number(value).toFixed(1)}%`, label]
+                }}
+                labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
+                contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
+              />
+              <Line type="monotone" dataKey="stocks_pct" stroke="#34c759" strokeWidth={2} dot={false} name="stocks_pct" />
+              <Line type="monotone" dataKey="cash_pct" stroke="#8e8e93" strokeWidth={1.5} dot={false}
+                strokeDasharray="4 4" name="cash_pct" />
             </LineChart>
           </ResponsiveContainer>
         )}
