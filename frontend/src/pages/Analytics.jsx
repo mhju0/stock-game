@@ -26,7 +26,7 @@ function Analytics() {
   const [stockSort, setStockSort] = useState('alloc_desc')
   const [tradeTicker, setTradeTicker] = useState(null)
 
-  const { data: performance } = useAnalyticsPerformanceQuery(currentUserId)
+  const { data: performance, isLoading: perfLoading, isError: perfError } = useAnalyticsPerformanceQuery(currentUserId)
 
   useEffect(() => {
     apiGet(`/analytics/by-stock?user_id=${currentUserId}`, setByStock)
@@ -34,7 +34,12 @@ function Analytics() {
     apiGet(`/analytics/realized?user_id=${currentUserId}`, setRealized)
   }, [currentUserId])
 
-  if (!performance) return <p>{t('common.loading')}</p>
+  if (perfLoading) return <p>{t('common.loading')}</p>
+  if (perfError || !performance) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load analytics data. Is the backend running?</p>
+    </div>
+  )
 
   const filterSnapshots = (snapshots) => {
     if (timeRange === 'ALL') return snapshots
@@ -45,14 +50,15 @@ function Analytics() {
     return snapshots.filter(s => new Date(s.date) >= cutoff)
   }
 
-  const startVal = performance.starting_value
+  const startVal = performance.starting_value || 0
+  const snapshots = performance.snapshots || []
   const filtered = useMemo(
-    () => filterSnapshots(performance.snapshots),
-    [performance.snapshots, timeRange]
+    () => filterSnapshots(snapshots),
+    [snapshots, timeRange]
   )
   const chartDataReturn = useMemo(() => filtered.map(s => ({
     date: formatDateTime(s.date, i18n.language === 'ko' ? 'ko-KR' : 'en-US'),
-    total_pct: ((s.value - startVal) / startVal) * 100,
+    total_pct: startVal ? ((s.value - startVal) / startVal) * 100 : 0,
     total_value: s.value,
     absolute_change: s.value - startVal,
   })), [filtered, startVal, i18n.language])

@@ -15,23 +15,33 @@ function Portfolio() {
   
   const [account, setAccount] = useState(null)
   const [holdings, setHoldings] = useState([])
+  const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('alloc_desc')
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [filterSector, setFilterSector] = useState('ALL')
   const [tradeTicker, setTradeTicker] = useState(null)
 
   const fetchData = async () => {
+    setLoading(true)
     const [holdingsData, accountData] = await Promise.all([
       apiFetch(`/portfolio/holdings?user_id=${currentUserId}`),
       apiFetch(`/portfolio/account?user_id=${currentUserId}`)
     ])
     if (holdingsData) setHoldings(holdingsData)
     if (accountData) setAccount(accountData)
+    setLoading(false)
   }
 
   useEffect(() => { fetchData() }, [currentUserId])
 
-  if (!account || holdings.length === 0) {
+  if (loading) return <p>{t('common.loading')}</p>
+  if (!account) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load portfolio data. Is the backend running?</p>
+      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+    </div>
+  )
+  if (holdings.length === 0) {
     return <div className="empty-state">{t('stock.notFound')}</div>
   }
 

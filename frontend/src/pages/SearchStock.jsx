@@ -154,7 +154,7 @@ function SearchStock() {
                     tickFormatter={v => stock.currency === 'KRW' ? `₩${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`} />
                   <Tooltip
                     formatter={(value) => [stock.currency === 'KRW' ? `₩${Math.round(value).toLocaleString()}` : `$${value.toFixed(2)}`, '']}
-                    contentStyle={{ borderRadius: 12, border: '1px solid #e5e5e7', fontSize: 13 }}
+                    contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
                   />
                   <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? '#34c759' : '#ff3b30'}
                     strokeWidth={2} dot={false} />

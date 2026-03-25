@@ -50,7 +50,7 @@ function Watchlist() {
               key={item.ticker}
               style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "12px 0", borderBottom: "1px solid #f5f5f7", cursor: "pointer",
+                padding: "12px 0", borderBottom: "1px solid var(--border-light)", cursor: "pointer",
               }}
               onClick={() => setTradeTicker(item.ticker)}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}

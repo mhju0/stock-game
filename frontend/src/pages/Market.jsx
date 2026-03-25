@@ -34,7 +34,7 @@ function Market() {
               minWidth: 80,
               background: market === m ? 'var(--text-primary)' : "transparent",
               color: market === m ? "white" : 'var(--text-secondary)',
-              border: "1px solid #e5e5e7",
+              border: "1px solid var(--border)",
             }}
           >
             {m === "US" ? t("market.us") : t("market.kr")}
@@ -60,7 +60,7 @@ function Market() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "12px 0",
-                  borderBottom: "1px solid #f5f5f7",
+                  borderBottom: "1px solid var(--border-light)",
                   cursor: "pointer",
                 }}
                 onClick={() => setTradeTicker(s.ticker)}

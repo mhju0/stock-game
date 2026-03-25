@@ -1,4 +1,4 @@
-import { apiGet, apiFetch } from '../api'
+import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
@@ -12,14 +12,18 @@ function Game() {
   
   const [status, setStatus] = useState(null)
   const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [benchmarkData, setBenchmarkData] = useState([])
   const [portfolioData, setPortfolioData] = useState([])
   const [benchmarkIndex, setBenchmarkIndex] = useState('SP500')
   const [showSummary, setShowSummary] = useState(false)
 
   const fetchData = () => {
-    apiGet(`/game/status?user_id=${currentUserId}`, setStatus)
-    apiGet(`/game/summary?user_id=${currentUserId}`, setSummary)
+    setLoading(true)
+    Promise.all([
+      apiFetch(`/game/status?user_id=${currentUserId}`).then(d => { if (d) setStatus(d) }),
+      apiFetch(`/game/summary?user_id=${currentUserId}`).then(d => { if (d) setSummary(d) }),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchData() }, [currentUserId])
@@ -58,7 +62,13 @@ function Game() {
   const formatKRW = (v) => formatMoney(v, 'KRW')
   const isKo = i18n.language === 'ko'
 
-  if (!status) return <p>{t('common.loading')}</p>
+  if (loading) return <p>{t('common.loading')}</p>
+  if (!status) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load game data. Is the backend running?</p>
+      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+    </div>
+  )
 
   if (!status.active) {
     return (
