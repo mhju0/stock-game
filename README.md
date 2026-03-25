@@ -2,6 +2,11 @@
 
 React와 FastAPI로 만든 풀스택 가상 주식 투자 시뮬레이션입니다. 실제 주가 데이터로 가상 자금을 운용하고, 벤치마크 대비 수익률을 추적하며, 기간 제한 투자 챌린지에 도전할 수 있습니다.
 
+## Live Demo
+
+**App:** https://stock-game-gray.vercel.app
+**API:** https://stock-game-api-6411.onrender.com/docs
+
 ## 주요 기능
 
 - **실시간 시세** — Yahoo Finance를 통한 미국/한국 주식 실시간 가격 조회
