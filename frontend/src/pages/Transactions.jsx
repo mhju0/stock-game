@@ -2,10 +2,11 @@ import { apiGet } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserContext } from '../context/UserContext'
+import { getStockName } from '../utils/stockNames'
 
 
 function Transactions() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { currentUserId } = useContext(UserContext)
   
   const [transactions, setTransactions] = useState([])
@@ -62,6 +63,7 @@ function Transactions() {
             : tx.transaction_type === 'SELL' ? 'var(--negative-bg)' : 'var(--accent-bg)'
           const typeLabel = tx.transaction_type === 'BUY' ? t('transactions.buy')
             : tx.transaction_type === 'SELL' ? t('transactions.sell') : t('exchange.title')
+          const stockName = getStockName(tx.ticker, tx.name, i18n.language)
 
           return (
             <div key={tx.id} style={{
@@ -78,7 +80,7 @@ function Transactions() {
                 </span>
                 <div>
                   <strong style={{ fontSize: 15 }}>
-                    {tx.transaction_type === 'EXCHANGE' ? tx.ticker : tx.name}
+                    {tx.transaction_type === 'EXCHANGE' ? tx.ticker : stockName}
                   </strong>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {tx.transaction_type === 'EXCHANGE'

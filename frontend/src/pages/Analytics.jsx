@@ -58,6 +58,8 @@ function Analytics() {
   const chartDataReturn = filtered.map(s => ({
     date: new Date(s.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
     total_pct: ((s.value - startVal) / startVal) * 100,
+    total_value: s.value,
+    absolute_change: s.value - startVal,
   }))
   const chartDataAllocation = filtered.map(s => {
     const v = s.value || 1
@@ -70,6 +72,12 @@ function Analytics() {
   })
 
   const formatKRW = (v) => `₩${Math.round(v).toLocaleString()}`
+  const returnValues = chartDataReturn.map(p => p.total_pct)
+  const returnMin = returnValues.length ? Math.min(...returnValues) : 0
+  const returnMax = returnValues.length ? Math.max(...returnValues) : 0
+  const returnSpan = Math.abs(returnMax - returnMin)
+  const returnPadding = Math.max(0.05, returnSpan * 0.2)
+  const returnDomain = [returnMin - returnPadding, returnMax + returnPadding]
 
   const sortedStocks = [...byStock].sort((a, b) => {
     switch (stockSort) {
@@ -152,13 +160,25 @@ function Analytics() {
             <LineChart data={chartDataReturn}>
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
+                domain={returnDomain}
                 tickFormatter={v => `${v.toFixed(1)}%`} />
               <Tooltip
-                formatter={(value) => [`${Number(value).toFixed(2)}%`, t('analytics.totalChangePct')]}
+                formatter={(value, _name, item) => {
+                  const payload = item?.payload || {}
+                  return [
+                    `${Number(value).toFixed(2)}% (${payload.absolute_change >= 0 ? '+' : ''}${formatKRW(payload.absolute_change || 0)})`,
+                    t('analytics.totalChangePct'),
+                  ]
+                }}
+                labelFormatter={(_, payload) => {
+                  const p = payload?.[0]?.payload
+                  if (!p) return ''
+                  return `${p.date} · ${t('dashboard.totalValue')}: ${formatKRW(p.total_value || 0)}`
+                }}
                 labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
               />
-              <Line type="monotone" dataKey="total_pct" stroke="#007aff" strokeWidth={2} dot={false} name="total_pct" />
+              <Line type="linear" dataKey="total_pct" stroke="#007aff" strokeWidth={2} dot={false} name="total_pct" />
             </LineChart>
           </ResponsiveContainer>
         )}
