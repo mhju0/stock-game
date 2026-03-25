@@ -15,6 +15,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import Game from "./pages/Game";
 import "./App.css";
 
+// App.jsx is the main component that renders the entire application
+
 function App() {
   const { t, i18n } = useTranslation();
   const { currentUserId, setCurrentUserId } = useContext(UserContext);
