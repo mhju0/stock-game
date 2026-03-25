@@ -1,21 +1,23 @@
-import { apiGet, apiPost } from '../api'
-import { useState, useEffect, useContext } from 'react'
+import { apiPost } from '../api'
+import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
+import { formatMoney, formatMarketCap } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/UserContext'
+import { useAccountQuery, useHoldingsQuery, queryKeys } from '../query/queries'
 
 
 function Dashboard() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { currentUserId } = useContext(UserContext)
+  const queryClient = useQueryClient()
 
-  const [account, setAccount] = useState(null)
-  const [holdings, setHoldings] = useState([])
   const [showGodMode, setShowGodMode] = useState(false)
   const [godCurrency, setGodCurrency] = useState('KRW')
   const [godAmount, setGodAmount] = useState('')
@@ -25,13 +27,16 @@ function Dashboard() {
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [error, setError] = useState('')
 
+  const { data: account, isLoading: accountLoading } = useAccountQuery(currentUserId)
+  const { data: holdings = [], isLoading: holdingsLoading } = useHoldingsQuery(currentUserId)
+
   const fetchData = () => {
     setError('')
-    apiGet(`/portfolio/account?user_id=${currentUserId}`, setAccount, setError)
-    apiGet(`/portfolio/holdings?user_id=${currentUserId}`, setHoldings, setError)
+    queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId) })
   }
 
-  useEffect(() => { fetchData() }, [currentUserId])
+  useEffect(() => { setError('') }, [currentUserId])
 
   const addFunds = async () => {
     setGodMessage('')
@@ -62,22 +67,12 @@ function Dashboard() {
   }
 
   if (error) return <div className="card" style={{ color: 'var(--negative)', textAlign: 'center' }}>{error}</div>
-  if (!account) return <p>{t('common.loading')}</p>
+  if (accountLoading || holdingsLoading || !account) return <p>{t('common.loading')}</p>
 
-  // Formatting helper for Market Cap
-  const formatMcap = (val, currency) => {
-    if (!val) return '-'
-    const prefix = currency === 'KRW' ? '₩' : '$'
-    if (val >= 1e12) return `${prefix}${(val / 1e12).toFixed(2)}T`
-    if (val >= 1e9) return `${prefix}${(val / 1e9).toFixed(2)}B`
-    if (val >= 1e6) return `${prefix}${(val / 1e6).toFixed(2)}M`
-    return `${prefix}${val.toLocaleString()}`
-  }
-
-  let filtered = holdings
-  if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
-
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = useMemo(() => {
+    let filtered = holdings
+    if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
+    return [...filtered].sort((a, b) => {
     // Standardize everything to KRW to calculate true Value and Allocation sorts
     const aValKRW = a.currency === 'USD' ? a.total_value * account.exchange_rate : a.total_value
     const bValKRW = b.currency === 'USD' ? b.total_value * account.exchange_rate : b.total_value
@@ -95,25 +90,26 @@ function Dashboard() {
       case 'mcap_asc': return (a.market_cap || 0) - (b.market_cap || 0)
       default: return 0
     }
-  })
+    })
+  }, [holdings, filterMarket, sortBy, account.exchange_rate, i18n.language])
 
   return (
     <div>
       <div className="metric-grid">
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.totalValue')}</div>
-          <div className="metric-value">₩{Math.round(account.total_value_krw).toLocaleString()}</div>
+          <div className="metric-value">{formatMoney(account.total_value_krw, 'KRW')}</div>
           <div className={account.daily_change_pct >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
             {account.daily_change_pct >= 0 ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}
           </div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.holdingsValue')}</div>
-          <div className="metric-value">₩{Math.round(account.holdings_value_total_krw).toLocaleString()}</div>
+          <div className="metric-value">{formatMoney(account.holdings_value_total_krw, 'KRW')}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashKRW')}</div>
-          <div className="metric-value">₩{Math.round(account.balance_krw).toLocaleString()}</div>
+          <div className="metric-value">{formatMoney(account.balance_krw, 'KRW')}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashUSD')}</div>
@@ -162,7 +158,7 @@ function Dashboard() {
           </div>
         ) : (
           sorted.map(h => {
-            const fmt = v => h.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
+            const fmt = v => formatMoney(v, h.currency)
             const pnlPct = h.avg_price ? ((h.current_price - h.avg_price) / h.avg_price * 100).toFixed(2) : 0
             const name = getStockName(h.ticker, h.name, i18n.language)
             
@@ -181,7 +177,7 @@ function Dashboard() {
                 
                 <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
-                    <div className="holding-sub">Cap: {formatMcap(h.market_cap, h.currency)}</div>
+                    <div className="holding-sub">Cap: {formatMarketCap(h.market_cap, h.currency)}</div>
                 </div>
 
                 <div style={{ flex: 1, textAlign: 'right' }}>

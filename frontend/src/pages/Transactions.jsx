@@ -3,6 +3,7 @@ import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserContext } from '../context/UserContext'
 import { getStockName } from '../utils/stockNames'
+import { formatMoney, formatDateTime } from '../utils/formatters'
 
 
 function Transactions() {
@@ -53,10 +54,8 @@ function Transactions() {
 
       <div className="card">
         {filtered.map(tx => {
-          const fmt = v => tx.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
-          const date = new Date(tx.created_at).toLocaleDateString('ko-KR', {
-            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-          })
+          const fmt = v => formatMoney(v, tx.currency)
+          const date = formatDateTime(tx.created_at, i18n.language === 'ko' ? 'ko-KR' : 'en-US')
           const typeColor = tx.transaction_type === 'BUY' ? 'var(--positive)'
             : tx.transaction_type === 'SELL' ? 'var(--negative)' : 'var(--accent)'
           const typeBg = tx.transaction_type === 'BUY' ? 'var(--positive-bg)'

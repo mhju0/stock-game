@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Holding, Transaction, PortfolioSnapshot, GameSession
-from app.services.stock_service import get_stock_price, get_stock_info # <-- Added get_stock_info
 from app.services.exchange_service import get_exchange_rate
+from app.services.valuation_service import get_prices_for_tickers, get_infos_for_tickers
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -15,10 +15,13 @@ def get_starting_value(db: Session, user_id: int) -> float:
     return session.starting_balance_krw if session else 10_000_000
 
 @router.get("/performance")
-def get_performance(user_id: int, db: Session = Depends(get_db)):
+def get_performance(user_id: int, limit: int | None = None, db: Session = Depends(get_db)):
     snapshots = db.query(PortfolioSnapshot).filter(
         PortfolioSnapshot.user_id == user_id
-    ).order_by(PortfolioSnapshot.created_at.asc()).all()
+    ).order_by(PortfolioSnapshot.created_at.asc())
+    if limit:
+        snapshots = snapshots.limit(max(1, min(limit, 5000)))
+    snapshots = snapshots.all()
 
     starting_value = get_starting_value(db, user_id)
     current = snapshots[-1].total_value_krw if snapshots else starting_value
@@ -46,14 +49,17 @@ def get_performance(user_id: int, db: Session = Depends(get_db)):
 def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     rate = get_exchange_rate()
+    tickers = [h.ticker for h in holdings]
+    prices = get_prices_for_tickers(tickers)
+    infos = get_infos_for_tickers(tickers)
 
     results = []
     for h in holdings:
-        current_price = get_stock_price(h.ticker)
+        current_price = prices.get(h.ticker)
         if not current_price:
             continue
             
-        info = get_stock_info(h.ticker) or {}
+        info = infos.get(h.ticker) or {}
         market_cap = info.get("marketCap", 0)
         
         unrealized_pnl = (current_price - h.avg_price) * h.quantity
@@ -86,10 +92,11 @@ def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
 def performance_by_sector(user_id: int, db: Session = Depends(get_db)):
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     rate = get_exchange_rate()
+    prices = get_prices_for_tickers([h.ticker for h in holdings])
 
     sectors = {}
     for h in holdings:
-        current_price = get_stock_price(h.ticker)
+        current_price = prices.get(h.ticker)
         if not current_price:
             continue
 

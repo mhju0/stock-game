@@ -1,34 +1,25 @@
-import { apiFetch, apiDelete } from '../api'
-import { useState, useEffect, useContext } from "react";
+import { apiDelete } from '../api'
+import { useState, useContext } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/UserContext";
+import { useWatchlistQuery, queryKeys } from '../query/queries'
 
 
 function Watchlist() {
   const { t, i18n } = useTranslation();
   const { currentUserId } = useContext(UserContext); // Get user ID
+  const queryClient = useQueryClient()
   
-  const [watchlist, setWatchlist] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [tradeTicker, setTradeTicker] = useState(null);
-
-  const fetchWatchlist = async () => {
-    setLoading(true);
-    const data = await apiFetch(`/watchlist/?user_id=${currentUserId}`);
-    if (data) setWatchlist(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchWatchlist();
-  }, [currentUserId]);
+  const { data: watchlist = [], isLoading: loading, refetch: refetchWatchlist } = useWatchlistQuery(currentUserId)
 
   const remove = async (ticker, e) => {
     e.stopPropagation();
     await apiDelete(`/watchlist/remove/${ticker}?user_id=${currentUserId}`);
-    fetchWatchlist();
+    queryClient.invalidateQueries({ queryKey: queryKeys.watchlist(currentUserId) })
   };
 
   if (loading) return <p>{t("common.loading")}</p>;
@@ -96,9 +87,10 @@ function Watchlist() {
         <TradeModal
           ticker={tradeTicker}
           onClose={() => setTradeTicker(null)}
+          onWatchlistUpdated={refetchWatchlist}
           onComplete={() => {
             setTradeTicker(null);
-            fetchWatchlist();
+            refetchWatchlist();
           }}
         />
       )}

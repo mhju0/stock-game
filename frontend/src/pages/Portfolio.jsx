@@ -1,8 +1,9 @@
 import { apiFetch } from '../api'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
+import { formatMoney, formatMarketCap } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/UserContext'
@@ -34,21 +35,11 @@ function Portfolio() {
     return <div className="empty-state">{t('stock.notFound')}</div>
   }
 
-  // Formatting helper for Market Cap
-  const formatMcap = (val, currency) => {
-    if (!val) return '-'
-    const prefix = currency === 'KRW' ? '₩' : '$'
-    if (val >= 1e12) return `${prefix}${(val / 1e12).toFixed(2)}T`
-    if (val >= 1e9) return `${prefix}${(val / 1e9).toFixed(2)}B`
-    if (val >= 1e6) return `${prefix}${(val / 1e6).toFixed(2)}M`
-    return `${prefix}${val.toLocaleString()}`
-  }
-
-  let filtered = holdings
-  if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
-  if (filterSector !== 'ALL') filtered = filtered.filter(h => h.sector === filterSector)
-
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = useMemo(() => {
+    let filtered = holdings
+    if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
+    if (filterSector !== 'ALL') filtered = filtered.filter(h => h.sector === filterSector)
+    return [...filtered].sort((a, b) => {
     const aValKRW = a.currency === 'USD' ? a.total_value * account.exchange_rate : a.total_value
     const bValKRW = b.currency === 'USD' ? b.total_value * account.exchange_rate : b.total_value
 
@@ -65,23 +56,24 @@ function Portfolio() {
       case 'mcap_asc': return (a.market_cap || 0) - (b.market_cap || 0)
       default: return 0
     }
-  })
+    })
+  }, [holdings, filterMarket, filterSector, sortBy, account.exchange_rate, i18n.language])
 
-  const totalByMarket = holdings.reduce((acc, h) => {
+  const totalByMarket = useMemo(() => holdings.reduce((acc, h) => {
     const key = h.market
     if (!acc[key]) acc[key] = { value: 0, pnl: 0 }
     acc[key].value += h.total_value
     acc[key].pnl += h.unrealized_pnl
     return acc
-  }, {})
+  }, {}), [holdings])
 
-  const totalBySector = holdings.reduce((acc, h) => {
+  const totalBySector = useMemo(() => holdings.reduce((acc, h) => {
     if (!acc[h.sector]) acc[h.sector] = { value: 0, pnl: 0, count: 0 }
     acc[h.sector].value += h.total_value
     acc[h.sector].pnl += h.unrealized_pnl
     acc[h.sector].count++
     return acc
-  }, {})
+  }, {}), [holdings])
 
   return (
     <div>
@@ -127,7 +119,7 @@ function Portfolio() {
 
       <div className="card">
         {sorted.map(h => {
-          const fmt = v => h.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
+          const fmt = v => formatMoney(v, h.currency)
           const pnlPct = h.avg_price ? ((h.current_price - h.avg_price) / h.avg_price * 100).toFixed(2) : 0
           const name = getStockName(h.ticker, h.name, i18n.language)
           const isPositive = h.unrealized_pnl >= 0
@@ -154,7 +146,7 @@ function Portfolio() {
 
               <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Cap: {formatMcap(h.market_cap, h.currency)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Cap: {formatMarketCap(h.market_cap, h.currency)}</div>
               </div>
 
               <div style={{ flex: 1, textAlign: 'right' }}>

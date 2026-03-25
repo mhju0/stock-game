@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models import User, Holding, Transaction, PortfolioSnapshot, GameSession
-from app.services.stock_service import get_stock_price, get_stock_info # <-- Added get_stock_info
 from app.services.exchange_service import get_exchange_rate
+from app.services.valuation_service import get_prices_for_tickers, get_infos_for_tickers, compute_user_total_value_krw
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
@@ -13,11 +13,12 @@ def get_account(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     rate = get_exchange_rate()
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
+    prices = get_prices_for_tickers([h.ticker for h in holdings])
 
     holdings_value_krw = 0
     holdings_value_usd = 0
     for h in holdings:
-        price = get_stock_price(h.ticker)
+        price = prices.get(h.ticker)
         if not price:
             continue
         if h.currency == "KRW":
@@ -25,12 +26,7 @@ def get_account(user_id: int, db: Session = Depends(get_db)):
         else:
             holdings_value_usd += price * h.quantity
 
-    total_krw = (
-        user.balance_krw
-        + (user.balance_usd * rate)
-        + holdings_value_krw
-        + (holdings_value_usd * rate)
-    )
+    total_krw = compute_user_total_value_krw(user, holdings, rate, prices)
 
     session = (
         db.query(GameSession)
@@ -125,11 +121,13 @@ def get_account(user_id: int, db: Session = Depends(get_db)):
 @router.get("/holdings")
 def get_holdings(user_id: int, db: Session = Depends(get_db)):
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
+    tickers = [h.ticker for h in holdings]
+    prices = get_prices_for_tickers(tickers)
+    infos = get_infos_for_tickers(tickers)
     result = []
     for h in holdings:
-        current_price = get_stock_price(h.ticker)
-        # Fetch market cap data
-        info = get_stock_info(h.ticker) or {}
+        current_price = prices.get(h.ticker)
+        info = infos.get(h.ticker) or {}
         market_cap = info.get("marketCap", 0)
         
         unrealized_pnl = (
@@ -156,11 +154,13 @@ def get_holdings(user_id: int, db: Session = Depends(get_db)):
     return result
 
 @router.get("/transactions")
-def get_transactions(user_id: int, db: Session = Depends(get_db)):
+def get_transactions(user_id: int, limit: int = 200, offset: int = 0, db: Session = Depends(get_db)):
     transactions = (
         db.query(Transaction)
         .filter(Transaction.user_id == user_id)
         .order_by(Transaction.created_at.desc())
+        .offset(max(0, offset))
+        .limit(max(1, min(limit, 1000)))
         .all()
     )
     return [
@@ -183,11 +183,13 @@ def get_transactions(user_id: int, db: Session = Depends(get_db)):
     ]
 
 @router.get("/snapshots")
-def get_snapshots(user_id: int, db: Session = Depends(get_db)):
+def get_snapshots(user_id: int, limit: int = 500, offset: int = 0, db: Session = Depends(get_db)):
     snapshots = (
         db.query(PortfolioSnapshot)
         .filter(PortfolioSnapshot.user_id == user_id)
         .order_by(PortfolioSnapshot.created_at.asc())
+        .offset(max(0, offset))
+        .limit(max(1, min(limit, 5000)))
         .all()
     )
     return [
