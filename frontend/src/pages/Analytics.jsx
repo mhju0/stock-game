@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import { getStockName } from '../utils/stockNames'
-import { formatMoney, formatMarketCap, formatDateTime } from '../utils/formatters'
+import { formatMoney, formatDateTime } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/UserContext'
@@ -296,8 +296,7 @@ function Analytics() {
                       </span>
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{s.sector} · {s.market}</span>
-                      <span>Cap: {formatMarketCap(s.market_cap, s.currency)}</span>
+                      <span>{s.sector && <>{s.sector} · </>}{s.market}</span>
                     </div>
                   </div>
                 )
@@ -326,13 +325,11 @@ function Analytics() {
                         <strong style={{ fontSize: 14 }}>{name}</strong>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 14 }}>
-                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {s.ticker} · {s.sector} · {s.quantity} shares
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {s.ticker}{s.sector && <> · {s.sector}</>} · {s.quantity} shares
                       </div>
                     </div>
                     
-                    <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
-                        Cap: {formatMarketCap(s.market_cap, s.currency)}
-                    </div>
+
                     
                     <div style={{ flex: 1, textAlign: 'right' }}>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(s.current_price)}</div>

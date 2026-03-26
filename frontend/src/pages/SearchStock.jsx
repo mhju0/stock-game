@@ -164,14 +164,14 @@ function SearchStock() {
           )}
 
           <div className="metric-grid">
-            <div className="metric-card" style={{ background: 'var(--bg-secondary)' }}>
+            {stock.sector && <div className="metric-card" style={{ background: 'var(--bg-secondary)' }}>
               <div className="metric-label">{t('stock.sector')}</div>
               <div style={{ fontSize: 15, fontWeight: 600 }}>{stock.sector}</div>
-            </div>
-            <div className="metric-card" style={{ background: 'var(--bg-secondary)' }}>
+            </div>}
+            {stock.industry && <div className="metric-card" style={{ background: 'var(--bg-secondary)' }}>
               <div className="metric-label">{t('stock.industry')}</div>
               <div style={{ fontSize: 15, fontWeight: 600 }}>{stock.industry}</div>
-            </div>
+            </div>}
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>

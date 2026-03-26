@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
-import { formatMoney, formatMarketCap } from '../utils/formatters'
+import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/UserContext'
@@ -194,7 +194,7 @@ function Dashboard() {
                 
                 <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
-                    <div className="holding-sub">Cap: {formatMarketCap(h.market_cap, h.currency)}</div>
+                    {h.sector && <div className="holding-sub">{h.sector}</div>}
                 </div>
 
                 <div style={{ flex: 1, textAlign: 'right' }}>

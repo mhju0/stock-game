@@ -65,8 +65,7 @@ def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
             continue
             
         info = infos.get(h.ticker) or {}
-        market_cap = info.get("marketCap", 0)
-        
+
         unrealized_pnl = (current_price - h.avg_price) * h.quantity
         pnl_pct = ((current_price - h.avg_price) / h.avg_price) * 100 if h.avg_price else 0
         total_value = current_price * h.quantity
@@ -86,7 +85,6 @@ def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
             "total_value_krw": round(total_value_krw, 2),
             "unrealized_pnl": round(unrealized_pnl, 2),
             "unrealized_pnl_pct": round(pnl_pct, 2),
-            "market_cap": market_cap,
         })
 
     # Default sort
