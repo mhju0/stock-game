@@ -3,7 +3,12 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Holding, Transaction, PortfolioSnapshot, GameSession
 from app.services.exchange_service import get_exchange_rate
-from app.services.valuation_service import get_prices_for_tickers, get_infos_for_tickers
+from app.services.valuation_service import (
+    get_prices_for_tickers,
+    get_infos_for_tickers,
+    resolved_sector,
+    resolved_industry,
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -71,8 +76,8 @@ def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
             "ticker": h.ticker,
             "name": h.name,
             "market": h.market,
-            "sector": h.sector,
-            "industry": h.industry,
+            "sector": resolved_sector(info, h.sector),
+            "industry": resolved_industry(info, h.industry),
             "currency": h.currency,
             "quantity": h.quantity,
             "avg_price": h.avg_price,
@@ -81,7 +86,7 @@ def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
             "total_value_krw": round(total_value_krw, 2),
             "unrealized_pnl": round(unrealized_pnl, 2),
             "unrealized_pnl_pct": round(pnl_pct, 2),
-            "market_cap": market_cap, # <-- Added to response
+            "market_cap": market_cap,
         })
 
     # Default sort
@@ -92,7 +97,9 @@ def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
 def performance_by_sector(user_id: int, db: Session = Depends(get_db)):
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     rate = get_exchange_rate()
-    prices = get_prices_for_tickers([h.ticker for h in holdings])
+    tickers = [h.ticker for h in holdings]
+    prices = get_prices_for_tickers(tickers)
+    infos = get_infos_for_tickers(tickers)
 
     sectors = {}
     for h in holdings:
@@ -106,7 +113,8 @@ def performance_by_sector(user_id: int, db: Session = Depends(get_db)):
         cost_value_krw = cost_value * rate if h.currency == "USD" else cost_value
         unrealized_pnl_krw = total_value_krw - cost_value_krw
 
-        sector = h.sector or "Unknown"
+        info = infos.get(h.ticker) or {}
+        sector = resolved_sector(info, h.sector)
         if sector not in sectors:
             sectors[sector] = {"total_value_krw": 0, "cost_krw": 0, "pnl_krw": 0, "count": 0, "stocks": []}
 

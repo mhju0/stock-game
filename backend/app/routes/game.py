@@ -14,7 +14,12 @@ from app.models import (
 )
 from app.services.benchmark_service import get_benchmark_data
 from app.services.snapshot_service import take_snapshot
-from app.services.valuation_service import get_prices_for_tickers, compute_user_total_value_krw
+from app.services.valuation_service import (
+    get_prices_for_tickers,
+    get_infos_for_tickers,
+    compute_user_total_value_krw,
+    resolved_sector,
+)
 
 router = APIRouter(prefix="/game", tags=["game"])
 
@@ -180,7 +185,9 @@ def game_summary(user_id: int, db: Session = Depends(get_db)):
     rate = get_exchange_rate()
 
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
-    prices = get_prices_for_tickers([h.ticker for h in holdings])
+    tickers = [h.ticker for h in holdings]
+    prices = get_prices_for_tickers(tickers)
+    infos = get_infos_for_tickers(tickers)
     current_value = compute_user_total_value_krw(user, holdings, rate, prices)
     total_return = current_value - session.starting_balance_krw
     total_return_pct = (total_return / session.starting_balance_krw) * 100
@@ -216,7 +223,8 @@ def game_summary(user_id: int, db: Session = Depends(get_db)):
         val = price * h.quantity
         if h.currency == "USD":
             val *= rate
-        s = h.sector or "Unknown"
+        info = infos.get(h.ticker) or {}
+        s = resolved_sector(info, h.sector)
         sectors[s] = sectors.get(s, 0) + val
 
     snapshots = (
