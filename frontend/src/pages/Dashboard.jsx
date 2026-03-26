@@ -147,19 +147,11 @@ function Dashboard() {
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashKRW')}</div>
-          <div className="metric-value">
-            {displayCurrency === 'KRW'
-              ? formatMoney(account.balance_krw, 'KRW')
-              : `$${(account.balance_krw / (account.exchange_rate || 1350)).toFixed(2)}`}
-          </div>
+          <div className="metric-value">{formatMoney(account.balance_krw, 'KRW')}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashUSD')}</div>
-          <div className="metric-value">
-            {displayCurrency === 'USD'
-              ? `$${(account.balance_usd ?? 0).toFixed(2)}`
-              : formatMoney((account.balance_usd ?? 0) * (account.exchange_rate || 1350), 'KRW')}
-          </div>
+          <div className="metric-value">${(account.balance_usd ?? 0).toFixed(2)}</div>
         </div>
       </div>
 

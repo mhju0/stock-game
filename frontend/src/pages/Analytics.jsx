@@ -10,7 +10,7 @@ import { formatMoney, formatDateTime } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/UserContext'
-import { useAnalyticsPerformanceQuery } from '../query/queries'
+import { useAnalyticsPerformanceQuery, useAccountQuery } from '../query/queries'
 
 const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
 
@@ -25,6 +25,10 @@ function Analytics() {
   const [stockView, setStockView] = useState('list')
   const [stockSort, setStockSort] = useState('alloc_desc')
   const [tradeTicker, setTradeTicker] = useState(null)
+  const [displayCurrency, setDisplayCurrency] = useState('KRW')
+
+  const { data: accountData } = useAccountQuery(currentUserId)
+  const exchangeRate = accountData?.exchange_rate || 1350
 
   const { data: performance, isLoading: perfLoading, isError: perfError } = useAnalyticsPerformanceQuery(currentUserId)
 
@@ -66,6 +70,7 @@ function Analytics() {
   }), [filtered, i18n.language])
 
   const formatKRW = (v) => formatMoney(v, 'KRW')
+  const fmtDisplay = (v) => displayCurrency === 'KRW' ? formatMoney(v, 'KRW') : `$${(v / exchangeRate).toFixed(2)}`
   const returnDomain = useMemo(() => {
     const returnValues = chartDataReturn.map(p => p.total_pct)
     const returnMin = returnValues.length ? Math.min(...returnValues) : 0
@@ -110,34 +115,37 @@ function Analytics() {
     <div>
       <div className="metric-grid">
         <div className="metric-card">
-          <div className="metric-label">{t('dashboard.totalValue')}</div>
-          <div className="metric-value">{formatKRW(performance.current_value)}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
+            <div style={{ display: 'flex', gap: 2 }}>
+              {['KRW', 'USD'].map(c => (
+                <button key={c} className="btn" onClick={() => setDisplayCurrency(c)} style={{
+                  fontSize: 11, padding: '2px 8px', borderRadius: 6,
+                  background: displayCurrency === c ? 'var(--text-primary)' : 'transparent',
+                  color: displayCurrency === c ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                  border: '1px solid var(--border)', lineHeight: '16px',
+                }}>{c === 'KRW' ? '₩' : '$'}</button>
+              ))}
+            </div>
+          </div>
+          <div className="metric-value">{fmtDisplay(performance.current_value)}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t("analytics.totalReturn")}</div>
           <div className={`metric-value ${performance.total_return >= 0 ? 'positive' : 'negative'}`}>
-            {performance.total_return >= 0 ? '+' : ''}{formatKRW(performance.total_return)}
+            {performance.total_return >= 0 ? '+' : ''}{fmtDisplay(performance.total_return)}
           </div>
           <div className={performance.total_return_pct >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
             {performance.total_return_pct >= 0 ? '+' : ''}{performance.total_return_pct}%
           </div>
         </div>
         {realized && (
-          <>
-            <div className="metric-card">
-              <div className="metric-label">{t("analytics.winRate")}</div>
-              <div className="metric-value">{realized.win_rate}%</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                {realized.winning_trades}W / {realized.losing_trades}L
-              </div>
+          <div className="metric-card">
+            <div className="metric-label">{t("analytics.realizedPnl")}</div>
+            <div className={`metric-value ${realized.total_realized_pnl >= 0 ? 'positive' : 'negative'}`}>
+              {realized.total_realized_pnl >= 0 ? '+' : ''}{fmtDisplay(realized.total_realized_pnl)}
             </div>
-            <div className="metric-card">
-              <div className="metric-label">{t("analytics.realizedPnl")}</div>
-              <div className={`metric-value ${realized.total_realized_pnl >= 0 ? 'positive' : 'negative'}`}>
-                {realized.total_realized_pnl >= 0 ? '+' : ''}{formatKRW(realized.total_realized_pnl)}
-              </div>
-            </div>
-          </>
+          </div>
         )}
       </div>
 
