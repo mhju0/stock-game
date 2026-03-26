@@ -5,27 +5,32 @@ from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
 from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 
-US_CANDIDATES = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B",
-    "LLY", "V", "JPM", "UNH", "XOM", "MA", "JNJ", "PG", "AVGO",
-    "HD", "COST", "MRK", "ABBV", "CRM", "AMD", "NFLX", "KO",
-    "PEP", "TMO", "ADBE", "WMT", "ORCL", "CSCO", "ACN", "IBM",
-    "INTC", "QCOM", "TXN", "NOW", "UBER", "DIS", "BA",
-    "ISRG", "AMGN", "GS", "MS", "BLK", "SPGI", "AXP",
-    "SBUX", "CVX", "NEE",
+# ── Static ranking by market cap (updated periodically) ─────────
+# These are pre-sorted by approximate market cap, largest first.
+# The rank order is what matters, not the exact cap number.
+# Update this list every few months if major changes happen.
+
+US_TOP_50 = [
+    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "BRK-B", "TSLA",
+    "AVGO", "LLY", "JPM", "V", "UNH", "MA", "XOM", "COST",
+    "HD", "PG", "JNJ", "NFLX", "ABBV", "CRM", "ORCL", "MRK",
+    "AMD", "KO", "PEP", "ADBE", "WMT", "TMO", "CSCO", "ACN",
+    "IBM", "NOW", "TXN", "QCOM", "INTC", "UBER", "DIS", "BA",
+    "ISRG", "AMGN", "GS", "MS", "BLK", "SPGI", "AXP", "SBUX",
+    "CVX", "NEE",
 ]
 
-KR_CANDIDATES = [
-    "005930.KS", "000660.KS", "373220.KS", "207940.KS", "006400.KS",
-    "005380.KS", "051910.KS", "000270.KS", "068270.KS", "035420.KS",
-    "035720.KS", "005490.KS", "028260.KS", "012450.KS", "055550.KS",
-    "105560.KS", "017670.KS", "032830.KS", "066570.KS", "003670.KS",
-    "034020.KS", "030200.KS", "012330.KS", "259960.KS", "352820.KS",
-    "036570.KS", "323410.KS", "009150.KS", "018260.KS", "033780.KS",
-    "377300.KS", "086790.KS", "010130.KS", "096770.KS", "003550.KS",
-    "042660.KS", "009540.KS", "329180.KS", "034730.KS", "316140.KS",
-    "015760.KS", "000810.KS", "138040.KS", "097950.KS", "090430.KS",
-    "247540.KS", "086520.KS", "003490.KS", "011070.KS", "042700.KS",
+KR_TOP_50 = [
+    "005930.KS", "000660.KS", "373220.KS", "005380.KS", "207940.KS",
+    "006400.KS", "035420.KS", "000270.KS", "012450.KS", "068270.KS",
+    "051910.KS", "105560.KS", "055550.KS", "035720.KS", "005490.KS",
+    "032830.KS", "028260.KS", "138040.KS", "000810.KS", "086790.KS",
+    "042660.KS", "009540.KS", "329180.KS", "034730.KS", "096770.KS",
+    "259960.KS", "012330.KS", "009150.KS", "018260.KS", "352820.KS",
+    "323410.KS", "066570.KS", "003550.KS", "316140.KS", "015760.KS",
+    "010130.KS", "042700.KS", "034020.KS", "033780.KS", "011070.KS",
+    "003670.KS", "247540.KS", "086520.KS", "017670.KS", "030200.KS",
+    "003490.KS", "377300.KS", "036570.KS", "097950.KS", "090430.KS",
 ]
 
 # Use imported name dicts from stock_service (single source of truth)
@@ -85,32 +90,16 @@ def _session_date_if_open(market: str) -> str | None:
     return None
 
 
-def _get_market_cap(ticker: str) -> int:
-    try:
-        fast_info = yf.Ticker(ticker).fast_info
-        cap = fast_info.get("market_cap") or fast_info.get("marketCap") or 0
-        if cap:
-            return int(cap)
-    except Exception:
-        pass
-
-    # Fallback for tickers that don't expose market cap in fast_info
-    try:
-        info = yf.Ticker(ticker).info
-        cap = info.get("marketCap", 0)
-        return int(cap) if cap else 0
-    except Exception:
-        return 0
-
-
 def fetch_top_30(market: str) -> list:
-    """Download prices in batch, then rank by live market cap."""
-    candidates = US_CANDIDATES if market == "US" else KR_CANDIDATES
+    """Download prices in batch, rank by static market cap order."""
+    candidates = US_TOP_50 if market == "US" else KR_TOP_50
     names = US_NAMES if market == "US" else KR_NAMES
 
     try:
-        # Single batch download — massively faster than per-ticker calls
-        data = yf.download(candidates, period="2d", group_by="ticker", threads=True, progress=False)
+        data = yf.download(
+            candidates, period="2d", group_by="ticker",
+            threads=True, progress=False,
+        )
     except Exception as e:
         print(f"Batch download failed for {market}: {e}")
         return []
@@ -119,9 +108,8 @@ def fetch_top_30(market: str) -> list:
         return []
 
     stocks = []
-    for ticker in candidates:
+    for rank, ticker in enumerate(candidates, start=1):
         try:
-            # For single ticker, yf.download returns flat columns
             if len(candidates) == 1:
                 ticker_data = data
             else:
@@ -137,25 +125,22 @@ def fetch_top_30(market: str) -> list:
             prev = float(closes.iloc[-2]) if len(closes) >= 2 else current
             change = current - prev
             change_pct = (change / prev) * 100 if prev else 0
-            market_cap = _get_market_cap(ticker)
 
             stocks.append({
+                "rank": rank,
                 "ticker": ticker,
                 "name": names.get(ticker, ticker),
                 "price": round(current, 2),
                 "change": round(change, 2),
                 "change_pct": round(change_pct, 2),
-                "market_cap": market_cap,
                 "currency": "KRW" if market == "KR" else "USD",
             })
         except Exception:
             continue
 
-    stocks.sort(key=lambda x: x["market_cap"], reverse=True)
-    top_30 = stocks[:30]
-    for i, stock in enumerate(top_30, start=1):
-        stock["rank"] = i
-    return top_30
+    # Already in rank order from the static list, just take top 30
+    stocks.sort(key=lambda x: x["rank"])
+    return stocks[:30]
 
 
 def refresh_cache(market: str):
