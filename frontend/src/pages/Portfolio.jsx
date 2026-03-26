@@ -3,7 +3,7 @@ import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
-import { formatMoney, formatMarketCap } from '../utils/formatters'
+import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/UserContext'
@@ -68,10 +68,12 @@ function Portfolio() {
   }, {}), [holdings])
 
   const totalBySector = useMemo(() => holdings.reduce((acc, h) => {
-    if (!acc[h.sector]) acc[h.sector] = { value: 0, pnl: 0, count: 0 }
-    acc[h.sector].value += h.total_value
-    acc[h.sector].pnl += h.unrealized_pnl
-    acc[h.sector].count++
+    const sectorKey = h.sector
+    if (!sectorKey) return acc
+    if (!acc[sectorKey]) acc[sectorKey] = { value: 0, pnl: 0, count: 0 }
+    acc[sectorKey].value += h.total_value
+    acc[sectorKey].pnl += h.unrealized_pnl
+    acc[sectorKey].count++
     return acc
   }, {}), [holdings])
 
@@ -151,13 +153,13 @@ function Portfolio() {
               <div style={{ flex: 1 }}>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {h.ticker} · {h.sector}
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {h.ticker}{h.sector && <> · {h.sector}</>}
                 </div>
               </div>
 
               <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Cap: {formatMarketCap(h.market_cap, h.currency)}</div>
+                  {h.sector && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{h.sector}</div>}
               </div>
 
               <div style={{ flex: 1, textAlign: 'right' }}>

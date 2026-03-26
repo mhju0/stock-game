@@ -134,8 +134,6 @@ def get_holdings(user_id: int, db: Session = Depends(get_db)):
     for h in holdings:
         current_price = prices.get(h.ticker)
         info = infos.get(h.ticker) or {}
-        market_cap = info.get("marketCap", 0)
-        
         unrealized_pnl = (
             (current_price - h.avg_price) * h.quantity if current_price else 0
         )
@@ -154,7 +152,6 @@ def get_holdings(user_id: int, db: Session = Depends(get_db)):
                 "total_value": (
                     round(current_price * h.quantity, 2) if current_price else 0
                 ),
-                "market_cap": market_cap,
             }
         )
     return result

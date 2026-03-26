@@ -1,25 +1,25 @@
 from app.services.stock_service import get_stock_price, get_stock_info
 
 
-def resolved_sector(info: dict | None, holding_sector: str | None) -> str:
-    """Prefer enriched get_stock_info (static + Yahoo) over DB snapshot."""
+def resolved_sector(info: dict | None, holding_sector: str | None) -> str | None:
+    """Prefer enriched get_stock_info (static + Yahoo) over DB snapshot. Returns None if unknown."""
     i = info or {}
     s = i.get("sector")
     if s and s != "Unknown":
         return s
     if holding_sector and holding_sector != "Unknown":
         return holding_sector
-    return "Unknown"
+    return None
 
 
-def resolved_industry(info: dict | None, holding_industry: str | None) -> str:
+def resolved_industry(info: dict | None, holding_industry: str | None) -> str | None:
     i = info or {}
     s = i.get("industry")
     if s and s != "Unknown":
         return s
     if holding_industry and holding_industry != "Unknown":
         return holding_industry
-    return "Unknown"
+    return None
 
 
 def get_prices_for_tickers(tickers: list[str]) -> dict[str, float | None]:
