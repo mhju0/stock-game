@@ -11,25 +11,27 @@ from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 # Update this list every few months if major changes happen.
 
 US_TOP_50 = [
-    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "BRK-B", "TSLA",
-    "AVGO", "LLY", "JPM", "V", "UNH", "MA", "XOM", "COST",
-    "HD", "PG", "JNJ", "NFLX", "ABBV", "CRM", "ORCL", "MRK",
-    "AMD", "KO", "PEP", "ADBE", "WMT", "TMO", "CSCO", "ACN",
-    "IBM", "NOW", "TXN", "QCOM", "INTC", "UBER", "DIS", "BA",
-    "ISRG", "AMGN", "GS", "MS", "BLK", "SPGI", "AXP", "SBUX",
-    "CVX", "NEE",
+    # Verified March 24, 2026 — finhacker.cz/largest-us-companies-by-market-cap
+    "NVDA", "AAPL", "GOOGL", "MSFT", "AMZN", "AVGO", "META", "TSLA",
+    "BRK-B", "WMT", "LLY", "JPM", "XOM", "V", "JNJ", "MU",
+    "MA", "COST", "ORCL", "CVX", "NFLX", "PLTR", "ABBV", "AMD",
+    "CAT", "PG", "HD", "KO", "CSCO", "GE", "LRCX", "AMAT",
+    "MRK", "MS", "RTX", "GS", "UNH", "IBM", "INTC", "VZ",
+    "AXP", "PEP", "KLAC", "T", "NEE", "AMGN", "TMO", "TXN",
+    "GILD", "DIS",
 ]
 
 KR_TOP_50 = [
-    "005930.KS", "000660.KS", "373220.KS", "005380.KS", "207940.KS",
-    "006400.KS", "035420.KS", "000270.KS", "012450.KS", "068270.KS",
-    "051910.KS", "105560.KS", "055550.KS", "035720.KS", "005490.KS",
-    "032830.KS", "028260.KS", "138040.KS", "000810.KS", "086790.KS",
-    "042660.KS", "009540.KS", "329180.KS", "034730.KS", "096770.KS",
-    "259960.KS", "012330.KS", "009150.KS", "018260.KS", "352820.KS",
-    "323410.KS", "066570.KS", "003550.KS", "316140.KS", "015760.KS",
-    "010130.KS", "042700.KS", "034020.KS", "033780.KS", "011070.KS",
-    "003670.KS", "247540.KS", "086520.KS", "017670.KS", "030200.KS",
+    # Verified March 2026 — companiesmarketcap.com, disfold.com
+    "005930.KS", "000660.KS", "207940.KS", "005380.KS", "000270.KS",
+    "012450.KS", "105560.KS", "055550.KS", "006400.KS", "267260.KS",
+    "068270.KS", "035420.KS", "138040.KS", "086790.KS", "015760.KS",
+    "005490.KS", "042700.KS", "051910.KS", "035720.KS", "316140.KS",
+    "032830.KS", "000810.KS", "028260.KS", "066570.KS", "009540.KS",
+    "042660.KS", "329180.KS", "012330.KS", "259960.KS", "352820.KS",
+    "373220.KS", "034730.KS", "096770.KS", "010130.KS", "009150.KS",
+    "018260.KS", "323410.KS", "003550.KS", "034020.KS", "033780.KS",
+    "011070.KS", "003670.KS", "017670.KS", "030200.KS", "247540.KS",
     "003490.KS", "377300.KS", "036570.KS", "097950.KS", "090430.KS",
 ]
 
