@@ -22,7 +22,7 @@ function Analytics() {
   const [bySector, setBySector] = useState([])
   const [realized, setRealized] = useState(null)
   const [timeRange, setTimeRange] = useState('ALL')
-  const [stockView, setStockView] = useState('grid')
+  const [stockView, setStockView] = useState('list')
   const [stockSort, setStockSort] = useState('alloc_desc')
   const [tradeTicker, setTradeTicker] = useState(null)
 
@@ -70,9 +70,12 @@ function Analytics() {
     const returnValues = chartDataReturn.map(p => p.total_pct)
     const returnMin = returnValues.length ? Math.min(...returnValues) : 0
     const returnMax = returnValues.length ? Math.max(...returnValues) : 0
-    const returnSpan = Math.abs(returnMax - returnMin)
-    const returnPadding = Math.max(0.05, returnSpan * 0.2)
-    return [returnMin - returnPadding, returnMax + returnPadding]
+    // Ensure minimum ±10% range so small changes don't look extreme
+    const domainMin = Math.min(returnMin, -10)
+    const domainMax = Math.max(returnMax, 10)
+    const span = Math.abs(domainMax - domainMin)
+    const padding = Math.max(1, span * 0.1)
+    return [domainMin - padding, domainMax + padding]
   }, [chartDataReturn])
 
   const sortedStocks = useMemo(() => [...byStock].sort((a, b) => {

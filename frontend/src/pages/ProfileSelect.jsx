@@ -78,11 +78,21 @@ function ProfileSelect() {
   return (
     <div style={{ maxWidth: 480, margin: '60px auto', padding: '0 20px' }}>
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button className="lang-toggle" onClick={() => i18n.changeLanguage(i18n.language === 'ko' ? 'en' : 'ko')}>
+            {i18n.language === 'ko' ? 'EN' : '한국어'}
+          </button>
+        </div>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
           {t('common.appName')}
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
           {i18n.language === 'ko' ? '나만의 투자 전략을 만들고 실력을 테스트해보세요' : 'Create strategies, test your skills, beat the market'}
+        </p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 8, opacity: 0.7 }}>
+          {i18n.language === 'ko'
+            ? '⏱ 시세는 15분 지연됩니다 · 가상 자금으로 실제 시장 데이터를 사용하는 모의투자 게임입니다'
+            : '⏱ Prices are 15-min delayed · A virtual trading game using real market data with simulated funds'}
         </p>
       </div>
 
@@ -188,7 +198,7 @@ function ProfileSelect() {
               </label>
               <input
                 className="input"
-                placeholder={i18n.language === 'ko' ? 'M7 공격투자, 배당주 안정형...' : 'Aggressive M7, Dividend Safe...'}
+                placeholder={i18n.language === 'ko' ? '공격형, 테크 위주, 배당주...' : 'Aggressive, Tech Only, Dividends...'}
                 value={gameName}
                 onChange={(e) => setGameName(e.target.value)}
                 maxLength={20}
