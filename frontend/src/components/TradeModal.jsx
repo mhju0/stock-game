@@ -13,6 +13,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
   const queryClient = useQueryClient()
 
   const [stock, setStock] = useState(null);
+  const [myHolding, setMyHolding] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -34,9 +35,12 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
 
     Promise.all([
       apiFetch(`/stock/${ticker}`),
+      apiFetch(`/portfolio/holdings?user_id=${currentUserId}`),
     ])
-      .then(([stockData]) => {
+      .then(([stockData, holdingsData]) => {
         setStock(stockData);
+        const held = (holdingsData || []).find(h => h.ticker === ticker);
+        setMyHolding(held ? held.quantity : 0);
         setLoading(false);
       })
       .catch(() => {
@@ -121,6 +125,9 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                   {ticker} · {stock.market}
+                </div>
+                <div style={{ fontSize: 13, marginTop: 4, color: myHolding > 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                  {i18n.language === 'ko' ? `보유: ${myHolding}주` : `Holdings: ${myHolding} shares`}
                 </div>
               </div>
 
