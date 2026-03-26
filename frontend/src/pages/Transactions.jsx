@@ -83,18 +83,42 @@ function Transactions() {
                   {typeLabel}
                 </span>
                 <div>
-                  <strong style={{ fontSize: 15 }}>
-                    {tx.transaction_type === 'EXCHANGE' ? tx.ticker : stockName}
-                  </strong>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {tx.transaction_type === 'EXCHANGE'
-                      ? `${t('exchange.currentRate')}: ₩${tx.price.toLocaleString()}`
-                      : `${tx.quantity}${tx.quantity !== 1 ? '' : ''} × ${fmt(tx.price)}`}
-                  </div>
+                  {tx.transaction_type === 'EXCHANGE' ? (() => {
+                    const fromCur = tx.currency
+                    const toCur = tx.ticker.split('/')[1] || (fromCur === 'KRW' ? 'USD' : 'KRW')
+                    const fromAmt = fromCur === 'KRW'
+                      ? `₩${Math.round(tx.total_amount).toLocaleString()}`
+                      : `$${Number(tx.total_amount).toFixed(2)}`
+                    const convertedAmt = fromCur === 'KRW'
+                      ? tx.total_amount / tx.price
+                      : tx.total_amount * tx.price
+                    const toAmt = toCur === 'KRW'
+                      ? `₩${Math.round(convertedAmt).toLocaleString()}`
+                      : `$${Number(convertedAmt).toFixed(2)}`
+                    return (
+                      <>
+                        <strong style={{ fontSize: 15 }}>{fromAmt} → {toAmt}</strong>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                          ₩{Number(tx.price).toLocaleString()} / $1
+                        </div>
+                      </>
+                    )
+                  })() : (
+                    <>
+                      <strong style={{ fontSize: 15 }}>{stockName}</strong>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        {tx.quantity} × {fmt(tx.price)}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{fmt(tx.total_amount)}</div>
+                {tx.transaction_type === 'EXCHANGE' ? (
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('exchange.title')}</div>
+                ) : (
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{fmt(tx.total_amount)}</div>
+                )}
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{date}</div>
                 {tx.realized_pnl !== 0 && (
                   <div style={{ fontSize: 12, color: tx.realized_pnl > 0 ? 'var(--positive)' : 'var(--negative)' }}>

@@ -40,7 +40,10 @@ function Exchange() {
       (err) => setMessage(err)
     )
     if (data) {
-      setMessage(`${t('exchange.title')} ${t('trade.buySuccess')}`)
+      const ex = data.exchange
+      const fromFmt = ex.from === 'KRW' ? `₩${Math.round(ex.amount).toLocaleString()}` : `$${Number(ex.amount).toFixed(2)}`
+      const toFmt = ex.to === 'KRW' ? `₩${Math.round(ex.converted).toLocaleString()}` : `$${Number(ex.converted).toFixed(2)}`
+      setMessage(`${fromFmt} → ${toFmt}`)
       setIsSuccess(true)
       setAccount({ ...account, balance_krw: data.balance.krw, balance_usd: data.balance.usd })
       setAmount('')

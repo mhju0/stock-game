@@ -234,7 +234,7 @@ function Game() {
           </div>
         </div>
 
-        {mergedChartData.length < 2 ? (
+        {mergedChartData.length === 0 ? (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('game.day1Title')}</div>
@@ -263,8 +263,12 @@ function Game() {
               <Tooltip formatter={(value, name) => [`${value?.toFixed(2)}%`, name]}
                 labelStyle={{ fontSize: 12 }} contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13 }} />
               <Legend />
-              <Line type="monotone" dataKey="portfolio" stroke="#007aff" strokeWidth={2} dot={false} name={t('game.myPortfolio')} connectNulls />
-              <Line type="monotone" dataKey="benchmark" stroke="#86868b" strokeWidth={1.5} dot={false} strokeDasharray="4 4"
+              <Line type="monotone" dataKey="portfolio" stroke="#007aff" strokeWidth={2}
+                dot={mergedChartData.length <= 2 ? { r: 5, fill: '#007aff', stroke: '#fff', strokeWidth: 2 } : false}
+                name={t('game.myPortfolio')} connectNulls />
+              <Line type="monotone" dataKey="benchmark" stroke="#86868b" strokeWidth={1.5}
+                dot={mergedChartData.length <= 2 ? { r: 4, fill: '#86868b', stroke: '#fff', strokeWidth: 2 } : false}
+                strokeDasharray="4 4"
                 name={benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'} connectNulls />
             </LineChart>
           </ResponsiveContainer>
