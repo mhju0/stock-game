@@ -8,7 +8,7 @@ import { UserContext } from "../context/UserContext";
 import { useWatchlistQuery, queryKeys } from '../query/queries'
 
 
-function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n, t }) {
+function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n, t, isKR }) {
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
       const nameA = getStockName(a.ticker, a.name, i18n.language)
@@ -33,10 +33,10 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
         </div>
         <select className="input" style={{ width: 'auto', fontSize: 12, padding: '4px 8px', minWidth: 100 }}
           value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="name_asc">{t('sort.nameAsc')}</option>
-          <option value="name_desc">{t('sort.nameDesc')}</option>
-          <option value="price_desc">{i18n.language === 'ko' ? '가격 ↓' : 'Price ↓'}</option>
-          <option value="price_asc">{i18n.language === 'ko' ? '가격 ↑' : 'Price ↑'}</option>
+          <option value="name_asc">{isKR ? '이름 ㄱ→ㅎ' : 'Name A→Z'}</option>
+          <option value="name_desc">{isKR ? '이름 ㅎ→ㄱ' : 'Name Z→A'}</option>
+          <option value="price_desc">{isKR ? '가격 ↓' : 'Price ↓'}</option>
+          <option value="price_asc">{isKR ? '가격 ↑' : 'Price ↑'}</option>
         </select>
       </div>
       {sorted.map((item) => {
@@ -128,6 +128,7 @@ function Watchlist() {
         setSort={setSortKR}
         i18n={i18n}
         t={t}
+        isKR={true}
       />
 
       <WatchlistSection
@@ -139,6 +140,7 @@ function Watchlist() {
         setSort={setSortUS}
         i18n={i18n}
         t={t}
+        isKR={false}
       />
 
       {tradeTicker && (
