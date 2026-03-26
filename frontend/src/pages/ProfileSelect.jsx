@@ -55,7 +55,10 @@ function ProfileSelect() {
 
   const handleDeleteGame = async (e, gameId, gameName) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete "${gameName}"?\nAll holdings, transactions, and history will be permanently erased.`)) {
+    const confirmMsg = i18n.language === 'ko'
+      ? `"${gameName}" 게임을 삭제하시겠습니까?\n모든 보유 종목, 거래내역, 기록이 영구적으로 삭제됩니다.`
+      : `Delete "${gameName}"?\nAll holdings, transactions, and history will be permanently erased.`
+    if (!window.confirm(confirmMsg)) {
       return;
     }
     const data = await apiDelete(`/users/${gameId}`, setError);
