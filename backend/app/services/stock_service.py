@@ -2,6 +2,8 @@ import yfinance as yf
 import requests
 import time
 
+from app.services.static_fundamentals import STATIC_FUNDAMENTALS
+
 # ── Caches ──────────────────────────────────────────────────────────
 _price_cache: dict[str, dict] = {}
 PRICE_CACHE_TTL = 300
@@ -273,6 +275,45 @@ def get_stock_price(ticker: str) -> float | None:
         return None
 
 
+def _yf_market_cap(ticker: str) -> int:
+    """Often works on serverless when full `.info` is empty or blocked."""
+    try:
+        fast_info = yf.Ticker(ticker).fast_info
+        cap = fast_info.get("market_cap") or fast_info.get("marketCap") or 0
+        if cap:
+            return int(cap)
+    except Exception:
+        pass
+    try:
+        info = yf.Ticker(ticker).info
+        cap = info.get("marketCap", 0) if info else 0
+        return int(cap) if cap else 0
+    except Exception:
+        return 0
+
+
+def _complete_info_payload(ticker: str, base: dict) -> dict:
+    """Fill sector/industry from static map; market cap from fast_info when missing."""
+    r = base.copy()
+    pair = STATIC_FUNDAMENTALS.get(ticker)
+    if pair:
+        sec, ind = pair
+        if not r.get("sector") or r.get("sector") == "Unknown":
+            r["sector"] = sec
+        if not r.get("industry") or r.get("industry") == "Unknown":
+            r["industry"] = ind
+    cap = r.get("marketCap") or 0
+    if cap == 0:
+        mc = _yf_market_cap(ticker)
+        if mc:
+            r["marketCap"] = mc
+    return r
+
+
+def _cache_info_value(result: dict) -> dict:
+    return {k: v for k, v in result.items() if k != "price"}
+
+
 # ── Stock Info (with cloud fallback) ─────────────────────────────────
 def get_stock_info(ticker: str) -> dict | None:
     now = time.time()
@@ -281,7 +322,7 @@ def get_stock_info(ticker: str) -> dict | None:
     if cached and now - cached["ts"] < INFO_CACHE_TTL:
         result = cached["value"].copy()
         result["price"] = get_stock_price(ticker)
-        return result
+        return _complete_info_payload(ticker, result)
 
     is_kr = ticker.endswith(".KS") or ticker.endswith(".KQ")
 
@@ -310,10 +351,11 @@ def get_stock_info(ticker: str) -> dict | None:
                 "industry": info.get("industry", "Unknown"),
                 "market": "KRX" if is_kr else "US",
                 "currency": "KRW" if is_kr else "USD",
-                "marketCap": info.get("marketCap", 0),
+                "marketCap": info.get("marketCap", 0) or 0,
             }
 
-            _info_cache[ticker] = {"value": result, "ts": now}
+            result = _complete_info_payload(ticker, result)
+            _info_cache[ticker] = {"value": _cache_info_value(result), "ts": now}
 
             result_with_price = result.copy()
             result_with_price["price"] = get_stock_price(ticker)
@@ -326,7 +368,7 @@ def get_stock_info(ticker: str) -> dict | None:
     if cached:
         result = cached["value"].copy()
         result["price"] = get_stock_price(ticker)
-        return result
+        return _complete_info_payload(ticker, result)
 
     # FALLBACK: .info failed — build from local name dicts + .history() price
     # This handles cloud servers where Yahoo blocks .info but .history works
@@ -354,5 +396,6 @@ def get_stock_info(ticker: str) -> dict | None:
         "price": price,
     }
 
-    _info_cache[ticker] = {"value": {k: v for k, v in result.items() if k != "price"}, "ts": now}
+    result = _complete_info_payload(ticker, result)
+    _info_cache[ticker] = {"value": _cache_info_value(result), "ts": now}
     return result

@@ -4,7 +4,13 @@ from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models import User, Holding, Transaction, PortfolioSnapshot, GameSession
 from app.services.exchange_service import get_exchange_rate
-from app.services.valuation_service import get_prices_for_tickers, get_infos_for_tickers, compute_user_total_value_krw
+from app.services.valuation_service import (
+    get_prices_for_tickers,
+    get_infos_for_tickers,
+    compute_user_total_value_krw,
+    resolved_sector,
+    resolved_industry,
+)
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
@@ -138,8 +144,8 @@ def get_holdings(user_id: int, db: Session = Depends(get_db)):
                 "ticker": h.ticker,
                 "name": h.name,
                 "market": h.market,
-                "sector": h.sector,
-                "industry": h.industry,
+                "sector": resolved_sector(info, h.sector),
+                "industry": resolved_industry(info, h.industry),
                 "quantity": h.quantity,
                 "avg_price": h.avg_price,
                 "current_price": current_price,
@@ -148,7 +154,7 @@ def get_holdings(user_id: int, db: Session = Depends(get_db)):
                 "total_value": (
                     round(current_price * h.quantity, 2) if current_price else 0
                 ),
-                "market_cap": market_cap, # <-- Added to response
+                "market_cap": market_cap,
             }
         )
     return result
