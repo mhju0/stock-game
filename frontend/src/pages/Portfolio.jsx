@@ -19,6 +19,7 @@ function Portfolio() {
   const [sortBy, setSortBy] = useState('alloc_desc')
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [filterSector, setFilterSector] = useState('ALL')
+  const [displayCurrency, setDisplayCurrency] = useState('KRW')
   const [tradeTicker, setTradeTicker] = useState(null)
 
   const fetchData = async () => {
@@ -91,17 +92,70 @@ function Portfolio() {
   return (
     <div>
       <div className="metric-grid">
-        {Object.entries(totalByMarket).map(([market, data]) => (
-          <div className="metric-card" key={market}>
-            <div className="metric-label">{market} {t('stock.totalValue')}</div>
-            <div className="metric-value">
-              {market === 'KRX' ? `₩${Math.round(data.value).toLocaleString()}` : `$${data.value.toFixed(2)}`}
-            </div>
-            <div className={data.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
-              {data.pnl >= 0 ? '+' : ''}{market === 'KRX' ? `₩${Math.round(data.pnl).toLocaleString()}` : `$${data.pnl.toFixed(2)}`}
-            </div>
-          </div>
-        ))}
+        {(() => {
+          const rate = account?.exchange_rate || 1350
+          const krxData = totalByMarket['KRX'] || { value: 0, pnl: 0 }
+          const usData = totalByMarket['US'] || { value: 0, pnl: 0 }
+          const totalVal = displayCurrency === 'KRW'
+            ? krxData.value + (usData.value * rate)
+            : (krxData.value / rate) + usData.value
+          const totalPnl = displayCurrency === 'KRW'
+            ? krxData.pnl + (usData.pnl * rate)
+            : (krxData.pnl / rate) + usData.pnl
+          const fmtVal = displayCurrency === 'KRW'
+            ? `₩${Math.round(totalVal).toLocaleString()}`
+            : `$${totalVal.toFixed(2)}`
+          const fmtPnl = displayCurrency === 'KRW'
+            ? `₩${Math.round(Math.abs(totalPnl)).toLocaleString()}`
+            : `$${Math.abs(totalPnl).toFixed(2)}`
+
+          return (
+            <>
+              <div className="metric-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div className="metric-label" style={{ marginBottom: 0 }}>{t('stock.totalValue')}</div>
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {['KRW', 'USD'].map(c => (
+                      <button key={c} className="btn" onClick={() => setDisplayCurrency(c)} style={{
+                        fontSize: 11, padding: '2px 8px', borderRadius: 6,
+                        background: displayCurrency === c ? 'var(--text-primary)' : 'transparent',
+                        color: displayCurrency === c ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                        border: '1px solid var(--border)', lineHeight: '16px',
+                      }}>{c === 'KRW' ? '₩' : '$'}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="metric-value">{fmtVal}</div>
+                <div className={totalPnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
+                  {totalPnl >= 0 ? '+' : '-'}{fmtPnl}
+                </div>
+              </div>
+              {Object.entries(totalByMarket).map(([market, data]) => {
+                const val = displayCurrency === 'KRW'
+                  ? (market === 'KRX' ? data.value : data.value * rate)
+                  : (market === 'KRX' ? data.value / rate : data.value)
+                const pnl = displayCurrency === 'KRW'
+                  ? (market === 'KRX' ? data.pnl : data.pnl * rate)
+                  : (market === 'KRX' ? data.pnl / rate : data.pnl)
+                const fmtV = displayCurrency === 'KRW'
+                  ? `₩${Math.round(val).toLocaleString()}`
+                  : `$${val.toFixed(2)}`
+                const fmtP = displayCurrency === 'KRW'
+                  ? `₩${Math.round(Math.abs(pnl)).toLocaleString()}`
+                  : `$${Math.abs(pnl).toFixed(2)}`
+                return (
+                  <div className="metric-card" key={market}>
+                    <div className="metric-label">{market}</div>
+                    <div className="metric-value">{fmtV}</div>
+                    <div className={pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
+                      {pnl >= 0 ? '+' : '-'}{fmtP}
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )
+        })()}
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>

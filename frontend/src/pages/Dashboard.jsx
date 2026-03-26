@@ -24,6 +24,7 @@ function Dashboard() {
   const [godMessage, setGodMessage] = useState('')
   const [tradeTicker, setTradeTicker] = useState(null)
   const [sortBy, setSortBy] = useState('alloc_desc')
+  const [displayCurrency, setDisplayCurrency] = useState('KRW')
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [error, setError] = useState('')
 
@@ -114,23 +115,51 @@ function Dashboard() {
     <div>
       <div className="metric-grid">
         <div className="metric-card">
-          <div className="metric-label">{t('dashboard.totalValue')}</div>
-          <div className="metric-value">{formatMoney(account.total_value_krw, 'KRW')}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
+            <div style={{ display: 'flex', gap: 2 }}>
+              {['KRW', 'USD'].map(c => (
+                <button key={c} className="btn" onClick={() => setDisplayCurrency(c)} style={{
+                  fontSize: 11, padding: '2px 8px', borderRadius: 6,
+                  background: displayCurrency === c ? 'var(--text-primary)' : 'transparent',
+                  color: displayCurrency === c ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                  border: '1px solid var(--border)', lineHeight: '16px',
+                }}>{c === 'KRW' ? '₩' : '$'}</button>
+              ))}
+            </div>
+          </div>
+          <div className="metric-value">
+            {displayCurrency === 'KRW'
+              ? formatMoney(account.total_value_krw, 'KRW')
+              : `$${(account.total_value_krw / (account.exchange_rate || 1350)).toFixed(2)}`}
+          </div>
           <div className={account.daily_change_pct >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
             {account.daily_change_pct >= 0 ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}
           </div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.holdingsValue')}</div>
-          <div className="metric-value">{formatMoney(account.holdings_value_total_krw, 'KRW')}</div>
+          <div className="metric-value">
+            {displayCurrency === 'KRW'
+              ? formatMoney(account.holdings_value_total_krw, 'KRW')
+              : `$${(account.holdings_value_total_krw / (account.exchange_rate || 1350)).toFixed(2)}`}
+          </div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashKRW')}</div>
-          <div className="metric-value">{formatMoney(account.balance_krw, 'KRW')}</div>
+          <div className="metric-value">
+            {displayCurrency === 'KRW'
+              ? formatMoney(account.balance_krw, 'KRW')
+              : `$${(account.balance_krw / (account.exchange_rate || 1350)).toFixed(2)}`}
+          </div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashUSD')}</div>
-          <div className="metric-value">${(account.balance_usd ?? 0).toFixed(2)}</div>
+          <div className="metric-value">
+            {displayCurrency === 'USD'
+              ? `$${(account.balance_usd ?? 0).toFixed(2)}`
+              : formatMoney((account.balance_usd ?? 0) * (account.exchange_rate || 1350), 'KRW')}
+          </div>
         </div>
       </div>
 
