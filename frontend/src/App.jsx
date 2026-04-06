@@ -39,7 +39,7 @@ function App() {
       <div className="app">
         <nav className="nav">
           <div className="nav-left">
-            <span className="nav-logo">{t("common.appName")}</span>
+            <span className="nav-logo">♔ {t("common.appName")}</span>
 
             <NavLink to="/dashboard" className="nav-link">
               {t("nav.dashboard")}
@@ -70,15 +70,17 @@ function App() {
             </NavLink>
           </div>
 
-          {/* New div wrapper to keep the right-side buttons organized */}
+          {/* Right-side controls */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               className="btn"
               onClick={() => setCurrentUserId(null)}
               style={{
-                fontSize: 12,
-                padding: "4px 8px",
-                border: "1px solid var(--border)",
+                fontSize: 11,
+                padding: "4px 10px",
+                border: "2px solid var(--border)",
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "1.5px",
               }}
             >
               {t("nav.myGames")}
@@ -88,6 +90,7 @@ function App() {
             </button>
           </div>
         </nav>
+
         <main className="main">
           <ErrorBoundary>
             <Routes>

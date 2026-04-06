@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vibeindex:*)",
+      "Bash(ls \"C:\\\\Users\\\\soldesk\\\\stock-game\\\\frontend\\\\public\"\" 2>/dev/null || echo \"no public dir \")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}
