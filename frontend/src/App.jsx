@@ -15,8 +15,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import Game from "./pages/Game";
 import "./App.css";
 
-// App.jsx is the main component that renders the entire application
-
 function App() {
   const { t, i18n } = useTranslation();
   const { currentUserId, setCurrentUserId } = useContext(UserContext);
@@ -25,7 +23,6 @@ function App() {
     i18n.changeLanguage(i18n.language === "ko" ? "en" : "ko");
   };
 
-  // If no user is selected, show the Profile Selection screen
   if (!currentUserId) {
     return (
       <div className="app">
@@ -39,7 +36,7 @@ function App() {
       <div className="app">
         <nav className="nav">
           <div className="nav-left">
-            <span className="nav-logo">♔ {t("common.appName")}</span>
+            <span className="nav-logo">{t("common.appName")}</span>
 
             <NavLink to="/dashboard" className="nav-link">
               {t("nav.dashboard")}
@@ -70,17 +67,13 @@ function App() {
             </NavLink>
           </div>
 
-          {/* Right-side controls */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               className="btn"
               onClick={() => setCurrentUserId(null)}
               style={{
-                fontSize: 11,
-                padding: "4px 10px",
-                border: "2px solid var(--border)",
-                fontFamily: "var(--font-mono)",
-                letterSpacing: "1.5px",
+                fontSize: 12,
+                padding: "5px 12px",
               }}
             >
               {t("nav.myGames")}
@@ -90,7 +83,6 @@ function App() {
             </button>
           </div>
         </nav>
-
         <main className="main">
           <ErrorBoundary>
             <Routes>
