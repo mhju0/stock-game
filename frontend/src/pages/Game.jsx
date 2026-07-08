@@ -67,8 +67,8 @@ function Game() {
   if (loading) return <p>{t('common.loading')}</p>
   if (!status) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load game data. Is the backend running?</p>
-      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+      <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
     </div>
   )
 

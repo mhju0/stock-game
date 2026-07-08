@@ -107,7 +107,7 @@ function Analytics() {
     !Array.isArray(performance.snapshots)
   ) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load analytics data. Is the backend running?</p>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
     </div>
   )
 

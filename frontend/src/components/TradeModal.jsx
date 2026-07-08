@@ -150,39 +150,28 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
         className="modal-content"
         role="dialog"
         aria-modal="true"
-        aria-label={i18n.language === 'ko' ? '주식 거래' : 'Stock trade'}
+        aria-labelledby="trade-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          ref={closeButtonRef}
-          className="modal-close-btn"
-          onClick={onClose}
-          aria-label="닫기"
-        >
-          ×
-        </button>
-        {loading ? (
-          <p>{t("common.loading")}</p>
-        ) : !stock || stock.error ? (
-          <p style={{ color: message ? 'var(--negative)' : 'var(--text-secondary)' }}>
-            {message || t("stock.notFound")}
-          </p>
-        ) : (
-          <>
-            <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ minWidth: 0 }}>
-                <div id="trade-modal-title" style={{ fontSize: 18, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {displayName}
-                </div>
+        <div className="trade-modal-header">
+          <div className="trade-modal-heading">
+            <div id="trade-modal-title" className="trade-modal-title">
+              {displayName}
+            </div>
+            {!loading && stock && !stock.error && (
+              <>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                   {ticker} · {stock.market}
                 </div>
                 <div style={{ fontSize: 13, marginTop: 4, color: myHolding > 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
                   {i18n.language === 'ko' ? `보유: ${myHolding}주` : `Holdings: ${myHolding} shares`}
                 </div>
-              </div>
+              </>
+            )}
+          </div>
 
+          <div className="trade-modal-actions">
+            {!loading && stock && !stock.error && (
               <button
                 type="button"
                 className="btn"
@@ -204,8 +193,27 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
               >
                 {isInWatchlist ? "★" : "☆"}
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              ref={closeButtonRef}
+              className="modal-close-btn"
+              onClick={onClose}
+              aria-label="닫기"
+            >
+              ×
+            </button>
+          </div>
+        </div>
 
+        {loading ? (
+          <p>{t("common.loading")}</p>
+        ) : !stock || stock.error ? (
+          <p style={{ color: message ? 'var(--negative)' : 'var(--text-secondary)' }}>
+            {message || t("stock.notFound")}
+          </p>
+        ) : (
+          <>
             <div
               style={{
                 background: "var(--bg-secondary)",
