@@ -1,6 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
 gunicorn
 sqlalchemy
+psycopg2-binary
 yfinance
 requests
+python-jose[cryptography]
+bcrypt
+python-dotenv

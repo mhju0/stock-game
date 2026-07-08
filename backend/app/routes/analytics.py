@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Holding, Transaction, PortfolioSnapshot, GameSession
+from app.models import User, Holding, Transaction, PortfolioSnapshot, GameSession
+from app.auth import get_current_user
 from app.services.exchange_service import get_exchange_rate
 from app.services.valuation_service import (
     get_prices_for_tickers,
@@ -20,7 +21,8 @@ def get_starting_value(db: Session, user_id: int) -> float:
     return session.starting_balance_krw if session else 10_000_000
 
 @router.get("/performance")
-def get_performance(user_id: int, limit: int | None = None, db: Session = Depends(get_db)):
+def get_performance(limit: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
     snapshots = db.query(PortfolioSnapshot).filter(
         PortfolioSnapshot.user_id == user_id
     ).order_by(PortfolioSnapshot.created_at.asc())
@@ -51,8 +53,8 @@ def get_performance(user_id: int, limit: int | None = None, db: Session = Depend
     }
 
 @router.get("/by-stock")
-def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
-    holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
+def performance_by_stock(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    holdings = db.query(Holding).filter(Holding.user_id == current_user.id).all()
     rate = get_exchange_rate()
     tickers = [h.ticker for h in holdings]
     prices = get_prices_for_tickers(tickers)
@@ -92,8 +94,8 @@ def performance_by_stock(user_id: int, db: Session = Depends(get_db)):
     return results
 
 @router.get("/by-sector")
-def performance_by_sector(user_id: int, db: Session = Depends(get_db)):
-    holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
+def performance_by_sector(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    holdings = db.query(Holding).filter(Holding.user_id == current_user.id).all()
     rate = get_exchange_rate()
     tickers = [h.ticker for h in holdings]
     prices = get_prices_for_tickers(tickers)
@@ -142,9 +144,9 @@ def performance_by_sector(user_id: int, db: Session = Depends(get_db)):
     return results
 
 @router.get("/realized")
-def realized_performance(user_id: int, db: Session = Depends(get_db)):
+def realized_performance(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     sells = db.query(Transaction).filter(
-        Transaction.user_id == user_id,
+        Transaction.user_id == current_user.id,
         Transaction.transaction_type == "SELL"
     ).order_by(Transaction.created_at.desc()).all()
 

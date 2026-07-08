@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from app.services.exchange_service import get_exchange_rate
 from app.database import get_db
+from app.auth import get_current_user
 from app.models import (
     User,
     Holding,
@@ -28,8 +29,9 @@ class NewGameRequest(BaseModel):
     duration_days: int = 90
 
 @router.post("/new")
-def start_new_game(request: NewGameRequest, user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
+def start_new_game(request: NewGameRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
+    user = current_user
 
     active_session = (
         db.query(GameSession)
@@ -81,7 +83,8 @@ def start_new_game(request: NewGameRequest, user_id: int, db: Session = Depends(
     }
 
 @router.get("/status")
-def game_status(user_id: int, db: Session = Depends(get_db)):
+def game_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
     session = (
         db.query(GameSession)
         .filter(GameSession.user_id == user_id, GameSession.is_active == True)
@@ -107,7 +110,7 @@ def game_status(user_id: int, db: Session = Depends(get_db)):
     days_remaining = max(0, remaining / 86400)
     days_elapsed = session.duration_days - days_remaining
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = current_user
     snapshots = (
         db.query(PortfolioSnapshot)
         .filter(PortfolioSnapshot.user_id == user_id)
@@ -137,10 +140,10 @@ def game_status(user_id: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/history")
-def game_history(user_id: int, limit: int = 100, offset: int = 0, db: Session = Depends(get_db)):
+def game_history(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     sessions = (
         db.query(GameSession)
-        .filter(GameSession.user_id == user_id, GameSession.is_active == False)
+        .filter(GameSession.user_id == current_user.id, GameSession.is_active == False)
         .order_by(GameSession.start_date.desc())
         .offset(max(0, offset))
         .limit(max(1, min(limit, 1000)))
@@ -169,7 +172,8 @@ def benchmark(index: str, days: int = 90):
     return data
 
 @router.get("/summary")
-def game_summary(user_id: int, db: Session = Depends(get_db)):
+def game_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
     session = (
         db.query(GameSession)
         .filter(GameSession.user_id == user_id, GameSession.is_active == True)
@@ -181,7 +185,7 @@ def game_summary(user_id: int, db: Session = Depends(get_db)):
 
     from app.models import Transaction, Holding, PortfolioSnapshot
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = current_user
     rate = get_exchange_rate()
 
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()

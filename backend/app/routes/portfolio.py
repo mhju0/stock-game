@@ -11,12 +11,14 @@ from app.services.valuation_service import (
     resolved_sector,
     resolved_industry,
 )
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 @router.get("/account")
-def get_account(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
+def get_account(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user = current_user
+    user_id = current_user.id
     rate = get_exchange_rate()
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     prices = get_prices_for_tickers([h.ticker for h in holdings])
@@ -125,7 +127,8 @@ def get_account(user_id: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/holdings")
-def get_holdings(user_id: int, db: Session = Depends(get_db)):
+def get_holdings(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
     holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     tickers = [h.ticker for h in holdings]
     prices = get_prices_for_tickers(tickers)
@@ -157,7 +160,8 @@ def get_holdings(user_id: int, db: Session = Depends(get_db)):
     return result
 
 @router.get("/transactions")
-def get_transactions(user_id: int, limit: int = 200, offset: int = 0, db: Session = Depends(get_db)):
+def get_transactions(limit: int = 200, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
     transactions = (
         db.query(Transaction)
         .filter(Transaction.user_id == user_id)
@@ -186,7 +190,8 @@ def get_transactions(user_id: int, limit: int = 200, offset: int = 0, db: Sessio
     ]
 
 @router.get("/snapshots")
-def get_snapshots(user_id: int, limit: int = 500, offset: int = 0, db: Session = Depends(get_db)):
+def get_snapshots(limit: int = 500, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
     snapshots = (
         db.query(PortfolioSnapshot)
         .filter(PortfolioSnapshot.user_id == user_id)

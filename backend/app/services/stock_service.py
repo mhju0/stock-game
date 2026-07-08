@@ -1,4 +1,7 @@
-import yfinance as yf
+try:
+    import yfinance as yf
+except Exception:  # yfinance import must never abort app startup
+    yf = None
 import requests
 import time
 

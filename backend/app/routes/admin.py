@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, GameSession, PortfolioSnapshot
+from app.auth import get_current_user
 from app.services.exchange_service import get_exchange_rate
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -12,18 +13,16 @@ class FundsRequest(BaseModel):
     amount: float
 
 @router.post("/add-funds")
-def add_funds(request: FundsRequest, user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
+def add_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
+    user = current_user
+
     session = db.query(GameSession).filter(
-        GameSession.user_id == user_id, 
+        GameSession.user_id == user_id,
         GameSession.is_active == True
     ).first()
     rate = get_exchange_rate()
-    
-    # Grab all historical snapshots for this user
+
     snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user_id).all()
         
     if request.currency.upper() == "KRW":
@@ -56,18 +55,16 @@ def add_funds(request: FundsRequest, user_id: int, db: Session = Depends(get_db)
     }
 
 @router.post("/remove-funds")
-def remove_funds(request: FundsRequest, user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
+def remove_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
+    user = current_user
+
     session = db.query(GameSession).filter(
-        GameSession.user_id == user_id, 
+        GameSession.user_id == user_id,
         GameSession.is_active == True
     ).first()
     rate = get_exchange_rate()
-    
-    # Grab all historical snapshots for this user
+
     snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user_id).all()
         
     if request.currency.upper() == "KRW":

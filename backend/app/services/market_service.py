@@ -1,7 +1,12 @@
-import yfinance as yf
+try:
+    import yfinance as yf
+except Exception:  # yfinance import must never abort app startup
+    yf = None
 import time
 import threading
 from datetime import datetime, time as dt_time
+
+_yf_semaphore = threading.Semaphore(4)
 from zoneinfo import ZoneInfo
 from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 
@@ -98,10 +103,11 @@ def fetch_top_30(market: str) -> list:
     names = US_NAMES if market == "US" else KR_NAMES
 
     try:
-        data = yf.download(
-            candidates, period="2d", group_by="ticker",
-            threads=True, progress=False,
-        )
+        with _yf_semaphore:
+            data = yf.download(
+                candidates, period="2d", group_by="ticker",
+                threads=4, progress=False,
+            )
     except Exception as e:
         print(f"Batch download failed for {market}: {e}")
         return []
@@ -137,7 +143,8 @@ def fetch_top_30(market: str) -> list:
                 "change_pct": round(change_pct, 2),
                 "currency": "KRW" if market == "KR" else "USD",
             })
-        except Exception:
+        except Exception as e:
+            print(f"Warning: skipping ticker {ticker}: {e}")
             continue
 
     # Already in rank order from the static list, just take top 30
@@ -176,5 +183,6 @@ def get_top_30(market: str) -> list:
 
 
 def schedule_refresh():
-    for market in ("US", "KR"):
-        refresh_cache(market)
+    refresh_cache("US")
+    time.sleep(2)
+    refresh_cache("KR")

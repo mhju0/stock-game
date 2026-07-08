@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Watchlist
+from app.models import User, Watchlist
+from app.auth import get_current_user
 from app.services.stock_service import get_stock_info
 from app.services.valuation_service import get_prices_for_tickers
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
 @router.get("/")
-def get_watchlist(user_id: int, db: Session = Depends(get_db)):
-    items = db.query(Watchlist).filter(Watchlist.user_id == user_id).all() 
+def get_watchlist(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    items = db.query(Watchlist).filter(Watchlist.user_id == current_user.id).all()
     prices = get_prices_for_tickers([item.ticker for item in items])
     result = []
     for item in items:
@@ -26,17 +27,17 @@ def get_watchlist(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/contains")
-def contains_watchlist_item(ticker: str, user_id: int, db: Session = Depends(get_db)):
+def contains_watchlist_item(ticker: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     item = db.query(Watchlist).filter(
-        Watchlist.user_id == user_id,
+        Watchlist.user_id == current_user.id,
         Watchlist.ticker == ticker
     ).first()
     return {"ticker": ticker, "in_watchlist": bool(item)}
 
 @router.post("/add")
-def add_to_watchlist(ticker: str, user_id: int, db: Session = Depends(get_db)):
+def add_to_watchlist(ticker: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     existing = db.query(Watchlist).filter(
-        Watchlist.user_id == user_id,
+        Watchlist.user_id == current_user.id,
         Watchlist.ticker == ticker
     ).first()
     if existing:
@@ -47,7 +48,7 @@ def add_to_watchlist(ticker: str, user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Stock not found")
 
     item = Watchlist(
-        user_id=user_id, 
+        user_id=current_user.id,
         ticker=ticker,
         name=info["name"],
         market=info["market"],
@@ -57,9 +58,9 @@ def add_to_watchlist(ticker: str, user_id: int, db: Session = Depends(get_db)):
     return {"status": "success", "ticker": ticker}
 
 @router.delete("/remove/{ticker}")
-def remove_from_watchlist(ticker: str, user_id: int, db: Session = Depends(get_db)): 
+def remove_from_watchlist(ticker: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     item = db.query(Watchlist).filter(
-        Watchlist.user_id == user_id, 
+        Watchlist.user_id == current_user.id,
         Watchlist.ticker == ticker
     ).first()
     if not item:

@@ -9,9 +9,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=True)
     balance_krw = Column(Float, default=10_000_000)
     balance_usd = Column(Float, default=0.0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     holdings = relationship("Holding", back_populates="user")
     transactions = relationship("Transaction", back_populates="user")
@@ -53,7 +54,7 @@ class Transaction(Base):
     industry = Column(String)
     total_amount = Column(Float, nullable=False)
     realized_pnl = Column(Float, default=0.0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")
 
@@ -80,7 +81,7 @@ class PortfolioSnapshot(Base):
     cash_krw = Column(Float, nullable=False)
     cash_usd = Column(Float, nullable=False)
     exchange_rate = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="snapshots")
 
@@ -93,8 +94,8 @@ class GameSession(Base):
     starting_balance_krw = Column(Float, nullable=False)
     starting_balance_usd = Column(Float, default=0.0)
     duration_days = Column(Integer, nullable=False)
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
+    start_date = Column(DateTime(timezone=True), nullable=False)
+    end_date = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True)
     final_value_krw = Column(Float, nullable=True)
     final_return_pct = Column(Float, nullable=True)

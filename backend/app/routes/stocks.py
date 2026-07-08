@@ -1,4 +1,7 @@
-import yfinance as yf
+try:
+    import yfinance as yf
+except Exception:  # yfinance import must never abort app startup
+    yf = None
 from fastapi import APIRouter
 from app.services.stock_service import get_stock_info, search_stocks
 from app.services.exchange_service import get_exchange_rate

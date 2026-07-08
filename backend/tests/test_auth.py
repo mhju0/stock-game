@@ -1,0 +1,51 @@
+from jose import jwt
+
+
+SECRET = "test-secret-key-for-pytest-do-not-use-in-prod"
+ALGORITHM = "HS256"
+
+
+class TestRegisterAndLogin:
+    def test_register_returns_valid_jwt(self, client):
+        resp = client.post("/auth/register", json={"username": "alice", "password": "pw1234"})
+        assert resp.status_code == 201
+        body = resp.json()
+        assert "access_token" in body
+        payload = jwt.decode(body["access_token"], SECRET, algorithms=[ALGORITHM])
+        assert str(body["user_id"]) == payload["sub"]
+        assert body["username"] == payload["username"]
+
+    def test_login_returns_same_user_id(self, client):
+        client.post("/auth/register", json={"username": "bob", "password": "pw1234"})
+        resp = client.post("/auth/login", json={"username": "bob", "password": "pw1234"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "access_token" in body
+
+        payload = jwt.decode(body["access_token"], SECRET, algorithms=[ALGORITHM])
+        assert str(body["user_id"]) == payload["sub"]
+
+    def test_login_wrong_password_rejected(self, client):
+        client.post("/auth/register", json={"username": "carol", "password": "correct"})
+        resp = client.post("/auth/login", json={"username": "carol", "password": "wrong"})
+        assert resp.status_code == 401
+
+    def test_duplicate_username_rejected(self, client):
+        client.post("/auth/register", json={"username": "dave", "password": "pw"})
+        resp = client.post("/auth/register", json={"username": "dave", "password": "other"})
+        assert resp.status_code == 409
+
+
+class TestProtectedRoutes:
+    def test_missing_token_rejected(self, client):
+        resp = client.delete("/users/1")
+        assert resp.status_code in (401, 403)
+
+    def test_garbage_token_rejected(self, client):
+        resp = client.delete("/users/1", headers={"Authorization": "Bearer not.a.real.token"})
+        assert resp.status_code in (401, 403)
+
+    def test_get_users_list_not_publicly_accessible(self, client):
+        resp = client.get("/users")
+        # Route was deleted — must not return a 200 list of users
+        assert resp.status_code != 200
