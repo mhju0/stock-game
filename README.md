@@ -8,29 +8,39 @@
 
 ## 주요 기능
 
-- **실시간 시세 조회** — yfinance 기반 US / KR 마켓 가격 제공
+- **JWT 인증** — bcrypt 비밀번호 해싱 기반 회원가입 / 로그인, 7일 만료 토큰
+- **실시간 시세 조회** — yfinance 기반 US / KR 마켓 가격 제공 (인메모리 캐싱 적용)
 - **이중 통화 포트폴리오** — USD / KRW 잔고 관리 및 실시간 FX 환전
+- **매매 & 손익 계산** — 평균 단가(average cost) 기반 보유 종목 관리, 실현/미실현 손익 추적
 - **벤치마크 비교** — S&P 500, KOSPI 지수 대비 수익률 측정
-- **Analytics 대시보드** — Recharts 기반 종목별·섹터별 시각화
-- **멀티 포트폴리오** — 독립된 투자 전략을 병렬로 운영 가능
+- **Analytics 대시보드** — Recharts 기반 수익률·자산 배분 추이, 종목별 시각화
+- **게임 세션** — 시작 자본·기간을 설정한 투자 챌린지, 종료 시 성과 요약 (best/worst trade, win rate 등)
+- **Watchlist & Top 30** — 관심 종목 저장, 시가총액 상위 30개 종목 랭킹
+- **한국어 / 영어 i18n** — react-i18next 기반 전체 UI 다국어 지원
 
 ---
 
 ## 아키텍처
 
-단순히 상태를 저장하는 것이 아니라, **데이터 흐름의 일관성을 유지하는 것**에 초점을 맞춘 설계입니다.
-
-### Transaction 기반 상태 계산
-
-포트폴리오 잔고와 보유 종목을 독립된 레코드로 저장하지 않습니다. 모든 상태는 append-only `Transaction` 로그(매수, 매도, FX 환전)로부터 동적으로 계산되며, 이를 통해 완전한 audit trail과 특정 시점의 상태 복원이 가능합니다. 주기적인 Snapshot과 인메모리 캐싱으로 조회 시 연산 비용을 최소화했습니다.
+상태를 단순히 저장하는 것을 넘어, **데이터 흐름의 일관성과 감사 가능성(auditability)** 에 초점을 맞춘 설계입니다.
 
 ### Service Layer 분리
 
-HTTP `routes`는 요청 검증과 응답 포맷팅만 담당합니다. 핵심 비즈니스 로직은 별도의 `services` 레이어에 격리하여, transport 계층과 무관하게 테스트 및 재사용이 가능한 구조를 구축했습니다.
+HTTP `routes`는 요청 검증과 응답 포맷팅, 인증(`Depends(get_current_user)`)만 담당합니다. 핵심 비즈니스 로직(매매, 환전, 평가, 스냅샷)은 별도의 `services` 레이어에 격리하여, transport 계층과 무관하게 테스트 및 재사용이 가능한 구조를 구축했습니다.
 
-### Data Modeling
+### 상태 모델: 가변 잔고 + 감사 로그 + 시계열 스냅샷
 
-Portfolio를 독립 엔티티로 분리하여 한 명의 유저가 복수의 전략을 병렬 운영할 수 있도록 했습니다. 통화 단위를 트랜잭션별로 명시 관리하여, 환율 변동이 성과 지표를 왜곡하는 것을 방지합니다.
+- **현재 상태**(현금 잔고 `User.balance_*`, 보유 종목 `Holding`)는 직접 저장·갱신되어 조회 시 연산 비용이 없습니다.
+- 모든 매수·매도·환전은 append-only `Transaction` 로그로 기록되어 완전한 **audit trail**과 실현 손익(realized P&L) 계산의 근거가 됩니다.
+- 주기적인 `PortfolioSnapshot`(시간별 + 매 거래 시점)으로 자산 가치의 **시계열**을 남겨, 수익률 곡선과 벤치마크 비교를 지원합니다.
+
+### Currency-aware Data Modeling
+
+통화 단위를 트랜잭션·보유 종목별로 명시 관리하고, 모든 합산 지표는 환율을 적용해 KRW 기준으로 정규화합니다. 이를 통해 환율 변동이 성과 지표를 왜곡하는 것을 방지합니다.
+
+### yfinance 의존성 완화
+
+비공식 데이터 소스(yfinance)의 불안정성에 대응하기 위해 다층 방어를 적용했습니다 — 가격/정보/환율 **인메모리 캐시**(TTL 300/600/3600초), 섹터·산업 **정적 매핑**(`static_fundamentals.py`), 시가총액 상위 종목 **정적 랭킹 리스트**, 호출 throttling(`Semaphore`), 그리고 실패 시 **stale-cache fallback**.
 
 ---
 
@@ -38,15 +48,16 @@ Portfolio를 독립 엔티티로 분리하여 한 명의 유저가 복수의 전
 
 | 레이어 | 구성 |
 |---|---|
-| Backend | Python · FastAPI · SQLAlchemy · SQLite · yfinance |
-| Frontend | React 19 · Vite · Recharts · react-i18next · React Router |
-| Deploy | Vercel (Frontend) · Render (API) |
+| Backend | Python 3.11 · FastAPI · SQLAlchemy · SQLite · yfinance |
+| Auth | JWT (`python-jose`) · `bcrypt` |
+| Frontend | React 19 · Vite · React Router 7 · TanStack Query · Recharts · react-i18next |
+| Deploy | Vercel (Frontend) · Render (API, gunicorn + Uvicorn workers) |
 
 ---
 
 ## 시작하기
 
-**사전 요구사항:** Python 3.10+ · Node.js 18+
+**사전 요구사항:** Python 3.11 · Node.js 18+
 
 ### Backend
 
@@ -54,20 +65,36 @@ Portfolio를 독립 엔티티로 분리하여 한 명의 유저가 복수의 전
 cd backend
 python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# JWT_SECRET_KEY는 필수입니다. 없으면 서버가 시작되지 않습니다.
+cp .env.example .env
+python3 -c "import secrets; print(secrets.token_hex(32))"   # 출력값을 .env의 JWT_SECRET_KEY에 입력
+
 uvicorn app.main:app --reload
 # → http://127.0.0.1:8000  (API 문서: /docs)
 ```
+
+> SQLite DB(`backend/stock_game.db`)는 최초 실행 시 자동 생성됩니다.
 
 ### Frontend
 
 ```bash
 cd frontend
-npm install && npm run dev
+npm install
+echo "VITE_API_URL=http://127.0.0.1:8000" > .env.local   # 미설정 시 127.0.0.1:8000 기본값
+npm run dev
 # → http://localhost:5173
 ```
 
-> Backend는 별도 환경 변수 없이 SQLite DB가 자동 생성됩니다.
-> Frontend의 경우 `frontend/.env.local`에 `VITE_API_URL=http://127.0.0.1:8000`을 추가해 주세요.
+---
+
+## 환경 변수
+
+| 위치 | 변수 | 필수 | 설명 |
+|---|---|---|---|
+| backend | `JWT_SECRET_KEY` | ✅ | 토큰 서명 키 (미설정 시 서버 부팅 실패) |
+| backend | `FRONTEND_URL` | ⛔ | 프로덕션 프론트엔드 오리진 (CORS 허용 목록에 추가) |
+| frontend | `VITE_API_URL` | ⛔ | 백엔드 API 주소 (기본값 `http://127.0.0.1:8000`) |
 
 ---
 
@@ -75,22 +102,40 @@ npm install && npm run dev
 
 ```
 stock-game/
-├── backend/app/
-│   ├── main.py          # FastAPI 진입점
-│   ├── models.py        # SQLAlchemy 모델 (User, Holding, Transaction)
-│   ├── routes/          # Endpoint — trading, portfolio, analytics
-│   └── services/        # 비즈니스 로직 및 외부 API 통신 레이어
-└── frontend/src/
-    ├── pages/           # Dashboard, Analytics, Game
-    ├── context/         # 전역 상태 관리 (UserContext)
-    └── i18n/            # 다국어 지원 (KR / EN)
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # FastAPI 진입점 · 라우터 등록 · 백그라운드 루프
+│   │   ├── auth.py          # JWT 발급/검증, bcrypt 해싱
+│   │   ├── models.py        # SQLAlchemy 모델 (User, Holding, Transaction, Snapshot, GameSession)
+│   │   ├── schemas.py       # Pydantic 요청 스키마
+│   │   ├── routes/          # auth · users · stocks · trade · portfolio · watchlist · admin · analytics · game
+│   │   └── services/        # trading · market · stock · exchange · snapshot · valuation · benchmark · static_fundamentals
+│   ├── render.yaml          # Render 배포 설정
+│   └── Procfile             # gunicorn + UvicornWorker 시작 명령
+└── frontend/
+    ├── src/
+    │   ├── pages/           # Login · Register · Dashboard · Analytics · Portfolio · Watchlist · Market · Exchange · Transactions · SearchStock · Game
+    │   ├── components/      # TradeModal · ErrorBoundary · MarketFilter · SortSelect
+    │   ├── context/         # UserContext (JWT 기반 전역 상태)
+    │   ├── query/           # TanStack Query 훅
+    │   ├── i18n/            # 다국어 지원 (ko / en)
+    │   └── utils/           # formatters · stockNames
+    └── vercel.json          # SPA rewrite + 보안 헤더
 ```
+
+---
+
+## 알려진 제약 (Known Limitations)
+
+- **SQLite 영속성** — Render 무료 티어는 파일시스템이 ephemeral하므로, 영구 디스크를 연결하지 않으면 재배포 시 데이터가 초기화될 수 있습니다.
+- **yfinance 안정성** — 비공식 데이터 소스로, 일시적 장애 시 일부 시세가 비어 보일 수 있습니다 (캐시로 완화).
+- **콜드 스타트** — Render 무료 티어 백엔드는 첫 요청 시 약 30–60초의 wake-up 지연이 있습니다.
 
 ---
 
 ## Roadmap
 
-- **PostgreSQL 마이그레이션** — 동시성 제어 및 수평 확장
+- **데이터 영속성** — Render 영구 디스크 연결 또는 PostgreSQL 마이그레이션 (동시성 제어 · 수평 확장)
+- **테스트 커버리지** — service 레이어 대상 pytest 도입 (평균 단가 · 실현 손익 · 환전 · 스냅샷 로직)
 - **WebSocket 스트리밍** — polling 방식을 실시간 시세 피드로 전환
-- **Redis 캐싱** — yfinance rate limit 대응 및 응답 지연 최소화
-- **인증** — JWT 기반 authentication & authorization 도입
+- **Redis 캐싱** — yfinance rate limit 대응 및 인메모리 캐시의 워커 간 공유
