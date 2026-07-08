@@ -1,6 +1,7 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/userContext'
@@ -8,7 +9,8 @@ import { formatMoney } from '../utils/formatters'
 
 function Game() {
   const { t, i18n } = useTranslation()
-  const { currentUserId, setCurrentUserId } = useContext(UserContext)
+  const navigate = useNavigate()
+  const { currentUserId } = useContext(UserContext)
   
   const [status, setStatus] = useState(null)
   const [summary, setSummary] = useState(null)
@@ -80,7 +82,7 @@ function Game() {
         <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
           {t('game.noActiveDesc')}
         </p>
-        <button className="btn btn-primary" onClick={() => setCurrentUserId(null)}>
+        <button className="btn btn-primary" onClick={() => navigate('/games')}>
           {t('nav.myGames')}
         </button>
       </div>
@@ -170,7 +172,7 @@ function Game() {
           <button className="btn" style={{ flex: 1, border: '1px solid var(--border)' }}
             onClick={() => setShowSummary(false)}>{t('common.back')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }}
-            onClick={() => setCurrentUserId(null)}>{t('nav.myGames')}</button>
+            onClick={() => navigate('/games')}>{t('nav.myGames')}</button>
         </div>
       </div>
     )
@@ -214,7 +216,7 @@ function Game() {
           <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}
             onClick={() => setShowSummary(true)}>{t('game.summary')}</button>
           <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}
-            onClick={() => setCurrentUserId(null)}>{t('nav.myGames')}</button>
+            onClick={() => navigate('/games')}>{t('nav.myGames')}</button>
         </div>
       </div>
 

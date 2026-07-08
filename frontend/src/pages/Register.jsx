@@ -32,7 +32,7 @@ function Register() {
     setLoading(false)
     if (data && data.access_token) {
       setToken(data.access_token)
-      window.location.href = '/'
+      window.location.href = '/games'
     }
   }
 

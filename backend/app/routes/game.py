@@ -28,18 +28,74 @@ class NewGameRequest(BaseModel):
     starting_balance_krw: float = 10_000_000
     duration_days: int = 90
 
+@router.get("/sessions")
+def game_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    sessions = (
+        db.query(GameSession)
+        .filter(GameSession.user_id == current_user.id, GameSession.is_active == True)
+        .order_by(GameSession.start_date.desc())
+        .all()
+    )
+    latest_snapshot = (
+        db.query(PortfolioSnapshot)
+        .filter(PortfolioSnapshot.user_id == current_user.id)
+        .order_by(PortfolioSnapshot.created_at.desc())
+        .first()
+    )
+
+    result = []
+    now = datetime.now(timezone.utc)
+    for session in sessions:
+        end_date = (
+            session.end_date.replace(tzinfo=timezone.utc)
+            if session.end_date.tzinfo is None
+            else session.end_date
+        )
+        start_date = (
+            session.start_date.replace(tzinfo=timezone.utc)
+            if session.start_date.tzinfo is None
+            else session.start_date
+        )
+        current_value = (
+            latest_snapshot.total_value_krw
+            if latest_snapshot
+            else session.starting_balance_krw
+        )
+        current_return_pct = (
+            ((current_value - session.starting_balance_krw) / session.starting_balance_krw) * 100
+            if session.starting_balance_krw
+            else 0
+        )
+        last_updated = latest_snapshot.created_at if latest_snapshot else start_date
+
+        result.append(
+            {
+                "id": session.id,
+                "status": "expired" if end_date <= now else "active",
+                "starting_balance_krw": session.starting_balance_krw,
+                "current_value_krw": round(current_value, 2),
+                "current_return_pct": round(current_return_pct, 2),
+                "duration_days": session.duration_days,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "last_updated_at": last_updated.isoformat(),
+            }
+        )
+
+    return {"sessions": result}
+
 @router.post("/new")
 def start_new_game(request: NewGameRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     user_id = current_user.id
     user = current_user
 
-    active_session = (
+    active_sessions = (
         db.query(GameSession)
         .filter(GameSession.user_id == user_id, GameSession.is_active == True)
-        .first()
+        .all()
     )
 
-    if active_session:
+    for active_session in active_sessions:
         active_session.is_active = False
         active_session.final_value_krw = user.balance_krw
         active_session.final_return_pct = (

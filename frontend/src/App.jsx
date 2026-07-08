@@ -15,6 +15,7 @@ import Market from "./pages/Market";
 import Analytics from "./pages/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Game from "./pages/Game";
+import Games from "./pages/Games";
 import "./App.css";
 
 function RequireAuth({ children }) {
@@ -63,6 +64,9 @@ function AppLayout() {
           <NavLink to="/transactions" className="nav-link">
             {t("nav.transactions")}
           </NavLink>
+          <NavLink to="/games" className="nav-link">
+            {t("nav.myGames")}
+          </NavLink>
           <NavLink to="/" className="nav-link">
             {t("nav.game") || "Game"}
           </NavLink>
@@ -95,6 +99,7 @@ function AppLayout() {
             <Route path="/market" element={<Market />} />
             <Route path="/exchange" element={<Exchange />} />
             <Route path="/transactions" element={<Transactions />} />
+            <Route path="/games" element={<Games />} />
             <Route path="/" element={<Game />} />
           </Routes>
         </ErrorBoundary>

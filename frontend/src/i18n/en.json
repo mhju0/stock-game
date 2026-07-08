@@ -172,5 +172,16 @@
     "day1Desc": "Start trading to track your progress here",
     "myPortfolio": "My Portfolio",
     "vsBenchmark": "My Portfolio vs Benchmark"
+  },
+  "games": {
+    "title": "My Games",
+    "loading": "Loading game information...",
+    "redirecting": "Opening your active game...",
+    "emptyTitle": "No active games",
+    "emptyBody": "Start a new game to practice virtual investing.",
+    "start": "Start New Game",
+    "errorTitle": "Could not load game information",
+    "retry": "Try Again",
+    "selectBody": "Select an active game or start a new one."
   }
 }
