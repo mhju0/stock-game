@@ -1,269 +1,277 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
-from app.services.exchange_service import get_exchange_rate
-from app.database import get_db
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
 from app.auth import get_current_user
-from app.models import (
-    User,
-    Holding,
-    Transaction,
-    Watchlist,
-    PortfolioSnapshot,
-    GameSession,
-)
+from app.database import get_db
+from app.models import GameSession, Holding, PortfolioSnapshot, Transaction, User
+from app.schemas import GameSessionCreateRequest, NewGameRequest
 from app.services.benchmark_service import get_benchmark_data
-from app.services.snapshot_service import take_snapshot
+from app.services.exchange_service import get_exchange_rate
+from app.services.game_session_service import (
+    ensure_session_cash_initialized,
+    get_current_session,
+    get_owned_session,
+)
 from app.services.valuation_service import (
-    get_prices_for_tickers,
+    compute_session_total_value_krw,
     get_infos_for_tickers,
-    compute_user_total_value_krw,
+    get_prices_for_tickers,
     resolved_sector,
 )
 
 router = APIRouter(prefix="/game", tags=["game"])
 
-class NewGameRequest(BaseModel):
-    starting_balance_krw: float = 10_000_000
-    duration_days: int = 90
 
-@router.get("/sessions")
-def game_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    sessions = (
-        db.query(GameSession)
-        .filter(GameSession.user_id == current_user.id, GameSession.is_active == True)
-        .order_by(GameSession.start_date.desc())
+def _as_aware_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _iso(value: datetime | None) -> str | None:
+    aware = _as_aware_utc(value)
+    return aware.isoformat() if aware else None
+
+
+def _is_expired(session: GameSession, now: datetime | None = None) -> bool:
+    end_date = _as_aware_utc(session.end_date)
+    if end_date is None:
+        return False
+    return end_date <= (now or datetime.now(timezone.utc))
+
+
+def _effective_status(session: GameSession, now: datetime | None = None) -> str:
+    status = (session.status or "").lower()
+    if status in {"completed", "archived"}:
+        return status
+    if _is_expired(session, now):
+        return "expired"
+    if status:
+        return status
+    return "active" if session.is_active else "completed"
+
+
+def _ensure_session_cash_for_read(
+    db: Session,
+    session: GameSession,
+    user: User,
+) -> GameSession:
+    needs_commit = session.cash_krw is None or session.cash_usd is None
+    ensure_session_cash_initialized(session, user)
+    if needs_commit:
+        db.commit()
+        db.refresh(session)
+    return session
+
+
+def _session_starting_value_krw(session: GameSession, rate: float) -> float:
+    return (session.starting_balance_krw or 0.0) + (
+        (session.starting_balance_usd or 0.0) * rate
+    )
+
+
+def _session_holdings(db: Session, user_id: int, session_id: int) -> list[Holding]:
+    return (
+        db.query(Holding)
+        .filter(Holding.user_id == user_id, Holding.game_session_id == session_id)
         .all()
     )
-    latest_snapshot = (
+
+
+def _session_transactions(db: Session, user_id: int, session_id: int) -> list[Transaction]:
+    return (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user_id, Transaction.game_session_id == session_id)
+        .all()
+    )
+
+
+def _session_snapshots(
+    db: Session,
+    user_id: int,
+    session_id: int,
+) -> list[PortfolioSnapshot]:
+    return (
         db.query(PortfolioSnapshot)
-        .filter(PortfolioSnapshot.user_id == current_user.id)
+        .filter(
+            PortfolioSnapshot.user_id == user_id,
+            PortfolioSnapshot.game_session_id == session_id,
+        )
+        .order_by(PortfolioSnapshot.created_at.asc())
+        .all()
+    )
+
+
+def _session_current_value_krw(
+    session: GameSession,
+    holdings: list[Holding],
+    rate: float,
+) -> float:
+    prices = get_prices_for_tickers([h.ticker for h in holdings])
+    return compute_session_total_value_krw(session, holdings, rate, prices)
+
+
+def _latest_session_snapshot(
+    db: Session,
+    user_id: int,
+    session_id: int,
+) -> PortfolioSnapshot | None:
+    return (
+        db.query(PortfolioSnapshot)
+        .filter(
+            PortfolioSnapshot.user_id == user_id,
+            PortfolioSnapshot.game_session_id == session_id,
+        )
         .order_by(PortfolioSnapshot.created_at.desc())
         .first()
     )
 
-    result = []
-    now = datetime.now(timezone.utc)
-    for session in sessions:
-        end_date = (
-            session.end_date.replace(tzinfo=timezone.utc)
-            if session.end_date.tzinfo is None
-            else session.end_date
-        )
-        start_date = (
-            session.start_date.replace(tzinfo=timezone.utc)
-            if session.start_date.tzinfo is None
-            else session.start_date
-        )
-        current_value = (
-            latest_snapshot.total_value_krw
-            if latest_snapshot
-            else session.starting_balance_krw
-        )
-        current_return_pct = (
-            ((current_value - session.starting_balance_krw) / session.starting_balance_krw) * 100
-            if session.starting_balance_krw
-            else 0
-        )
-        last_updated = latest_snapshot.created_at if latest_snapshot else start_date
 
-        result.append(
-            {
-                "id": session.id,
-                "status": "expired" if end_date <= now else "active",
-                "starting_balance_krw": session.starting_balance_krw,
-                "current_value_krw": round(current_value, 2),
-                "current_return_pct": round(current_return_pct, 2),
-                "duration_days": session.duration_days,
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "last_updated_at": last_updated.isoformat(),
-            }
-        )
-
-    return {"sessions": result}
-
-@router.post("/new")
-def start_new_game(request: NewGameRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    user_id = current_user.id
-    user = current_user
-
-    active_sessions = (
-        db.query(GameSession)
-        .filter(GameSession.user_id == user_id, GameSession.is_active == True)
-        .all()
-    )
-
-    for active_session in active_sessions:
-        active_session.is_active = False
-        active_session.final_value_krw = user.balance_krw
-        active_session.final_return_pct = (
-            (user.balance_krw - active_session.starting_balance_krw)
-            / active_session.starting_balance_krw
-            * 100
-        )
-
-    db.query(Holding).filter(Holding.user_id == user_id).delete()
-    db.query(Transaction).filter(Transaction.user_id == user_id).delete()
-    db.query(Watchlist).filter(Watchlist.user_id == user_id).delete()
-    db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user_id).delete()
-
-    user.balance_krw = request.starting_balance_krw
-    user.balance_usd = 0.0
-
+def _create_session(
+    db: Session,
+    user: User,
+    *,
+    title: str | None,
+    duration_days: int,
+    starting_balance_krw: float,
+    starting_balance_usd: float = 0.0,
+) -> GameSession:
     now = datetime.now(timezone.utc)
     session = GameSession(
-        user_id=user_id,
-        starting_balance_krw=request.starting_balance_krw,
-        starting_balance_usd=0.0,
-        duration_days=request.duration_days,
+        user_id=user.id,
+        title=title or "Trading Simulation",
+        status="active",
+        starting_balance_krw=starting_balance_krw,
+        starting_balance_usd=starting_balance_usd,
+        cash_krw=starting_balance_krw,
+        cash_usd=starting_balance_usd,
+        duration_days=duration_days,
         start_date=now,
-        end_date=now + timedelta(days=request.duration_days),
+        end_date=now + timedelta(days=duration_days),
         is_active=True,
     )
     db.add(session)
-    db.commit()
 
-    take_snapshot(db, user_id=user_id)
+    # Legacy mirror for old routes that still read User.balance_* during migration.
+    user.balance_krw = starting_balance_krw
+    user.balance_usd = starting_balance_usd
+
+    db.commit()
+    db.refresh(session)
+    db.refresh(user)
+    return session
+
+
+def _serialize_session(db: Session, user: User, session: GameSession) -> dict:
+    _ensure_session_cash_for_read(db, session, user)
+    rate = get_exchange_rate()
+    holdings = _session_holdings(db, user.id, session.id)
+    current_value = _session_current_value_krw(session, holdings, rate)
+    starting_value = _session_starting_value_krw(session, rate)
+    latest_snapshot = _latest_session_snapshot(db, user.id, session.id)
+    start_date = _as_aware_utc(session.start_date)
+    end_date = _as_aware_utc(session.end_date)
+    last_updated = (
+        latest_snapshot.created_at
+        if latest_snapshot
+        else session.updated_at or session.created_at or session.start_date
+    )
 
     return {
-        "status": "success",
-        "session": {
-            "id": session.id,
-            "starting_balance_krw": session.starting_balance_krw,
-            "duration_days": session.duration_days,
-            "start_date": session.start_date.isoformat(),
-            "end_date": session.end_date.isoformat(),
-        },
+        "id": session.id,
+        "title": session.title,
+        "status": _effective_status(session),
+        "is_active": bool(session.is_active),
+        "is_expired": _is_expired(session),
+        "starting_balance_krw": session.starting_balance_krw,
+        "starting_balance_usd": session.starting_balance_usd or 0.0,
+        "cash_krw": session.cash_krw or 0.0,
+        "cash_usd": session.cash_usd or 0.0,
+        "current_value_krw": round(current_value, 2),
+        "current_return_pct": (
+            round(((current_value - starting_value) / starting_value) * 100, 2)
+            if starting_value
+            else 0
+        ),
+        "duration_days": session.duration_days,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "last_updated_at": _iso(last_updated),
+        "created_at": _iso(session.created_at),
+        "updated_at": _iso(session.updated_at),
+        "completed_at": _iso(session.completed_at),
     }
 
-@router.get("/status")
-def game_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    user_id = current_user.id
-    session = (
-        db.query(GameSession)
-        .filter(GameSession.user_id == user_id, GameSession.is_active == True)
-        .first()
-    )
 
-    if not session:
-        return {"active": False}
-
+def _build_session_status(db: Session, user: User, session: GameSession) -> dict:
+    _ensure_session_cash_for_read(db, session, user)
     now = datetime.now(timezone.utc)
-    end_date = (
-        session.end_date.replace(tzinfo=timezone.utc)
-        if session.end_date.tzinfo is None
-        else session.end_date
-    )
-    start_date = (
-        session.start_date.replace(tzinfo=timezone.utc)
-        if session.start_date.tzinfo is None
-        else session.start_date
-    )
-
-    remaining = (end_date - now).total_seconds()
+    start_date = _as_aware_utc(session.start_date)
+    end_date = _as_aware_utc(session.end_date)
+    remaining = (end_date - now).total_seconds() if end_date else 0
     days_remaining = max(0, remaining / 86400)
-    days_elapsed = session.duration_days - days_remaining
-
-    user = current_user
-    snapshots = (
-        db.query(PortfolioSnapshot)
-        .filter(PortfolioSnapshot.user_id == user_id)
-        .order_by(PortfolioSnapshot.created_at.desc())
-        .first()
+    days_elapsed = (
+        (now - start_date).total_seconds() / 86400
+        if start_date
+        else session.duration_days - days_remaining
     )
-
-    current_value = (
-        snapshots.total_value_krw if snapshots else session.starting_balance_krw
-    )
-    current_return = (
-        (current_value - session.starting_balance_krw) / session.starting_balance_krw
-    ) * 100
+    rate = get_exchange_rate()
+    holdings = _session_holdings(db, user.id, session.id)
+    current_value = _session_current_value_krw(session, holdings, rate)
+    starting_value = _session_starting_value_krw(session, rate)
 
     return {
-        "active": True,
+        "active": _effective_status(session, now) == "active",
         "session_id": session.id,
+        "title": session.title,
+        "status": _effective_status(session, now),
         "starting_balance_krw": session.starting_balance_krw,
+        "starting_balance_usd": session.starting_balance_usd or 0.0,
+        "cash_krw": session.cash_krw or 0.0,
+        "cash_usd": session.cash_usd or 0.0,
         "current_value_krw": round(current_value, 2),
-        "current_return_pct": round(current_return, 2),
+        "current_return_pct": (
+            round(((current_value - starting_value) / starting_value) * 100, 2)
+            if starting_value
+            else 0
+        ),
         "duration_days": session.duration_days,
         "days_elapsed": round(days_elapsed, 1),
         "days_remaining": round(days_remaining, 1),
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
         "is_expired": remaining <= 0,
     }
 
-@router.get("/history")
-def game_history(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    sessions = (
-        db.query(GameSession)
-        .filter(GameSession.user_id == current_user.id, GameSession.is_active == False)
-        .order_by(GameSession.start_date.desc())
-        .offset(max(0, offset))
-        .limit(max(1, min(limit, 1000)))
-        .all()
-    )
 
-    return [
-        {
-            "id": s.id,
-            "starting_balance_krw": s.starting_balance_krw,
-            "final_value_krw": s.final_value_krw,
-            "final_return_pct": s.final_return_pct,
-            "duration_days": s.duration_days,
-            "start_date": s.start_date.isoformat(),
-            "end_date": s.end_date.isoformat(),
-        }
-        for s in sessions
-    ]
-
-@router.get("/benchmark/{index}")
-def benchmark(index: str, days: int = 90):
-    # Benchmark doesn't need user_id as it just fetches public market data
-    data = get_benchmark_data(index, days)
-    if not data:
-        return {"error": "Could not fetch benchmark data"}
-    return data
-
-@router.get("/summary")
-def game_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    user_id = current_user.id
-    session = (
-        db.query(GameSession)
-        .filter(GameSession.user_id == user_id, GameSession.is_active == True)
-        .first()
-    )
-
-    if not session:
-        return {"active": False}
-
-    from app.models import Transaction, Holding, PortfolioSnapshot
-
-    user = current_user
+def _build_session_summary(db: Session, user: User, session: GameSession) -> dict:
+    _ensure_session_cash_for_read(db, session, user)
+    user_id = user.id
     rate = get_exchange_rate()
-
-    holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
+    holdings = _session_holdings(db, user_id, session.id)
     tickers = [h.ticker for h in holdings]
     prices = get_prices_for_tickers(tickers)
     infos = get_infos_for_tickers(tickers)
-    current_value = compute_user_total_value_krw(user, holdings, rate, prices)
-    total_return = current_value - session.starting_balance_krw
-    total_return_pct = (total_return / session.starting_balance_krw) * 100
+    current_value = compute_session_total_value_krw(session, holdings, rate, prices)
+    starting_value = _session_starting_value_krw(session, rate)
+    total_return = current_value - starting_value
+    total_return_pct = (total_return / starting_value) * 100 if starting_value else 0
 
-    all_transactions = db.query(Transaction).filter(Transaction.user_id == user_id).all()
-
+    all_transactions = _session_transactions(db, user_id, session.id)
     buys = [t for t in all_transactions if t.transaction_type == "BUY"]
     sells = [t for t in all_transactions if t.transaction_type == "SELL"]
     exchanges = [t for t in all_transactions if t.transaction_type == "EXCHANGE"]
 
-    total_realized = sum(t.realized_pnl for t in sells)
-    wins = [t for t in sells if t.realized_pnl > 0]
-    losses = [t for t in sells if t.realized_pnl < 0]
+    total_realized = sum(t.realized_pnl or 0.0 for t in sells)
+    wins = [t for t in sells if (t.realized_pnl or 0.0) > 0]
+    losses = [t for t in sells if (t.realized_pnl or 0.0) < 0]
 
-    best_trade = max(sells, key=lambda t: t.realized_pnl) if sells else None
-    worst_trade = min(sells, key=lambda t: t.realized_pnl) if sells else None
+    best_trade = max(sells, key=lambda t: t.realized_pnl or 0.0) if sells else None
+    worst_trade = min(sells, key=lambda t: t.realized_pnl or 0.0) if sells else None
 
     most_traded_tickers = {}
     for t in all_transactions:
@@ -278,53 +286,47 @@ def game_summary(db: Session = Depends(get_db), current_user: User = Depends(get
     sectors = {}
     for h in holdings:
         price = prices.get(h.ticker)
-        if not price:
+        if price is None:
             continue
-        val = price * h.quantity
+        value = price * h.quantity
         if h.currency == "USD":
-            val *= rate
+            value *= rate
         info = infos.get(h.ticker) or {}
-        s = resolved_sector(info, h.sector)
-        sectors[s] = sectors.get(s, 0) + val
+        sector = resolved_sector(info, h.sector)
+        sectors[sector] = sectors.get(sector, 0) + value
 
-    snapshots = (
-        db.query(PortfolioSnapshot)
-        .filter(PortfolioSnapshot.user_id == user_id)
-        .order_by(PortfolioSnapshot.created_at.asc())
-        .all()
-    )
-
+    snapshots = _session_snapshots(db, user_id, session.id)
     peak_value = max(
-        (s.total_value_krw for s in snapshots), default=session.starting_balance_krw
+        (s.total_value_krw for s in snapshots),
+        default=starting_value,
     )
     trough_value = min(
-        (s.total_value_krw for s in snapshots), default=session.starting_balance_krw
+        (s.total_value_krw for s in snapshots),
+        default=starting_value,
     )
 
     now = datetime.now(timezone.utc)
-    end_date = (
-        session.end_date.replace(tzinfo=timezone.utc)
-        if session.end_date.tzinfo is None
-        else session.end_date
-    )
-    start_date = (
-        session.start_date.replace(tzinfo=timezone.utc)
-        if session.start_date.tzinfo is None
-        else session.start_date
-    )
-    days_elapsed = (now - start_date).total_seconds() / 86400
+    start_date = _as_aware_utc(session.start_date)
+    end_date = _as_aware_utc(session.end_date)
+    days_elapsed = (now - start_date).total_seconds() / 86400 if start_date else 0
 
     return {
-        "active": True,
+        "active": _effective_status(session, now) == "active",
+        "session_id": session.id,
+        "title": session.title,
+        "status": _effective_status(session, now),
         "starting_balance": session.starting_balance_krw,
+        "starting_balance_krw": session.starting_balance_krw,
+        "starting_balance_usd": session.starting_balance_usd or 0.0,
         "current_value": round(current_value, 2),
+        "current_value_krw": round(current_value, 2),
         "total_return": round(total_return, 2),
         "total_return_pct": round(total_return_pct, 2),
         "duration_days": session.duration_days,
         "days_elapsed": round(days_elapsed, 1),
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
-        "is_expired": (end_date - now).total_seconds() <= 0,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "is_expired": _is_expired(session, now),
         "total_trades": len(buys) + len(sells),
         "total_buys": len(buys),
         "total_sells": len(sells),
@@ -356,6 +358,180 @@ def game_summary(db: Session = Depends(get_db), current_user: User = Depends(get
         "sectors": sectors,
         "peak_value": round(peak_value, 2),
         "trough_value": round(trough_value, 2),
-        "cash_krw": user.balance_krw,
-        "cash_usd": user.balance_usd,
+        "cash_krw": session.cash_krw or 0.0,
+        "cash_usd": session.cash_usd or 0.0,
     }
+
+
+@router.get("/sessions")
+def game_sessions(
+    include_all: bool = False,
+    include_completed: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Backward compatibility: the current frontend treats this endpoint as the
+    # playable sessions list. Full session history is opt-in until the frontend
+    # is session-routed and can represent completed/archived/imported sessions.
+    sessions = (
+        db.query(GameSession)
+        .filter(GameSession.user_id == current_user.id)
+        .order_by(GameSession.start_date.desc(), GameSession.id.desc())
+        .all()
+    )
+    if not include_all and not include_completed:
+        sessions = [
+            session
+            for session in sessions
+            if _effective_status(session) == "active" and bool(session.is_active)
+        ]
+    return {
+        "sessions": [
+            _serialize_session(db, current_user, session) for session in sessions
+        ]
+    }
+
+
+@router.post("/sessions")
+def create_game_session(
+    request: GameSessionCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = _create_session(
+        db,
+        current_user,
+        title=request.title,
+        duration_days=request.duration_days,
+        starting_balance_krw=request.starting_balance_krw,
+        starting_balance_usd=request.starting_balance_usd,
+    )
+    return {"status": "success", "session": _serialize_session(db, current_user, session)}
+
+
+@router.get("/sessions/{session_id}")
+def get_game_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_owned_session(db, current_user, session_id)
+    return {"session": _serialize_session(db, current_user, session)}
+
+
+@router.get("/sessions/{session_id}/status")
+def get_game_session_status(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_owned_session(db, current_user, session_id)
+    return _build_session_status(db, current_user, session)
+
+
+@router.get("/sessions/{session_id}/summary")
+def get_game_session_summary(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_owned_session(db, current_user, session_id)
+    return _build_session_summary(db, current_user, session)
+
+
+@router.post("/new")
+def start_new_game(
+    request: NewGameRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Compatibility alias for the current frontend. It no longer resets data;
+    # frontend copy should be updated before presenting it as a restart action.
+    session = _create_session(
+        db,
+        current_user,
+        title="Trading Simulation",
+        duration_days=request.duration_days,
+        starting_balance_krw=request.starting_balance_krw,
+        starting_balance_usd=0.0,
+    )
+    return {
+        "status": "success",
+        "session": {
+            "id": session.id,
+            "title": session.title,
+            "status": _effective_status(session),
+            "starting_balance_krw": session.starting_balance_krw,
+            "starting_balance_usd": session.starting_balance_usd or 0.0,
+            "cash_krw": session.cash_krw or 0.0,
+            "cash_usd": session.cash_usd or 0.0,
+            "duration_days": session.duration_days,
+            "start_date": session.start_date.isoformat(),
+            "end_date": session.end_date.isoformat(),
+        },
+    }
+
+
+@router.get("/status")
+def game_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_current_session(db, current_user)
+    if not session:
+        return {"active": False}
+    return _build_session_status(db, current_user, session)
+
+
+@router.get("/history")
+def game_history(
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sessions = (
+        db.query(GameSession)
+        .filter(GameSession.user_id == current_user.id, GameSession.is_active == False)
+        .order_by(GameSession.start_date.desc(), GameSession.id.desc())
+        .offset(max(0, offset))
+        .limit(max(1, min(limit, 1000)))
+        .all()
+    )
+
+    return [
+        {
+            "id": s.id,
+            "title": s.title,
+            "status": _effective_status(s),
+            "starting_balance_krw": s.starting_balance_krw,
+            "starting_balance_usd": s.starting_balance_usd or 0.0,
+            "cash_krw": s.cash_krw or 0.0,
+            "cash_usd": s.cash_usd or 0.0,
+            "final_value_krw": s.final_value_krw,
+            "final_return_pct": s.final_return_pct,
+            "duration_days": s.duration_days,
+            "start_date": s.start_date.isoformat(),
+            "end_date": s.end_date.isoformat(),
+        }
+        for s in sessions
+    ]
+
+
+@router.get("/benchmark/{index}")
+def benchmark(index: str, days: int = 90):
+    data = get_benchmark_data(index, days)
+    if not data:
+        return {"error": "Could not fetch benchmark data"}
+    return data
+
+
+@router.get("/summary")
+def game_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_current_session(db, current_user)
+    if not session:
+        return {"active": False}
+    return _build_session_summary(db, current_user, session)

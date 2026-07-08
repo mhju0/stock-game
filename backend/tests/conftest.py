@@ -62,11 +62,16 @@ def client(db_session):
     with patch("app.services.stock_service.get_stock_info", return_value=MOCK_STOCK_INFO), \
          patch("app.services.stock_service.get_stock_price", return_value=100.0), \
          patch("app.services.exchange_service.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
+         patch("app.services.valuation_service.get_stock_info", return_value=MOCK_STOCK_INFO), \
+         patch("app.services.valuation_service.get_stock_price", return_value=100.0), \
          patch("app.services.trading_service.get_stock_info", return_value=MOCK_STOCK_INFO), \
          patch("app.services.trading_service.get_stock_price", return_value=100.0), \
          patch("app.services.trading_service.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
          patch("app.services.snapshot_service.get_stock_price", return_value=100.0), \
-         patch("app.services.snapshot_service.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE):
+         patch("app.services.snapshot_service.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
+         patch("app.routes.analytics.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
+         patch("app.routes.game.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
+         patch("app.routes.portfolio.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE):
         yield TestClient(app, raise_server_exceptions=True)
 
     app.dependency_overrides.clear()
