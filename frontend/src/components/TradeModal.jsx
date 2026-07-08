@@ -2,7 +2,7 @@ import { apiFetch, apiPost } from '../api'
 import { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { getStockName } from "../utils/stockNames";
-import { UserContext } from "../context/UserContext";
+import { UserContext } from "../context/userContext";
 import { useQueryClient } from '@tanstack/react-query'
 import { useAccountQuery, useWatchlistContainsQuery, useWatchlistToggleMutation, queryKeys } from '../query/queries'
 

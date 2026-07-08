@@ -1,10 +1,10 @@
-import { apiFetch, apiPost } from '../api'
+import { apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
-import { UserContext } from '../context/UserContext'
+import { UserContext } from '../context/userContext'
 
 
 function SearchStock() {

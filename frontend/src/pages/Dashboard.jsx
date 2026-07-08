@@ -8,7 +8,7 @@ import { getStockName } from '../utils/stockNames'
 import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
-import { UserContext } from '../context/UserContext'
+import { UserContext } from '../context/userContext'
 import { useAccountQuery, useHoldingsQuery, queryKeys } from '../query/queries'
 
 

@@ -1,13 +1,21 @@
 import { API } from './config'
+import { getToken, removeToken } from './auth'
 
-/**
- * Wrapper around fetch that handles errors gracefully.
- * Returns the parsed JSON on success, or null on failure.
- * Optionally calls an onError callback with the error message.
- */
 export async function apiFetch(path, options = {}, onError = null) {
   try {
-    const res = await fetch(`${API}${path}`, options)
+    const headers = { ...options.headers }
+    const token = getToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const res = await fetch(`${API}${path}`, { ...options, headers })
+
+    if (res.status === 401 && token) {
+      removeToken()
+      window.location.href = '/login'
+      return null
+    }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
@@ -25,20 +33,12 @@ export async function apiFetch(path, options = {}, onError = null) {
   }
 }
 
-/**
- * Fire-and-forget GET that sets state directly.
- * Usage: apiGet('/portfolio/account?user_id=1', setAccount)
- */
 export function apiGet(path, setter, onError = null) {
   apiFetch(path, {}, onError).then(data => {
     if (data !== null) setter(data)
   })
 }
 
-/**
- * POST helper that returns the parsed response or null.
- * Usage: const data = await apiPost('/trade/buy?user_id=1', { ticker: 'AAPL', quantity: 5 })
- */
 export async function apiPost(path, body, onError = null) {
   return apiFetch(path, {
     method: 'POST',
@@ -47,9 +47,6 @@ export async function apiPost(path, body, onError = null) {
   }, onError)
 }
 
-/**
- * DELETE helper.
- */
 export async function apiDelete(path, onError = null) {
   return apiFetch(path, { method: 'DELETE' }, onError)
 }

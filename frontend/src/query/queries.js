@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiDelete } from '../api'
 
-/** Wrapper that throws on null so React Query triggers isError */
 async function apiFetchOrThrow(path) {
   const data = await apiFetch(path)
   if (data === null) throw new Error('API request failed')
@@ -19,7 +18,7 @@ export const queryKeys = {
 export function useAccountQuery(userId) {
   return useQuery({
     queryKey: queryKeys.account(userId),
-    queryFn: () => apiFetchOrThrow(`/portfolio/account?user_id=${userId}`),
+    queryFn: () => apiFetchOrThrow('/portfolio/account'),
     enabled: !!userId,
     staleTime: 30000,
     retry: 2,
@@ -30,7 +29,7 @@ export function useAccountQuery(userId) {
 export function useHoldingsQuery(userId) {
   return useQuery({
     queryKey: queryKeys.holdings(userId),
-    queryFn: () => apiFetchOrThrow(`/portfolio/holdings?user_id=${userId}`),
+    queryFn: () => apiFetchOrThrow('/portfolio/holdings'),
     enabled: !!userId,
     staleTime: 30000,
     retry: 2,
@@ -41,7 +40,7 @@ export function useHoldingsQuery(userId) {
 export function useWatchlistQuery(userId) {
   return useQuery({
     queryKey: queryKeys.watchlist(userId),
-    queryFn: () => apiFetchOrThrow(`/watchlist/?user_id=${userId}`),
+    queryFn: () => apiFetchOrThrow('/watchlist/'),
     enabled: !!userId,
     staleTime: 30000,
     retry: 2,
@@ -52,7 +51,7 @@ export function useWatchlistQuery(userId) {
 export function useAnalyticsPerformanceQuery(userId) {
   return useQuery({
     queryKey: queryKeys.analyticsPerformance(userId),
-    queryFn: () => apiFetchOrThrow(`/analytics/performance?user_id=${userId}`),
+    queryFn: () => apiFetchOrThrow('/analytics/performance'),
     enabled: !!userId,
     staleTime: 30000,
     retry: 2,
@@ -63,7 +62,7 @@ export function useAnalyticsPerformanceQuery(userId) {
 export function useWatchlistContainsQuery(userId, ticker) {
   return useQuery({
     queryKey: queryKeys.watchlistContains(userId, ticker),
-    queryFn: () => apiFetchOrThrow(`/watchlist/contains?ticker=${ticker}&user_id=${userId}`),
+    queryFn: () => apiFetchOrThrow(`/watchlist/contains?ticker=${ticker}`),
     enabled: !!userId && !!ticker,
     staleTime: 30000,
     retry: 2,
@@ -77,11 +76,11 @@ export function useWatchlistToggleMutation(userId) {
   return useMutation({
     mutationFn: async ({ ticker, isInWatchlist }) => {
       if (isInWatchlist) {
-        const res = await apiDelete(`/watchlist/remove/${ticker}?user_id=${userId}`)
+        const res = await apiDelete(`/watchlist/remove/${ticker}`)
         if (!res) throw new Error('remove failed')
         return res
       }
-      const res = await apiFetch(`/watchlist/add?ticker=${ticker}&user_id=${userId}`, { method: 'POST' })
+      const res = await apiFetch(`/watchlist/add?ticker=${ticker}`, { method: 'POST' })
       if (!res) throw new Error('add failed')
       return res
     },

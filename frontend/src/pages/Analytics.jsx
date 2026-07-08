@@ -9,7 +9,7 @@ import { getStockName } from '../utils/stockNames'
 import { formatMoney, formatDateTime } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
-import { UserContext } from '../context/UserContext'
+import { UserContext } from '../context/userContext'
 import { useAnalyticsPerformanceQuery, useAccountQuery } from '../query/queries'
 
 const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
@@ -356,8 +356,41 @@ function Analytics() {
         </div>
       )}
 
-      {/* ... Sector Breakdown code ... */}
-      
+      {bySector.length > 0 && (
+        <div className="card">
+          <div className="card-title">{t('analytics.bySector')}</div>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={bySector}
+                dataKey="allocation_pct"
+                nameKey="sector"
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+              >
+                {bySector.map((_, index) => (
+                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value, name) => [`${Number(value).toFixed(1)}%`, name]}
+                contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+            {bySector.map((s, i) => (
+              <div key={s.sector} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
+                <span>{s.sector}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{s.allocation_pct.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {tradeTicker && (
         <TradeModal ticker={tradeTicker}
           onClose={() => setTradeTicker(null)}

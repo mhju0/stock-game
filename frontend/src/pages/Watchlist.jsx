@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
-import { UserContext } from "../context/UserContext";
+import { UserContext } from "../context/userContext";
 import { useWatchlistQuery, queryKeys } from '../query/queries'
 
 

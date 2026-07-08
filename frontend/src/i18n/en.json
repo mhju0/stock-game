@@ -121,6 +121,7 @@
     "stocksShare": "Stocks",
     "cashShare": "Cash",
     "byStock": "Performance by Stock",
+    "bySector": "Sector Breakdown",
     "totalChangePct": "Total change %",
     "holdingsRatio": "Holdings as % of starting",
     "grid": "Grid",
@@ -130,6 +131,23 @@
     "loadingData": "Loading market data... Please wait",
     "us": "US",
     "kr": "Korea"
+  },
+  "auth": {
+    "login": "Log In",
+    "register": "Register",
+    "logout": "Log Out",
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "loginTitle": "Sign in to your account",
+    "registerTitle": "Create a new account",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "fillAllFields": "Please fill in all fields",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 4 characters",
+    "coldStartHint": "Waking up the server… the free-tier backend can take up to a minute on the first request.",
+    "demoHint": "Demo account — username: demo · password: demo1234"
   },
   "game": {
     "startingBalance": "Starting Balance",

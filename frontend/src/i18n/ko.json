@@ -121,6 +121,7 @@
     "stocksShare": "주식",
     "cashShare": "현금",
     "byStock": "종목별 수익률",
+    "bySector": "섹터 비중",
     "totalChangePct": "총 변동률",
     "holdingsRatio": "투자 비율",
     "grid": "그리드",
@@ -130,6 +131,23 @@
     "loadingData": "시세 데이터 로딩 중... 잠시만 기다려주세요",
     "us": "미국",
     "kr": "한국"
+  },
+  "auth": {
+    "login": "로그인",
+    "register": "회원가입",
+    "logout": "로그아웃",
+    "username": "사용자 이름",
+    "password": "비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "loginTitle": "계정에 로그인하세요",
+    "registerTitle": "새 계정을 만드세요",
+    "noAccount": "계정이 없으신가요?",
+    "hasAccount": "이미 계정이 있으신가요?",
+    "fillAllFields": "모든 항목을 입력해주세요",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다",
+    "passwordTooShort": "비밀번호는 4자 이상이어야 합니다",
+    "coldStartHint": "서버를 깨우는 중입니다… 무료 플랜 백엔드는 첫 요청 시 최대 1분 정도 걸릴 수 있습니다.",
+    "demoHint": "데모 계정 — 아이디: demo · 비밀번호: demo1234"
   },
   "game": {
     "startingBalance": "시작 자금",

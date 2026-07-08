@@ -1,7 +1,7 @@
 import { apiFetch, apiPost } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserContext } from '../context/UserContext'
+import { UserContext } from '../context/userContext'
 
 
 function Exchange() {

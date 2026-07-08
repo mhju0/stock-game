@@ -3,7 +3,7 @@ import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
-import { UserContext } from '../context/UserContext'
+import { UserContext } from '../context/userContext'
 import { formatMoney } from '../utils/formatters'
 
 function Game() {
