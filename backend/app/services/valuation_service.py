@@ -35,7 +35,11 @@ def get_infos_for_tickers(tickers: list[str]) -> dict[str, dict]:
     return result
 
 
-def compute_user_total_value_krw(user, holdings, rate: float, prices: dict[str, float | None] | None = None) -> float:
+def compute_holdings_value_krw(
+    holdings,
+    rate: float,
+    prices: dict[str, float | None] | None = None,
+) -> float:
     if prices is None:
         prices = get_prices_for_tickers([h.ticker for h in holdings])
 
@@ -49,4 +53,22 @@ def compute_user_total_value_krw(user, holdings, rate: float, prices: dict[str, 
             value *= rate
         holdings_value_krw += value
 
+    return holdings_value_krw
+
+
+def compute_user_total_value_krw(user, holdings, rate: float, prices: dict[str, float | None] | None = None) -> float:
+    holdings_value_krw = compute_holdings_value_krw(holdings, rate, prices)
     return user.balance_krw + (user.balance_usd * rate) + holdings_value_krw
+
+
+def compute_session_total_value_krw(
+    session,
+    holdings,
+    rate: float,
+    prices: dict[str, float | None] | None = None,
+) -> float:
+    """Compute a session-scoped total using GameSession.cash_* and scoped holdings."""
+    holdings_value_krw = compute_holdings_value_krw(holdings, rate, prices)
+    cash_krw = session.cash_krw or 0.0
+    cash_usd = session.cash_usd or 0.0
+    return cash_krw + (cash_usd * rate) + holdings_value_krw
