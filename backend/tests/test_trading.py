@@ -3,11 +3,87 @@ Trading tests — buy/sell paths with mocked stock data (no yfinance).
 All monetary assertions check the actual DB state via the response body.
 """
 
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
+from app.models import GameSession, Holding, PortfolioSnapshot, Transaction, User, Watchlist
+
 
 TICKER = "AAPL"
 MOCK_PRICE = 100.0          # set in conftest MOCK_STOCK_INFO
 INITIAL_USD = 0.0
 INITIAL_KRW = 10_000_000.0  # User model default
+
+
+def current_user(db_session, registered_user):
+    return db_session.query(User).filter(User.id == registered_user["user_id"]).first()
+
+
+def create_game_session(
+    db_session,
+    user,
+    *,
+    status="active",
+    is_active=True,
+    cash_krw=10_000_000,
+    cash_usd=0.0,
+    end_date=None,
+):
+    now = datetime.now(timezone.utc)
+    session = GameSession(
+        user_id=user.id,
+        title="Test Session",
+        status=status,
+        starting_balance_krw=10_000_000,
+        starting_balance_usd=0.0,
+        cash_krw=cash_krw,
+        cash_usd=cash_usd,
+        duration_days=90,
+        start_date=now - timedelta(days=1),
+        end_date=end_date or (now + timedelta(days=90)),
+        is_active=is_active,
+    )
+    db_session.add(session)
+    db_session.flush()
+    return session
+
+
+def create_session_holding(
+    db_session,
+    user,
+    session,
+    ticker="KB",
+    quantity=5,
+    avg_price=1000.0,
+    market="KRX",
+    currency="KRW",
+):
+    holding = Holding(
+        user_id=user.id,
+        game_session_id=session.id,
+        ticker=ticker,
+        name="Test KRW",
+        market=market,
+        sector="Finance",
+        industry="Banking",
+        quantity=quantity,
+        avg_price=avg_price,
+        currency=currency,
+    )
+    db_session.add(holding)
+    db_session.flush()
+    return holding
+
+
+def krw_stock(price=1000.0, ticker_name="Test KRW"):
+    return {
+        "price": price,
+        "currency": "KRW",
+        "name": ticker_name,
+        "market": "KRX",
+        "sector": "Finance",
+        "industry": "Banking",
+    }
 
 
 class TestBuyStock:
@@ -171,3 +247,313 @@ class TestInvalidTrades:
 
         assert resp.status_code == 400
         assert "Not enough" in resp.json()["detail"]
+
+
+class TestSessionScopedTrading:
+    def test_explicit_session_buy_creates_scoped_holding_and_transaction(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 5},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        holding = db_session.query(Holding).filter_by(game_session_id=session.id, ticker="KB").one()
+        transaction = db_session.query(Transaction).filter_by(game_session_id=session.id, ticker="KB").one()
+        assert holding.quantity == 5
+        assert transaction.transaction_type == "BUY"
+        assert resp.json()["balance"]["krw"] == 995_000
+
+    def test_explicit_session_sell_affects_only_selected_session(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session_a = create_game_session(db_session, user, cash_krw=1_000_000)
+        session_b = create_game_session(db_session, user, cash_krw=2_000_000)
+        create_session_holding(db_session, user, session_a, ticker="KB", quantity=5, avg_price=1000.0)
+        create_session_holding(db_session, user, session_b, ticker="KB", quantity=7, avg_price=1000.0)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1200.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1200.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1200.0):
+            resp = client.post(
+                f"/game/sessions/{session_a.id}/trade/sell",
+                json={"ticker": "KB", "quantity": 2},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        db_session.refresh(session_a)
+        db_session.refresh(session_b)
+        holding_a = db_session.query(Holding).filter_by(game_session_id=session_a.id, ticker="KB").one()
+        holding_b = db_session.query(Holding).filter_by(game_session_id=session_b.id, ticker="KB").one()
+        assert holding_a.quantity == 3
+        assert holding_b.quantity == 7
+        assert session_a.cash_krw == 1_002_400
+        assert session_b.cash_krw == 2_000_000
+
+    def test_session_sell_does_not_require_stock_info_when_holding_exists(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+        create_session_holding(db_session, user, session, ticker="KB", quantity=3, avg_price=1000.0)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=None), \
+             patch("app.services.trading_service.get_stock_price", return_value=1200.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1200.0):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/sell",
+                json={"ticker": "KB", "quantity": 1},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["transaction"]["name"] == "Test KRW"
+        assert resp.json()["transaction"]["currency"] == "KRW"
+
+    def test_session_sell_rejects_duplicate_same_ticker_holdings_across_markets(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+        create_session_holding(db_session, user, session, ticker="DUP", market="KRX", quantity=2)
+        create_session_holding(db_session, user, session, ticker="DUP", market="US", currency="USD", quantity=2)
+
+        with patch("app.services.trading_service.get_stock_price", return_value=1000.0):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/sell",
+                json={"ticker": "DUP", "quantity": 1},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 400
+        assert "Multiple holdings found" in resp.json()["detail"]
+        assert "market is required" in resp.json()["detail"]
+
+    def test_buying_same_ticker_in_two_sessions_isolates_holdings(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session_a = create_game_session(db_session, user, cash_krw=1_000_000)
+        session_b = create_game_session(db_session, user, cash_krw=1_000_000)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+            resp_a = client.post(
+                f"/game/sessions/{session_a.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 2},
+                headers=auth_headers,
+            )
+            resp_b = client.post(
+                f"/game/sessions/{session_b.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 4},
+                headers=auth_headers,
+            )
+
+        assert resp_a.status_code == 200
+        assert resp_b.status_code == 200
+        holdings = db_session.query(Holding).filter(Holding.ticker == "KB").all()
+        assert sorted((h.game_session_id, h.quantity) for h in holdings) == [
+            (session_a.id, 2),
+            (session_b.id, 4),
+        ]
+
+    def test_selected_session_cash_changes_and_user_balance_mirrors(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session_a = create_game_session(db_session, user, cash_krw=1_000_000)
+        session_b = create_game_session(db_session, user, cash_krw=2_000_000)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+            resp = client.post(
+                f"/game/sessions/{session_a.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 3},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        db_session.refresh(user)
+        db_session.refresh(session_a)
+        db_session.refresh(session_b)
+        assert session_a.cash_krw == 997_000
+        assert session_b.cash_krw == 2_000_000
+        assert user.balance_krw == session_a.cash_krw
+
+    def test_non_tradeable_sessions_reject_buy_sell_exchange(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        completed = create_game_session(db_session, user, status="completed", is_active=False)
+        archived = create_game_session(db_session, user, status="archived", is_active=False)
+        expired = create_game_session(
+            db_session,
+            user,
+            status="active",
+            end_date=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        create_session_holding(db_session, user, archived, ticker="KB", quantity=1)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1000.0):
+            buy_resp = client.post(
+                f"/game/sessions/{completed.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 1},
+                headers=auth_headers,
+            )
+            sell_resp = client.post(
+                f"/game/sessions/{archived.id}/trade/sell",
+                json={"ticker": "KB", "quantity": 1},
+                headers=auth_headers,
+            )
+        exchange_resp = client.post(
+            f"/game/sessions/{expired.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "USD", "amount": 1000},
+            headers=auth_headers,
+        )
+
+        assert buy_resp.status_code == 400
+        assert sell_resp.status_code == 400
+        assert exchange_resp.status_code == 400
+
+    def test_cross_user_session_trade_returns_404(self, client, db_session, registered_user, auth_headers):
+        other = User(username="other", hashed_password="hash", balance_krw=1_000_000, balance_usd=0)
+        db_session.add(other)
+        db_session.flush()
+        other_session = create_game_session(db_session, other, cash_krw=1_000_000)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)):
+            resp = client.post(
+                f"/game/sessions/{other_session.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 1},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 404
+
+    def test_old_compatibility_buy_uses_current_session_when_available(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+            resp = client.post(
+                "/trade/buy",
+                json={"ticker": "KB", "quantity": 2},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        holding = db_session.query(Holding).filter_by(game_session_id=session.id, ticker="KB").one()
+        assert holding.quantity == 2
+        assert resp.json()["session_id"] == session.id
+
+    def test_session_buy_writes_snapshot_with_game_session_id(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 1},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        snapshot = db_session.query(PortfolioSnapshot).filter_by(game_session_id=session.id).one()
+        assert snapshot.game_session_id == session.id
+
+    def test_session_sell_writes_snapshot_with_game_session_id(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+        create_session_holding(db_session, user, session, ticker="KB", quantity=2, avg_price=1000.0)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=None), \
+             patch("app.services.trading_service.get_stock_price", return_value=1200.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1200.0):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/sell",
+                json={"ticker": "KB", "quantity": 1},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        snapshot = db_session.query(PortfolioSnapshot).filter_by(game_session_id=session.id).one()
+        assert snapshot.game_session_id == session.id
+
+    def test_exchange_affects_only_selected_session_cash(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session_a = create_game_session(db_session, user, cash_krw=1_300_000, cash_usd=0)
+        session_b = create_game_session(db_session, user, cash_krw=2_000_000, cash_usd=0)
+
+        resp = client.post(
+            f"/game/sessions/{session_a.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "USD", "amount": 130_000},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(session_a)
+        db_session.refresh(session_b)
+        assert session_a.cash_krw == 1_170_000
+        assert session_a.cash_usd == 100
+        assert session_b.cash_krw == 2_000_000
+        tx = db_session.query(Transaction).filter_by(game_session_id=session_a.id, transaction_type="EXCHANGE").one()
+        assert tx.ticker == "KRW/USD"
+
+    def test_session_exchange_writes_snapshot_with_game_session_id(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_300_000, cash_usd=0)
+
+        resp = client.post(
+            f"/game/sessions/{session.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "USD", "amount": 130_000},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        snapshot = db_session.query(PortfolioSnapshot).filter_by(game_session_id=session.id).one()
+        assert snapshot.game_session_id == session.id
+
+    def test_watchlist_remains_untouched_by_session_trade(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+        db_session.add(Watchlist(user_id=user.id, ticker="KB", name="Test KRW", market="KRX"))
+        db_session.flush()
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
+             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 1},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        assert db_session.query(Watchlist).filter_by(user_id=user.id).count() == 1
+
+    def test_buy_sell_exchange_reject_non_positive_values(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+
+        buy_resp = client.post(
+            f"/game/sessions/{session.id}/trade/buy",
+            json={"ticker": "KB", "quantity": 0},
+            headers=auth_headers,
+        )
+        sell_resp = client.post(
+            f"/game/sessions/{session.id}/trade/sell",
+            json={"ticker": "KB", "quantity": -1},
+            headers=auth_headers,
+        )
+        exchange_resp = client.post(
+            f"/game/sessions/{session.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "USD", "amount": 0},
+            headers=auth_headers,
+        )
+
+        assert buy_resp.status_code == 422
+        assert sell_resp.status_code == 422
+        assert exchange_resp.status_code == 422
