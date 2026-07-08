@@ -1,6 +1,7 @@
 import { apiDelete } from '../api'
 import { useState, useContext, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
@@ -84,6 +85,7 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
 
 function Watchlist() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { currentUserId } = useContext(UserContext);
   const queryClient = useQueryClient()
 
@@ -105,7 +107,13 @@ function Watchlist() {
   if (watchlist.length === 0) {
     return (
       <div className="empty-state">
-        <p>{t("watchlist.empty")}</p>
+        <h2 style={{ fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>
+          {t("watchlist.emptyTitle")}
+        </h2>
+        <p style={{ marginBottom: 18 }}>{t("watchlist.emptyBody")}</p>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+          {t("nav.search")}
+        </button>
       </div>
     );
   }

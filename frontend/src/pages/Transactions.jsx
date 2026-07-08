@@ -1,6 +1,7 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { UserContext } from '../context/userContext'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney, formatDateTime } from '../utils/formatters'
@@ -8,6 +9,7 @@ import { formatMoney, formatDateTime } from '../utils/formatters'
 
 function Transactions() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const { currentUserId } = useContext(UserContext)
   
   const [transactions, setTransactions] = useState([])
@@ -34,7 +36,17 @@ function Transactions() {
 
   if (loading) return <p>{t('common.loading')}</p>
   if (transactions.length === 0) {
-    return <div className="empty-state">{t('transactions.empty')}</div>
+    return (
+      <div className="empty-state">
+        <h2 style={{ fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>
+          {t('transactions.emptyTitle')}
+        </h2>
+        <p style={{ marginBottom: 18 }}>{t('transactions.emptyBody')}</p>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+          {t('nav.search')}
+        </button>
+      </div>
+    )
   }
 
   return (

@@ -8,6 +8,8 @@
     "retry": "다시 시도",
     "loadError": "정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
     "connectionError": "서버에 연결할 수 없어요. 잠시 후 다시 시도해 주세요.",
+    "pageErrorTitle": "화면을 불러오지 못했어요",
+    "pageErrorBody": "잠시 후 다시 시도해 주세요.",
     "search": "검색",
     "krw": "원",
     "usd": "달러",
@@ -21,10 +23,10 @@
     "watchlist": "관심종목",
     "exchange": "환전",
     "transactions": "거래내역",
-    "market": "시가총액 Top 30",
+    "market": "인기 종목",
     "analytics": "투자 분석",
-    "game": "현황",
-    "myGames": "게임 목록"
+    "game": "게임 현황",
+    "myGames": "내 게임"
   },
   "dashboard": {
     "totalValue": "총 자산",
@@ -39,7 +41,12 @@
     "devTools": "개발자 도구",
     "devToolsHide": "개발자 도구 닫기",
     "added": "추가됨",
-    "removed": "제거됨"
+    "removed": "제거됨",
+    "nextActionTitle": "다음으로 해볼 일",
+    "nextActionNoHoldings": "관심 있는 종목을 찾아 첫 매수를 연습해 보세요.",
+    "nextActionHasHoldings": "보유 종목의 수익률을 확인하고 다음 매매를 결정해 보세요.",
+    "viewPortfolio": "포트폴리오 보기",
+    "viewAnalytics": "투자 분석 보기"
   },
   "sort": {
     "allocDesc": "비중 ↓",
@@ -100,6 +107,8 @@
   "watchlist": {
     "title": "관심종목",
     "empty": "관심종목이 없습니다",
+    "emptyTitle": "아직 관심종목이 없어요",
+    "emptyBody": "눈여겨보는 종목을 담아두면 나중에 빠르게 확인할 수 있어요.",
     "add": "추가",
     "remove": "삭제",
     "delayed": "시세는 15분 지연됩니다"
@@ -107,6 +116,8 @@
   "transactions": {
     "title": "거래내역",
     "empty": "거래내역이 없습니다",
+    "emptyTitle": "아직 거래내역이 없어요",
+    "emptyBody": "매수, 매도, 환전을 하면 기록이 여기에 쌓여요.",
     "buy": "매수",
     "sell": "매도",
     "date": "날짜",
@@ -128,7 +139,9 @@
     "totalChangePct": "총 변동률",
     "holdingsRatio": "투자 비율",
     "grid": "그리드",
-    "list": "리스트"
+    "list": "리스트",
+    "chartEmpty": "거래가 쌓이면 수익률 그래프가 보여요.",
+    "retryBody": "투자 분석 정보를 다시 불러와 볼게요."
   },
   "market": {
     "loadingData": "시세 데이터 로딩 중... 잠시만 기다려주세요",
@@ -169,7 +182,7 @@
     "bestTrade": "최고 수익 거래",
     "worstTrade": "최저 수익 거래",
     "noActive": "활성 게임이 없습니다",
-    "noActiveDesc": "게임 목록에서 새 게임을 만들어보세요",
+    "noActiveDesc": "내 게임에서 새 게임을 시작해 보세요",
     "makeTradesPrompt": "거래를 하면 수익률을 비교할 수 있어요",
     "day1Title": "게임이 시작되었습니다!",
     "day1Desc": "매매를 시작하면 여기서 진행 상황을 확인할 수 있어요",
@@ -177,16 +190,30 @@
     "vsBenchmark": "내 포트폴리오 vs 벤치마크"
   },
   "games": {
-    "title": "게임 목록",
+    "title": "내 게임",
     "activeTitle": "진행 중인 게임",
     "loading": "게임 정보를 불러오는 중...",
     "emptyTitle": "진행 중인 게임이 없어요",
     "emptyBody": "새 게임을 시작해서 가상 투자 연습을 해보세요.",
     "start": "새 게임 시작하기",
     "continue": "계속하기",
-    "startConfirmBody": "새 게임을 시작하면 현재 진행 중인 게임이 종료되고 포트폴리오가 초기화됩니다.",
+    "startConfirmBody": "새 게임을 시작하면 현재 진행 중인 게임이 종료돼요. 포트폴리오와 기록은 새 게임 기준으로 초기화됩니다.",
     "errorTitle": "게임 정보를 불러오지 못했어요",
     "retry": "다시 시도",
-    "selectBody": "진행 중인 게임을 선택하거나 새 게임을 시작하세요."
+    "selectBody": "이어 할 게임을 선택하거나 새 게임을 시작해 보세요.",
+    "cardTitle": "모의 투자 게임",
+    "startedAt": "시작",
+    "statusActive": "진행 중",
+    "statusExpired": "기간 종료",
+    "currentValue": "현재 평가액",
+    "return": "수익률",
+    "duration": "기간",
+    "lastUpdated": "최근 업데이트",
+    "days": "{{count}}일"
+  },
+  "portfolio": {
+    "emptyTitle": "아직 보유한 종목이 없어요",
+    "emptyBody": "관심 있는 종목을 찾아 첫 매수를 연습해 보세요.",
+    "emptyAction": "종목 찾기"
   }
 }

@@ -156,6 +156,31 @@ function Dashboard() {
         </div>
       </div>
 
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div className="card-title" style={{ marginBottom: 6 }}>{t('dashboard.nextActionTitle')}</div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
+            {holdingsSafe.length === 0 ? t('dashboard.nextActionNoHoldings') : t('dashboard.nextActionHasHoldings')}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {holdingsSafe.length === 0 ? (
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+              {t('nav.search')}
+            </button>
+          ) : (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/portfolio')}>
+                {t('dashboard.viewPortfolio')}
+              </button>
+              <button type="button" className="btn" onClick={() => navigate('/analytics')}>
+                {t('dashboard.viewAnalytics')}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {enableDevTools && (
         <button className="btn" onClick={() => setShowDevTools(!showDevTools)} style={{ marginBottom: 16, fontSize: 12, border: '1px solid var(--border)' }}>
           {showDevTools ? t('dashboard.devToolsHide') : t('dashboard.devTools')}

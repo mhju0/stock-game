@@ -30,7 +30,12 @@ function Analytics() {
   const { data: accountData } = useAccountQuery(currentUserId)
   const exchangeRate = accountData?.exchange_rate || 1350
 
-  const { data: performance, isLoading: perfLoading, isError: perfError } = useAnalyticsPerformanceQuery(currentUserId)
+  const {
+    data: performance,
+    isLoading: perfLoading,
+    isError: perfError,
+    refetch: refetchPerformance,
+  } = useAnalyticsPerformanceQuery(currentUserId)
 
   useEffect(() => {
     apiGet(`/analytics/by-stock?user_id=${currentUserId}`, setByStock)
@@ -108,6 +113,10 @@ function Analytics() {
   ) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
       <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>{t('analytics.retryBody')}</p>
+      <button type="button" className="btn btn-primary" onClick={() => refetchPerformance()}>
+        {t('common.retry')}
+      </button>
     </div>
   )
 
@@ -173,7 +182,7 @@ function Analytics() {
         </div>
 
         {chartDataReturn.length < 2 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>Make some trades to see your performance chart</div>
+          <div className="empty-state" style={{ padding: '24px 0' }}>{t('analytics.chartEmpty')}</div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartDataReturn}>
@@ -218,7 +227,7 @@ function Analytics() {
         </div>
 
         {chartDataAllocation.length < 2 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>Make some trades to see your performance chart</div>
+          <div className="empty-state" style={{ padding: '24px 0' }}>{t('analytics.chartEmpty')}</div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartDataAllocation}>
@@ -336,7 +345,7 @@ function Analytics() {
                         <strong style={{ fontSize: 14 }}>{name}</strong>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 14 }}>
-                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {s.ticker}{s.sector && <> · {s.sector}</>} · {s.quantity} shares
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {s.ticker}{s.sector && <> · {s.sector}</>} · {s.quantity} {t('holdings.shares')}
                       </div>
                     </div>
                     

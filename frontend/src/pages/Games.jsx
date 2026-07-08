@@ -24,7 +24,7 @@ function PageState({ title, body, actionLabel, onAction, loading = false }) {
   )
 }
 
-function GameSessionCard({ session, locale, onOpen, actionLabel }) {
+function GameSessionCard({ session, locale, onOpen, actionLabel, t }) {
   const isActive = session.status === 'active'
   return (
     <div
@@ -38,10 +38,10 @@ function GameSessionCard({ session, locale, onOpen, actionLabel }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-display)' }}>
-            모의 투자 게임
+            {t('games.cardTitle')}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-            {formatDateTime(session.start_date, locale, false)} 시작
+            {formatDateTime(session.start_date, locale, false)} {t('games.startedAt')}
           </div>
         </div>
         <span
@@ -56,29 +56,29 @@ function GameSessionCard({ session, locale, onOpen, actionLabel }) {
             alignSelf: 'flex-start',
           }}
         >
-          {isActive ? '진행 중' : '기간 종료'}
+          {isActive ? t('games.statusActive') : t('games.statusExpired')}
         </span>
       </div>
 
       <div className="metric-grid" style={{ marginBottom: 0 }}>
         <div>
-          <div className="metric-label">현재 평가액</div>
+          <div className="metric-label">{t('games.currentValue')}</div>
           <div style={{ fontSize: 18, fontWeight: 700 }}>
             {formatMoney(session.current_value_krw, 'KRW')}
           </div>
         </div>
         <div>
-          <div className="metric-label">수익률</div>
+          <div className="metric-label">{t('games.return')}</div>
           <div className={session.current_return_pct >= 0 ? 'positive' : 'negative'} style={{ fontSize: 18, fontWeight: 700 }}>
             {session.current_return_pct >= 0 ? '+' : ''}{session.current_return_pct}%
           </div>
         </div>
         <div>
-          <div className="metric-label">기간</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{session.duration_days}일</div>
+          <div className="metric-label">{t('games.duration')}</div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>{t('games.days', { count: session.duration_days })}</div>
         </div>
         <div>
-          <div className="metric-label">최근 업데이트</div>
+          <div className="metric-label">{t('games.lastUpdated')}</div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
             {formatDateTime(session.last_updated_at, locale)}
           </div>
@@ -207,6 +207,7 @@ function Games() {
             locale={locale}
             onOpen={() => navigate('/')}
             actionLabel={t('games.continue')}
+            t={t}
           />
         ))}
       </div>

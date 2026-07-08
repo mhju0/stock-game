@@ -1,6 +1,7 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney } from '../utils/formatters'
@@ -11,6 +12,7 @@ import { UserContext } from '../context/userContext'
 
 function Portfolio() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const { currentUserId } = useContext(UserContext)
   
   const [account, setAccount] = useState(null)
@@ -86,7 +88,17 @@ function Portfolio() {
     </div>
   )
   if (holdings.length === 0) {
-    return <div className="empty-state">{t('stock.notFound')}</div>
+    return (
+      <div className="empty-state">
+        <h2 style={{ fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>
+          {t('portfolio.emptyTitle')}
+        </h2>
+        <p style={{ marginBottom: 18 }}>{t('portfolio.emptyBody')}</p>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+          {t('portfolio.emptyAction')}
+        </button>
+      </div>
+    )
   }
 
   return (

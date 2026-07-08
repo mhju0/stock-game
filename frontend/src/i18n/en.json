@@ -8,6 +8,8 @@
     "retry": "Try Again",
     "loadError": "Could not load data. Please try again shortly.",
     "connectionError": "Unable to connect to the server. Please try again shortly.",
+    "pageErrorTitle": "Could not load this page",
+    "pageErrorBody": "Please try again shortly.",
     "search": "Search",
     "krw": "KRW",
     "usd": "USD",
@@ -21,9 +23,9 @@
     "watchlist": "Watchlist",
     "exchange": "Exchange",
     "transactions": "Transactions",
-    "market": "Top 30",
+    "market": "Market",
     "analytics": "Analytics",
-    "game": "Progress",
+    "game": "Game Status",
     "myGames": "My Games"
   },
   "dashboard": {
@@ -39,7 +41,12 @@
     "devTools": "Developer Tools",
     "devToolsHide": "Hide Developer Tools",
     "added": "added",
-    "removed": "removed"
+    "removed": "removed",
+    "nextActionTitle": "Suggested next step",
+    "nextActionNoHoldings": "Explore a stock and practice your first buy.",
+    "nextActionHasHoldings": "Review your holdings and decide what to do next.",
+    "viewPortfolio": "View Portfolio",
+    "viewAnalytics": "View Analytics"
   },
   "sort": {
     "allocDesc": "Allocation ↓",
@@ -100,6 +107,8 @@
   "watchlist": {
     "title": "Watchlist",
     "empty": "No stocks in watchlist",
+    "emptyTitle": "No stocks in your watchlist",
+    "emptyBody": "Save stocks you are curious about so you can check them quickly later.",
     "add": "Add",
     "remove": "Remove",
     "delayed": "Prices are 15-min delayed"
@@ -107,6 +116,8 @@
   "transactions": {
     "title": "Transactions",
     "empty": "No transactions yet",
+    "emptyTitle": "No transactions yet",
+    "emptyBody": "Your buys, sells, and exchanges will appear here.",
     "buy": "Buy",
     "sell": "Sell",
     "date": "Date",
@@ -128,7 +139,9 @@
     "totalChangePct": "Total change %",
     "holdingsRatio": "Holdings as % of starting",
     "grid": "Grid",
-    "list": "List"
+    "list": "List",
+    "chartEmpty": "Your performance chart will appear after more trading activity.",
+    "retryBody": "Try loading your analytics again."
   },
   "market": {
     "loadingData": "Loading market data... Please wait",
@@ -184,9 +197,23 @@
     "emptyBody": "Start a new game to practice virtual investing.",
     "start": "Start New Game",
     "continue": "Continue",
-    "startConfirmBody": "Starting a new game will end your current game and reset your portfolio.",
+    "startConfirmBody": "Starting a new game will end your current game and reset your portfolio around the new game.",
     "errorTitle": "Could not load game information",
     "retry": "Try Again",
-    "selectBody": "Select an active game or start a new one."
+    "selectBody": "Choose a game to continue or start a new one.",
+    "cardTitle": "Trading Simulation",
+    "startedAt": "started",
+    "statusActive": "Active",
+    "statusExpired": "Ended",
+    "currentValue": "Current Value",
+    "return": "Return",
+    "duration": "Duration",
+    "lastUpdated": "Last Updated",
+    "days": "{{count}} days"
+  },
+  "portfolio": {
+    "emptyTitle": "No holdings yet",
+    "emptyBody": "Find a stock you are interested in and practice your first buy.",
+    "emptyAction": "Find Stocks"
   }
 }
