@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiFetch, apiPost } from '../api'
 import { formatDateTime, formatMoney } from '../utils/formatters'
 
-function PageState({ title, body, actionLabel, onAction, loading = false }) {
+function PageState({ title, body, actionLabel, onAction, loading = false, children }) {
   return (
     <div className="card" style={{ textAlign: 'center', padding: '44px 24px' }}>
       <h1 style={{ fontSize: 22, marginBottom: 10, fontFamily: 'var(--font-display)' }}>
@@ -15,11 +15,50 @@ function PageState({ title, body, actionLabel, onAction, loading = false }) {
           {body}
         </p>
       )}
+      {children}
       {actionLabel && (
         <button type="button" className="btn btn-primary" onClick={onAction} disabled={loading}>
           {loading ? '...' : actionLabel}
         </button>
       )}
+    </div>
+  )
+}
+
+function GameLimitNote({ t }) {
+  return (
+    <div style={{ textAlign: 'left', marginBottom: 18 }}>
+      <p style={{ color: 'var(--text-primary)', fontWeight: 700, marginBottom: 8 }}>
+        {t('games.singleGameNote')}
+      </p>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5, marginBottom: 8 }}>
+        {t('games.restartWarning')}
+      </p>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
+        {t('games.setupComingSoon')}
+      </p>
+    </div>
+  )
+}
+
+function RestartConfirmation({ t, starting, onConfirm, onCancel }) {
+  return (
+    <div className="card" style={{ borderColor: 'var(--accent)', marginBottom: 16 }}>
+      <div className="summary-title">{t('games.restartConfirmTitle')}</div>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
+        {t('games.restartWarning')}
+      </p>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 14 }}>
+        {t('games.setupComingSoon')}
+      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={starting}>
+          {starting ? t('common.loading') : t('games.confirmRestart')}
+        </button>
+        <button type="button" className="btn" onClick={onCancel} disabled={starting}>
+          {t('common.cancel')}
+        </button>
+      </div>
     </div>
   )
 }
@@ -123,12 +162,11 @@ function Games() {
     loadSessions()
   }, [loadSessions])
 
-  const startGame = async () => {
-    if (sessions.length > 0 && !confirmingNewGame) {
-      setConfirmingNewGame(true)
-      return
-    }
+  const requestRestart = () => {
+    setConfirmingNewGame(true)
+  }
 
+  const confirmRestart = async () => {
     setStarting(true)
     setError('')
     const data = await apiPost(
@@ -157,13 +195,25 @@ function Games() {
 
   if (sessions.length === 0) {
     return (
-      <PageState
-        title={t('games.emptyTitle')}
-        body={t('games.emptyBody')}
-        actionLabel={t('games.start')}
-        onAction={startGame}
-        loading={starting}
-      />
+      <div>
+        <PageState
+          title={t('games.emptyTitle')}
+          body={t('games.emptyBody')}
+          actionLabel={t('games.startFirst')}
+          onAction={requestRestart}
+          loading={starting}
+        >
+          <GameLimitNote t={t} />
+        </PageState>
+        {confirmingNewGame && (
+          <RestartConfirmation
+            t={t}
+            starting={starting}
+            onConfirm={confirmRestart}
+            onCancel={() => setConfirmingNewGame(false)}
+          />
+        )}
+      </div>
     )
   }
 
@@ -177,26 +227,25 @@ function Games() {
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
             {t('games.selectBody')}
           </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 6 }}>
+            {t('games.singleGameNote')}
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+            {t('games.setupComingSoon')}
+          </p>
         </div>
-        <button type="button" className="btn" onClick={startGame} disabled={starting}>
-          {starting ? t('common.loading') : t('games.start')}
+        <button type="button" className="btn" onClick={requestRestart} disabled={starting || confirmingNewGame}>
+          {starting ? t('common.loading') : t('games.restart')}
         </button>
       </div>
 
       {confirmingNewGame && (
-        <div className="card" style={{ borderColor: 'var(--accent)', marginBottom: 16 }}>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 14 }}>
-            {t('games.startConfirmBody')}
-          </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-primary" onClick={startGame} disabled={starting}>
-              {starting ? t('common.loading') : t('games.start')}
-            </button>
-            <button type="button" className="btn" onClick={() => setConfirmingNewGame(false)} disabled={starting}>
-              {t('common.cancel')}
-            </button>
-          </div>
-        </div>
+        <RestartConfirmation
+          t={t}
+          starting={starting}
+          onConfirm={confirmRestart}
+          onCancel={() => setConfirmingNewGame(false)}
+        />
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
