@@ -24,20 +24,16 @@ function PageState({ title, body, actionLabel, onAction, loading = false }) {
   )
 }
 
-function GameSessionCard({ session, locale, onOpen }) {
+function GameSessionCard({ session, locale, onOpen, actionLabel }) {
   const isActive = session.status === 'active'
   return (
-    <button
-      type="button"
+    <div
       className="card"
-      onClick={onOpen}
       style={{
         width: '100%',
         textAlign: 'left',
-        cursor: 'pointer',
         display: 'block',
       }}
-      aria-label="진행 중인 게임 열기"
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
         <div>
@@ -88,7 +84,16 @@ function GameSessionCard({ session, locale, onOpen }) {
           </div>
         </div>
       </div>
-    </button>
+
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={onOpen}
+        style={{ width: '100%', marginTop: 16 }}
+      >
+        {actionLabel}
+      </button>
+    </div>
   )
 }
 
@@ -98,8 +103,8 @@ function Games() {
 
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [redirecting, setRedirecting] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [confirmingNewGame, setConfirmingNewGame] = useState(false)
   const [error, setError] = useState('')
 
   const locale = i18n.language === 'ko' ? 'ko-KR' : 'en-US'
@@ -118,18 +123,10 @@ function Games() {
     loadSessions()
   }, [loadSessions])
 
-  useEffect(() => {
-    if (!loading && sessions.length === 1) {
-      setRedirecting(true)
-      const timer = setTimeout(() => navigate('/', { replace: true }), 350)
-      return () => clearTimeout(timer)
-    }
-  }, [loading, navigate, sessions.length])
-
   const startGame = async () => {
-    if (sessions.length > 0) {
-      const confirmed = window.confirm('새 게임을 시작하면 현재 진행 중인 게임이 종료되고 포트폴리오가 초기화됩니다. 계속할까요?')
-      if (!confirmed) return
+    if (sessions.length > 0 && !confirmingNewGame) {
+      setConfirmingNewGame(true)
+      return
     }
 
     setStarting(true)
@@ -145,10 +142,6 @@ function Games() {
 
   if (loading) {
     return <PageState title={t('games.loading')} />
-  }
-
-  if (redirecting) {
-    return <PageState title={t('games.redirecting')} />
   }
 
   if (error) {
@@ -179,7 +172,7 @@ function Games() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontFamily: 'var(--font-display)', marginBottom: 4 }}>
-            {t('games.title')}
+            {t('games.activeTitle')}
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
             {t('games.selectBody')}
@@ -190,6 +183,22 @@ function Games() {
         </button>
       </div>
 
+      {confirmingNewGame && (
+        <div className="card" style={{ borderColor: 'var(--accent)', marginBottom: 16 }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 14 }}>
+            {t('games.startConfirmBody')}
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-primary" onClick={startGame} disabled={starting}>
+              {starting ? t('common.loading') : t('games.start')}
+            </button>
+            <button type="button" className="btn" onClick={() => setConfirmingNewGame(false)} disabled={starting}>
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
         {sessions.map((session) => (
           <GameSessionCard
@@ -197,6 +206,7 @@ function Games() {
             session={session}
             locale={locale}
             onOpen={() => navigate('/')}
+            actionLabel={t('games.continue')}
           />
         ))}
       </div>

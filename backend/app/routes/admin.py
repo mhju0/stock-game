@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -12,8 +14,13 @@ class FundsRequest(BaseModel):
     currency: str
     amount: float
 
+def require_dev_tools_enabled():
+    if os.environ.get("ENABLE_DEV_TOOLS", "").lower() != "true":
+        raise HTTPException(status_code=404, detail="Not found")
+
 @router.post("/add-funds")
 def add_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    require_dev_tools_enabled()
     user_id = current_user.id
     user = current_user
 
@@ -56,6 +63,7 @@ def add_funds(request: FundsRequest, db: Session = Depends(get_db), current_user
 
 @router.post("/remove-funds")
 def remove_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    require_dev_tools_enabled()
     user_id = current_user.id
     user = current_user
 

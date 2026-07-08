@@ -17,11 +17,12 @@ function Dashboard() {
   const navigate = useNavigate()
   const { currentUserId } = useContext(UserContext)
   const queryClient = useQueryClient()
+  const enableDevTools = import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true'
 
-  const [showGodMode, setShowGodMode] = useState(false)
-  const [godCurrency, setGodCurrency] = useState('KRW')
-  const [godAmount, setGodAmount] = useState('')
-  const [godMessage, setGodMessage] = useState('')
+  const [showDevTools, setShowDevTools] = useState(false)
+  const [devCurrency, setDevCurrency] = useState('KRW')
+  const [devAmount, setDevAmount] = useState('')
+  const [devMessage, setDevMessage] = useState('')
   const [tradeTicker, setTradeTicker] = useState(null)
   const [sortBy, setSortBy] = useState('alloc_desc')
   const [displayCurrency, setDisplayCurrency] = useState('KRW')
@@ -41,29 +42,29 @@ function Dashboard() {
   useEffect(() => { setError('') }, [currentUserId])
 
   const addFunds = async () => {
-    setGodMessage('')
+    setDevMessage('')
     const data = await apiPost(
       `/admin/add-funds?user_id=${currentUserId}`,
-      { currency: godCurrency, amount: parseFloat(godAmount) },
-      (err) => setGodMessage(err)
+      { currency: devCurrency, amount: parseFloat(devAmount) },
+      (err) => setDevMessage(err)
     )
     if (data) {
-      setGodMessage(`+${godCurrency === 'KRW' ? '₩' : '$'}${parseFloat(godAmount).toLocaleString()} added`)
-      setGodAmount('')
+      setDevMessage(`+${devCurrency === 'KRW' ? '₩' : '$'}${parseFloat(devAmount).toLocaleString()} added`)
+      setDevAmount('')
       fetchData()
     }
   }
 
   const removeFunds = async () => {
-    setGodMessage('')
+    setDevMessage('')
     const data = await apiPost(
       `/admin/remove-funds?user_id=${currentUserId}`,
-      { currency: godCurrency, amount: parseFloat(godAmount) },
-      (err) => setGodMessage(err)
+      { currency: devCurrency, amount: parseFloat(devAmount) },
+      (err) => setDevMessage(err)
     )
     if (data) {
-      setGodMessage(`-${godCurrency === 'KRW' ? '₩' : '$'}${parseFloat(godAmount).toLocaleString()} removed`)
-      setGodAmount('')
+      setDevMessage(`-${devCurrency === 'KRW' ? '₩' : '$'}${parseFloat(devAmount).toLocaleString()} removed`)
+      setDevAmount('')
       fetchData()
     }
   }
@@ -106,8 +107,8 @@ function Dashboard() {
   if (accountLoading || holdingsLoading) return <p>{t('common.loading')}</p>
   if (accountError || holdingsError || !account || !Array.isArray(holdings)) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>Failed to load dashboard data. Is the backend running?</p>
-      <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+      <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
     </div>
   )
 
@@ -155,22 +156,24 @@ function Dashboard() {
         </div>
       </div>
 
-      <button className="btn" onClick={() => setShowGodMode(!showGodMode)} style={{ marginBottom: 16, fontSize: 12, border: '1px solid var(--border)' }}>
-        {showGodMode ? t('dashboard.godModeHide') : t('dashboard.godMode')}
-      </button>
+      {enableDevTools && (
+        <button className="btn" onClick={() => setShowDevTools(!showDevTools)} style={{ marginBottom: 16, fontSize: 12, border: '1px solid var(--border)' }}>
+          {showDevTools ? t('dashboard.devToolsHide') : t('dashboard.devTools')}
+        </button>
+      )}
 
-      {showGodMode && (
+      {enableDevTools && showDevTools && (
         <div className="card" style={{ marginBottom: 16, border: '1px dashed #007aff' }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <select className="input" style={{ width: 100 }} value={godCurrency} onChange={e => setGodCurrency(e.target.value)}>
+            <select className="input" style={{ width: 100 }} value={devCurrency} onChange={e => setDevCurrency(e.target.value)}>
               <option value="KRW">KRW</option>
               <option value="USD">USD</option>
             </select>
-            <input className="input" type="number" placeholder="Amount..." value={godAmount} onChange={e => setGodAmount(e.target.value)} />
+            <input className="input" type="number" placeholder="Amount..." value={devAmount} onChange={e => setDevAmount(e.target.value)} />
             <button className="btn btn-buy" onClick={addFunds}>Add</button>
             <button className="btn btn-sell" onClick={removeFunds}>Remove</button>
           </div>
-          {godMessage && <p style={{ marginTop: 8, fontSize: 13, color: 'var(--accent)' }}>{godMessage}</p>}
+          {devMessage && <p style={{ marginTop: 8, fontSize: 13, color: 'var(--accent)' }}>{devMessage}</p>}
         </div>
       )}
 

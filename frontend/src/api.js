@@ -1,5 +1,10 @@
 import { API } from './config'
 import { getToken, removeToken } from './auth'
+import i18n from './i18n'
+
+function getConnectionErrorMessage() {
+  return i18n.t('common.connectionError')
+}
 
 export async function apiFetch(path, options = {}, onError = null) {
   try {
@@ -26,7 +31,7 @@ export async function apiFetch(path, options = {}, onError = null) {
 
     return await res.json()
   } catch (err) {
-    const message = 'Cannot connect to server. Is the backend running?'
+    const message = getConnectionErrorMessage()
     if (onError) onError(message)
     console.error(`API error [${path}]:`, err)
     return null
