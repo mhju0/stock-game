@@ -114,6 +114,21 @@ function Dashboard() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">{t('dashboard.title')}</h1>
+          <p className="page-subtitle">{t('dashboard.subtitle')}</p>
+        </div>
+        <div className="page-actions">
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/')}>
+            {t('dashboard.viewGame')}
+          </button>
+          <button type="button" className="btn" onClick={() => navigate('/games')}>
+            {t('dashboard.viewGames')}
+          </button>
+        </div>
+      </div>
+
       <div className="metric-grid">
         <div className="metric-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>

@@ -19,7 +19,7 @@
     "delete": "삭제"
   },
   "nav": {
-    "dashboard": "대시보드",
+    "dashboard": "전체 요약",
     "search": "종목",
     "portfolio": "포트폴리오",
     "watchlist": "관심종목",
@@ -31,6 +31,10 @@
     "myGames": "내 게임"
   },
   "dashboard": {
+    "title": "전체 요약",
+    "subtitle": "현금, 보유 종목, 다음 행동을 빠르게 확인하는 보조 화면이에요.",
+    "viewGame": "현재 게임 보기",
+    "viewGames": "내 게임 보기",
     "totalValue": "총 자산",
     "cashKRW": "보유 원화",
     "cashUSD": "보유 달러",
@@ -139,6 +143,15 @@
     "amount": "금액"
   },
   "analytics": {
+    "title": "분석",
+    "subtitle": "게임 결과를 이해하기 위한 참고 정보예요. 수익률, 분산, 현금 비중을 먼저 살펴보세요.",
+    "summaryTitle": "지금 볼 것",
+    "summaryNoData": "아직 보유 종목이 없어서 분석할 내용이 많지 않아요. 관심 있는 종목을 찾아 첫 거래를 연습해 보세요.",
+    "summaryLimited": "아직 거래 기록이 적어서 자세한 분석은 제한적이에요. 거래가 쌓이면 흐름을 더 잘 볼 수 있어요.",
+    "summaryConcentrated": "수익률은 보이지만 일부 종목에 비중이 몰려 있어요. 한 종목 비중이 높으면 게임 결과가 크게 흔들릴 수 있어요.",
+    "summaryBalanced": "수익률과 분산 상태를 함께 확인해 보세요. 현금 비중도 다음 선택을 이해하는 데 도움이 돼요.",
+    "nextChecksTitle": "다음으로 확인할 것",
+    "simulationNote": "이 분석은 게임 결과를 이해하기 위한 참고 정보예요.",
     "totalReturn": "총 수익",
     "winRate": "승률",
     "realizedPnl": "실현 손익",
@@ -196,6 +209,8 @@
     "demoHint": "데모 계정 — 아이디: demo · 비밀번호: demo1234"
   },
   "game": {
+    "title": "현재 게임",
+    "subtitle": "진행 중인 게임의 기간, 수익률, 벤치마크 비교를 확인하는 화면이에요.",
     "startingBalance": "시작 자금",
     "currentValue": "현재 평가액",
     "return": "수익률",

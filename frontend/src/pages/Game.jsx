@@ -180,6 +180,21 @@ function Game() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">{t('game.title')}</h1>
+          <p className="page-subtitle">{t('game.subtitle')}</p>
+        </div>
+        <div className="page-actions">
+          <button type="button" className="btn" onClick={() => navigate('/dashboard')}>
+            {t('nav.dashboard')}
+          </button>
+          <button type="button" className="btn" onClick={() => navigate('/games')}>
+            {t('nav.myGames')}
+          </button>
+        </div>
+      </div>
+
       {/* Game Status */}
       <div className="metric-grid">
         <div className="metric-card">

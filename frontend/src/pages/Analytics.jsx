@@ -1,6 +1,7 @@
 import { apiGet } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -16,6 +17,7 @@ const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa'
 
 function Analytics() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const { currentUserId } = useContext(UserContext)
   
   const [byStock, setByStock] = useState([])
@@ -146,6 +148,19 @@ function Analytics() {
         : t('analytics.activityActive'),
     },
   ]
+  const analyticsSummaryBody = byStock.length === 0
+    ? t('analytics.summaryNoData')
+    : snapshots.length < 2
+      ? t('analytics.summaryLimited')
+      : topAllocationPct >= 40
+        ? t('analytics.summaryConcentrated')
+        : t('analytics.summaryBalanced')
+  const analyticsNextActions = [
+    { label: t('nav.portfolio'), to: '/portfolio', primary: byStock.length > 0 },
+    { label: t('nav.search'), to: '/search', primary: byStock.length === 0 },
+    { label: t('nav.transactions'), to: '/transactions' },
+    { label: t('nav.watchlist'), to: '/watchlist' },
+  ]
 
   if (perfLoading) return <p>{t('common.loading')}</p>
   if (
@@ -165,6 +180,32 @@ function Analytics() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">{t('analytics.title')}</h1>
+          <p className="page-subtitle">{t('analytics.subtitle')}</p>
+        </div>
+      </div>
+
+      <div className="summary-card">
+        <div className="summary-title">{t('analytics.summaryTitle')}</div>
+        <p className="summary-body" style={{ marginBottom: 12 }}>{analyticsSummaryBody}</p>
+        <p className="summary-body" style={{ marginBottom: 14 }}>{t('analytics.simulationNote')}</p>
+        <div className="summary-title" style={{ fontSize: 14 }}>{t('analytics.nextChecksTitle')}</div>
+        <div className="cta-row">
+          {analyticsNextActions.map((action) => (
+            <button
+              key={action.to}
+              type="button"
+              className={action.primary ? 'btn btn-primary' : 'btn'}
+              onClick={() => navigate(action.to)}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="metric-grid">
         <div className="metric-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>

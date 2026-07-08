@@ -311,6 +311,59 @@ body {
   z-index: 1;
 }
 
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.page-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.page-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+  max-width: 620px;
+}
+
+.page-actions,
+.cta-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  background: var(--accent-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.summary-title {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.summary-body {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 /* ═══════════════════════════════════════════════
    CARDS — GLASS PANELS
    ═══════════════════════════════════════════════ */

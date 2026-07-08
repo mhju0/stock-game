@@ -19,7 +19,7 @@
     "delete": "Delete"
   },
   "nav": {
-    "dashboard": "Dashboard",
+    "dashboard": "Overview",
     "search": "Stocks",
     "portfolio": "Portfolio",
     "watchlist": "Watchlist",
@@ -31,6 +31,10 @@
     "myGames": "My Games"
   },
   "dashboard": {
+    "title": "Overview",
+    "subtitle": "A supporting view for cash, holdings, and the next action to check.",
+    "viewGame": "View Current Game",
+    "viewGames": "View My Games",
     "totalValue": "Total Value",
     "cashKRW": "Cash (KRW)",
     "cashUSD": "Cash (USD)",
@@ -139,6 +143,15 @@
     "amount": "Amount"
   },
   "analytics": {
+    "title": "Analysis",
+    "subtitle": "Reference information for understanding your game result. Start with return, diversification, and cash share.",
+    "summaryTitle": "What to check now",
+    "summaryNoData": "There are no holdings yet, so there is not much to analyze. Find a stock and practice your first trade.",
+    "summaryLimited": "There is not enough trading history yet for deeper analysis. More activity will make the trend clearer.",
+    "summaryConcentrated": "Your results are visible, but a few holdings may carry a large share. A concentrated position can make game results swing more.",
+    "summaryBalanced": "Check return and diversification together. Cash share can also help you understand your next choice.",
+    "nextChecksTitle": "What to check next",
+    "simulationNote": "This analysis is reference information for understanding your game result.",
     "totalReturn": "Total Return",
     "winRate": "Win Rate",
     "realizedPnl": "Realized P&L",
@@ -196,6 +209,8 @@
     "demoHint": "Demo account — username: demo · password: demo1234"
   },
   "game": {
+    "title": "Current Game",
+    "subtitle": "Track the active game period, return, and benchmark comparison here.",
     "startingBalance": "Starting Balance",
     "currentValue": "Current Value",
     "return": "Return",
