@@ -43,21 +43,16 @@ function Analytics() {
     apiGet(`/analytics/realized?user_id=${currentUserId}`, setRealized)
   }, [currentUserId])
 
-  const filterSnapshots = (snapshots) => {
+  const startVal = performance?.starting_value || 0
+  const snapshots = useMemo(() => performance?.snapshots || [], [performance?.snapshots])
+  const filtered = useMemo(() => {
     if (timeRange === 'ALL') return snapshots
     const cutoff = new Date()
     if (timeRange === '1W') cutoff.setDate(cutoff.getDate() - 7)
     if (timeRange === '1M') cutoff.setMonth(cutoff.getMonth() - 1)
     if (timeRange === '3M') cutoff.setMonth(cutoff.getMonth() - 3)
     return snapshots.filter(s => new Date(s.date) >= cutoff)
-  }
-
-  const startVal = performance?.starting_value || 0
-  const snapshots = performance?.snapshots || []
-  const filtered = useMemo(
-    () => filterSnapshots(snapshots),
-    [snapshots, timeRange]
-  )
+  }, [snapshots, timeRange])
   const chartDataReturn = useMemo(() => filtered.map(s => ({
     date: formatDateTime(s.date, i18n.language === 'ko' ? 'ko-KR' : 'en-US'),
     total_pct: startVal ? ((s.value - startVal) / startVal) * 100 : 0,
@@ -103,6 +98,54 @@ function Analytics() {
       default: return 0
     }
   }), [byStock, stockSort, i18n.language])
+
+  const topStock = byStock.reduce((top, stockItem) => {
+    if (!top || stockItem.total_value_krw > top.total_value_krw) return stockItem
+    return top
+  }, null)
+  const topStockName = topStock ? getStockName(topStock.ticker, topStock.name, i18n.language) : ''
+  const topAllocationPct = performance?.current_value
+    ? ((topStock?.total_value_krw || 0) / performance.current_value) * 100
+    : 0
+  const latestAllocation = chartDataAllocation[chartDataAllocation.length - 1]
+  const cashPct = latestAllocation ? latestAllocation.cash_pct : (byStock.length === 0 ? 100 : 0)
+  const totalReturnPct = Number(performance?.total_return_pct || 0)
+  const analyticsInsights = [
+    {
+      title: t('analytics.returnInsightTitle'),
+      value: `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct}%`,
+      body: totalReturnPct > 0
+        ? t('analytics.returnInsightPositive')
+        : totalReturnPct < 0
+          ? t('analytics.returnInsightNegative')
+          : t('analytics.returnInsightFlat'),
+    },
+    {
+      title: t('analytics.concentrationTitle'),
+      value: topStock ? `${topStockName} ${topAllocationPct.toFixed(0)}%` : '-',
+      body: !topStock
+        ? t('analytics.concentrationEmpty')
+        : topAllocationPct >= 40
+          ? t('analytics.concentrationHigh')
+          : t('analytics.concentrationBalanced'),
+    },
+    {
+      title: t('analytics.cashInsightTitle'),
+      value: `${cashPct.toFixed(0)}%`,
+      body: cashPct >= 40
+        ? t('analytics.cashHigh')
+        : cashPct <= 10
+          ? t('analytics.cashLow')
+          : t('analytics.cashBalanced'),
+    },
+    {
+      title: t('analytics.activityInsightTitle'),
+      value: t('portfolio.stocksCount', { count: byStock.length }),
+      body: snapshots.length < 2 || byStock.length === 0
+        ? t('analytics.activityLow')
+        : t('analytics.activityActive'),
+    },
+  ]
 
   if (perfLoading) return <p>{t('common.loading')}</p>
   if (
@@ -156,6 +199,19 @@ function Analytics() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="card">
+        <div className="card-title">{t('analytics.insightsTitle')}</div>
+        <div className="insight-grid" style={{ marginBottom: 0 }}>
+          {analyticsInsights.map((insight) => (
+            <div key={insight.title} className="insight-card">
+              <div className="insight-label">{insight.title}</div>
+              <div className="insight-value">{insight.value}</div>
+              <div className="insight-body">{insight.body}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="card">
@@ -285,7 +341,13 @@ function Analytics() {
                 const allocPct = ((s.total_value_krw / (performance.current_value || 1)) * 100).toFixed(1)
                 
                 return (
-                  <div key={s.ticker} onClick={() => setTradeTicker(s.ticker)} style={{
+                  <button
+                    key={s.ticker}
+                    type="button"
+                    className="interactive-card-button"
+                    onClick={() => setTradeTicker(s.ticker)}
+                    aria-label={`${name} ${t('stock.openTrade')}`}
+                    style={{
                     background: 'var(--bg-secondary)', borderRadius: 14, padding: 16,
                     cursor: 'pointer', transition: 'transform 0.1s',
                     borderLeft: `4px solid ${isPositive ? 'var(--positive)' : 'var(--negative)'}`,
@@ -318,7 +380,7 @@ function Analytics() {
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
                       <span>{s.sector && <>{s.sector} · </>}{s.market}</span>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -331,7 +393,13 @@ function Analytics() {
                 const allocPct = ((s.total_value_krw / (performance.current_value || 1)) * 100).toFixed(1)
 
                 return (
-                  <div key={s.ticker} onClick={() => setTradeTicker(s.ticker)} style={{
+                  <button
+                    key={s.ticker}
+                    type="button"
+                    className="interactive-row"
+                    onClick={() => setTradeTicker(s.ticker)}
+                    aria-label={`${name} ${t('stock.openTrade')}`}
+                    style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '14px 0', borderBottom: '1px solid var(--border-light)',
                     cursor: 'pointer',
@@ -357,7 +425,7 @@ function Analytics() {
                         {isPositive ? '+' : ''}{s.unrealized_pnl_pct}% ({isPositive ? '+' : ''}{fmt(s.unrealized_pnl)})
                       </div>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>

@@ -174,7 +174,11 @@ function Portfolio() {
         <div className="card-title">{t('stock.sector')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {Object.entries(totalBySector).map(([sector, data]) => (
-            <div key={sector} style={{
+            <button
+              key={sector}
+              type="button"
+              className="interactive-card-button"
+              style={{
               background: 'var(--bg-secondary)', borderRadius: 10, padding: '8px 14px',
               fontSize: 13, cursor: 'pointer',
               border: filterSector === sector ? '2px solid #007aff' : '2px solid transparent',
@@ -182,11 +186,11 @@ function Portfolio() {
               onClick={() => setFilterSector(filterSector === sector ? 'ALL' : sector)}
             >
               <div style={{ fontWeight: 600 }}>{sector}</div>
-              <div style={{ color: 'var(--text-secondary)' }}>{data.count} stocks</div>
+              <div style={{ color: 'var(--text-secondary)' }}>{t('portfolio.stocksCount', { count: data.count })}</div>
               <div className={data.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 12 }}>
                 {data.pnl >= 0 ? '+' : ''}{data.pnl.toFixed(2)}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -208,13 +212,17 @@ function Portfolio() {
           const allocPct = ((hValKRW / (account.total_value_krw || 1)) * 100).toFixed(1)
 
           return (
-            <div key={h.ticker} onClick={() => setTradeTicker(h.ticker)} style={{
+            <button
+              key={h.ticker}
+              type="button"
+              className="interactive-row"
+              onClick={() => setTradeTicker(h.ticker)}
+              aria-label={`${name} ${t('stock.openTrade')}`}
+              style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '14px 0', borderBottom: '1px solid var(--border-light)', cursor: 'pointer',
               transition: 'background 0.1s',
             }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--hover-bg)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <div style={{ flex: 1 }}>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
@@ -235,7 +243,7 @@ function Portfolio() {
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t('holdings.avgPrice')} {fmt(h.avg_price)}</div>
               </div>
-            </div>
+            </button>
           )
         })}
       </div>

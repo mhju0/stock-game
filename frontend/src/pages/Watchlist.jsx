@@ -45,21 +45,20 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
         return (
           <div
             key={item.ticker}
-            style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "12px 0", borderBottom: "1px solid var(--border-light)", cursor: "pointer",
-            }}
-            onClick={() => onTrade(item.ticker)}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            className="watchlist-row"
           >
-            <div>
-              <strong style={{ fontSize: 15 }}>{name}</strong>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {item.ticker}
+            <button
+              type="button"
+              className="watchlist-row-main"
+              onClick={() => onTrade(item.ticker)}
+              aria-label={`${name} ${t('stock.openTrade')}`}
+            >
+              <div>
+                <strong style={{ fontSize: 15 }}>{name}</strong>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {item.ticker}
+                </div>
               </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 16, fontWeight: 600 }}>
                   {item.currency === "KRW"
@@ -67,9 +66,12 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
                     : `$${item.price?.toFixed(2) || "-"}`}
                 </div>
               </div>
+            </button>
+            <div style={{ display: "flex", alignItems: "center" }}>
               <button
+                type="button"
                 className="btn"
-                onClick={(e) => { e.stopPropagation(); onRemove(item.ticker); }}
+                onClick={() => onRemove(item.ticker)}
                 style={{ fontSize: 12, color: 'var(--negative)', border: "1px solid #fde8e8", padding: "4px 10px" }}
               >
                 {t("watchlist.remove")}

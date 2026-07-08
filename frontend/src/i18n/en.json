@@ -10,6 +10,8 @@
     "connectionError": "Unable to connect to the server. Please try again shortly.",
     "pageErrorTitle": "Could not load this page",
     "pageErrorBody": "Please try again shortly.",
+    "mainNavigation": "Main navigation",
+    "appSections": "App sections",
     "search": "Search",
     "krw": "KRW",
     "usd": "USD",
@@ -24,7 +26,7 @@
     "exchange": "Exchange",
     "transactions": "Transactions",
     "market": "Market",
-    "analytics": "Analytics",
+    "analytics": "Analysis",
     "game": "Game Status",
     "myGames": "My Games"
   },
@@ -83,7 +85,9 @@
     "totalValue": "Total Value",
     "unrealizedPnl": "Unrealized P&L",
     "realizedPnl": "Realized P&L",
-    "notFound": "Stock not found"
+    "notFound": "Stock not found",
+    "openTrade": "Trade",
+    "viewDetails": "View details"
   },
   "trade": {
     "buySuccess": "Purchase complete",
@@ -91,7 +95,17 @@
     "insufficientBalance": "Insufficient balance",
     "insufficientShares": "Insufficient shares",
     "enterQuantity": "Enter quantity",
-    "availableCash": "Available Cash"
+    "availableCash": "Available Cash",
+    "guidance": "Buying uses cash to practice purchasing shares. Selling turns owned shares back into cash.",
+    "estimatedTotal": "Estimated Total",
+    "quickQuantity": "Quick quantity",
+    "ownedQuantity": "Owned Shares",
+    "maxBuy": "Max",
+    "sellAll": "All",
+    "quantityInvalid": "Enter a quantity greater than 0.",
+    "quantityWholeNumber": "Enter a whole number of shares.",
+    "exceedsCash": "This is above your available cash for buying.",
+    "exceedsHolding": "This is above the quantity you can sell."
   },
   "exchange": {
     "title": "Currency Exchange",
@@ -141,7 +155,23 @@
     "grid": "Grid",
     "list": "List",
     "chartEmpty": "Your performance chart will appear after more trading activity.",
-    "retryBody": "Try loading your analytics again."
+    "retryBody": "Try loading your analytics again.",
+    "insightsTitle": "At a glance",
+    "returnInsightTitle": "Return",
+    "returnInsightPositive": "Your value is above the starting balance. Results can still move around.",
+    "returnInsightNegative": "Your value is below the starting balance. Check which holdings moved most.",
+    "returnInsightFlat": "There is not much movement yet. More activity will reveal the trend.",
+    "concentrationTitle": "Diversification",
+    "concentrationHigh": "One position has a high share, so results can swing more.",
+    "concentrationBalanced": "Your holdings are spread across positions more evenly.",
+    "concentrationEmpty": "Diversification will appear once you own stocks.",
+    "cashInsightTitle": "Cash Share",
+    "cashHigh": "Keeping cash gives you room for the next opportunity.",
+    "cashLow": "Your cash share is low, so there is less room for new buys.",
+    "cashBalanced": "Cash and stock exposure are both present in your portfolio.",
+    "activityInsightTitle": "Trading History",
+    "activityLow": "There is not enough trading history yet for deeper analysis.",
+    "activityActive": "Your trading history is growing enough to review patterns."
   },
   "market": {
     "loadingData": "Loading market data... Please wait",
@@ -214,6 +244,7 @@
   "portfolio": {
     "emptyTitle": "No holdings yet",
     "emptyBody": "Find a stock you are interested in and practice your first buy.",
-    "emptyAction": "Find Stocks"
+    "emptyAction": "Find Stocks",
+    "stocksCount": "{{count}} stocks"
   }
 }

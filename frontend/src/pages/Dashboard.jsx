@@ -31,7 +31,7 @@ function Dashboard() {
 
   const { data: account, isLoading: accountLoading, isError: accountError } = useAccountQuery(currentUserId)
   const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId)
-  const holdingsSafe = Array.isArray(holdings) ? holdings : []
+  const holdingsSafe = useMemo(() => Array.isArray(holdings) ? holdings : [], [holdings])
 
   const fetchData = () => {
     setError('')
@@ -233,7 +233,13 @@ function Dashboard() {
             const allocPct = ((hValKRW / (account.total_value_krw || 1)) * 100).toFixed(1)
 
             return (
-              <div key={h.ticker} className="holding-row" onClick={() => setTradeTicker(h.ticker)}>
+              <button
+                key={h.ticker}
+                type="button"
+                className="holding-row"
+                onClick={() => setTradeTicker(h.ticker)}
+                aria-label={`${name} ${t('stock.openTrade')}`}
+              >
                 <div style={{ flex: 1 }}>
                   <strong style={{ fontSize: 15 }}>{name}</strong>
                   <div className="holding-sub">
@@ -252,7 +258,7 @@ function Dashboard() {
                     {h.unrealized_pnl >= 0 ? '+' : ''}{pnlPct}%
                   </div>
                 </div>
-              </div>
+              </button>
             )
           })
         )}

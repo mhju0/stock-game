@@ -30,49 +30,50 @@ function AppLayout() {
   const { t, i18n } = useTranslation();
   const { logout } = useContext(UserContext);
 
+  const primaryNav = [
+    { to: "/games", label: t("nav.myGames") },
+    { to: "/", label: t("nav.game") },
+    { to: "/portfolio", label: t("nav.portfolio") },
+    { to: "/search", label: t("nav.search") },
+    { to: "/exchange", label: t("nav.exchange") },
+  ];
+  const secondaryNav = [
+    { to: "/watchlist", label: t("nav.watchlist") },
+    { to: "/transactions", label: t("nav.transactions") },
+    { to: "/analytics", label: t("nav.analytics") },
+    { to: "/market", label: t("nav.market") },
+    { to: "/dashboard", label: t("nav.dashboard") },
+  ];
+
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === "ko" ? "en" : "ko");
   };
 
   return (
     <>
-      <nav className="nav">
-        <div className="nav-left">
-          <span className="nav-logo">{t("common.appName")}</span>
+      <nav className="nav" aria-label={t("common.mainNavigation")}>
+        <NavLink to="/games" className="nav-logo">
+          {t("common.appName")}
+        </NavLink>
 
-          <NavLink to="/dashboard" className="nav-link">
-            {t("nav.dashboard")}
-          </NavLink>
-          <NavLink to="/analytics" className="nav-link">
-            {t("nav.analytics") || "Analytics"}
-          </NavLink>
-          <NavLink to="/search" className="nav-link">
-            {t("nav.search")}
-          </NavLink>
-          <NavLink to="/portfolio" className="nav-link">
-            {t("nav.portfolio")}
-          </NavLink>
-          <NavLink to="/watchlist" className="nav-link">
-            {t("nav.watchlist")}
-          </NavLink>
-          <NavLink to="/market" className="nav-link">
-            {t("nav.market") || "Top 30"}
-          </NavLink>
-          <NavLink to="/exchange" className="nav-link">
-            {t("nav.exchange")}
-          </NavLink>
-          <NavLink to="/transactions" className="nav-link">
-            {t("nav.transactions")}
-          </NavLink>
-          <NavLink to="/games" className="nav-link">
-            {t("nav.myGames")}
-          </NavLink>
-          <NavLink to="/" className="nav-link">
-            {t("nav.game") || "Game"}
-          </NavLink>
+        <div className="nav-scroll" aria-label={t("common.appSections")}>
+          <div className="nav-group nav-group-primary">
+            {primaryNav.map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.to === "/"} className="nav-link">
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+          <div className="nav-group nav-group-secondary">
+            {secondaryNav.map((item) => (
+              <NavLink key={item.to} to={item.to} className="nav-link">
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="nav-actions">
           <button
             className="btn"
             onClick={logout}

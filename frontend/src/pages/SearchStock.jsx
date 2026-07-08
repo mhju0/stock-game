@@ -90,10 +90,16 @@ function SearchStock() {
             {results.map(r => {
               const name = getStockName(r.ticker, r.name_en || r.name, i18n.language)
               return (
-                <div key={r.ticker} onClick={() => selectStock(r.ticker)} className="search-result-row">
+                <button
+                  key={r.ticker}
+                  type="button"
+                  onClick={() => selectStock(r.ticker)}
+                  className="search-result-row"
+                  aria-label={`${name} ${t('stock.viewDetails')}`}
+                >
                   <strong style={{ fontSize: 15 }}>{name}</strong>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.ticker} · {r.exchange}</div>
-                </div>
+                </button>
               )
             })}
           </div>

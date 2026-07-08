@@ -14,7 +14,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
 
   const [stock, setStock] = useState(null);
   const [myHolding, setMyHolding] = useState(0);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState("1");
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
     setMessage("");
     setIsSuccess(false);
     setConfirmAction(null);
-    setQuantity(1);
+    setQuantity("1");
 
     Promise.all([
       apiFetch(`/stock/${ticker}`, {}, setMessage),
@@ -76,7 +76,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
     setSubmitting(true);
     const data = await apiPost(
       `/trade/buy?user_id=${currentUserId}`,
-      { ticker, quantity },
+      { ticker, quantity: quantityNumber },
       (err) => setMessage(err)
     );
     setSubmitting(false);
@@ -99,7 +99,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
     setSubmitting(true);
     const data = await apiPost(
       `/trade/sell?user_id=${currentUserId}`,
-      { ticker, quantity },
+      { ticker, quantity: quantityNumber },
       (err) => setMessage(err)
     );
     setSubmitting(false);
@@ -139,10 +139,48 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
   }
 
   const displayName = stock ? getStockName(ticker, stock.name, i18n.language) : ticker;
+  const quantityNumber = typeof quantity === "number" ? quantity : Number(quantity);
+  const isWholeQuantity = /^\d+$/.test(String(quantity));
   const fmt = (v) =>
     stock?.currency === "KRW"
       ? `₩${Math.round(v).toLocaleString()}`
       : `$${v.toFixed(2)}`;
+  const availableCash = account && stock
+    ? stock.currency === "KRW"
+      ? account.balance_krw
+      : account.balance_usd
+    : 0;
+  const safeWholeHolding = Math.max(0, Math.floor(Number(myHolding) || 0));
+  const estimatedTotal = stock && Number.isFinite(quantityNumber) ? stock.price * quantityNumber : 0;
+  const maxBuyQuantity = stock?.price > 0 ? Math.floor(availableCash / stock.price) : 0;
+  const invalidWholeQuantity = Number.isFinite(quantityNumber) && quantityNumber > 0 && !isWholeQuantity;
+  const invalidQuantity = !Number.isFinite(quantityNumber) || quantityNumber <= 0 || invalidWholeQuantity;
+  const exceedsCash = !!account && !!stock && estimatedTotal > availableCash;
+  const exceedsHolding = !!stock && quantityNumber > safeWholeHolding;
+  const showCashWarning = !invalidQuantity && exceedsCash && (!confirmAction || confirmAction === 'BUY');
+  const showHoldingWarning = !invalidQuantity && exceedsHolding && confirmAction === 'SELL';
+  const confirmDisabled = submitting ||
+    invalidQuantity ||
+    (confirmAction === 'BUY' && exceedsCash) ||
+    (confirmAction === 'SELL' && exceedsHolding);
+  const quickQuantities = [
+    { key: 'one', label: `1${t('holdings.shares')}`, value: 1 },
+    { key: 'five', label: `5${t('holdings.shares')}`, value: 5 },
+    { key: 'ten', label: `10${t('holdings.shares')}`, value: 10 },
+    { key: 'max', label: t('trade.maxBuy'), value: maxBuyQuantity, disabled: maxBuyQuantity <= 0 },
+    { key: 'all', label: t('trade.sellAll'), value: safeWholeHolding, disabled: safeWholeHolding <= 0 },
+  ];
+  const setQuickQuantity = (value) => {
+    setQuantity(String(value));
+    setConfirmAction(null);
+  };
+  const handleQuantityChange = (event) => {
+    const nextValue = event.target.value;
+    if (nextValue === "" || /^\d*\.?\d*$/.test(nextValue)) {
+      setQuantity(nextValue);
+      setConfirmAction(null);
+    }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -164,7 +202,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
                   {ticker} · {stock.market}
                 </div>
                 <div style={{ fontSize: 13, marginTop: 4, color: myHolding > 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                  {i18n.language === 'ko' ? `보유: ${myHolding}주` : `Holdings: ${myHolding} shares`}
+                  {i18n.language === 'ko' ? `보유: ${safeWholeHolding}주` : `Holdings: ${safeWholeHolding} shares`}
                 </div>
               </>
             )}
@@ -231,27 +269,50 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              {[1, 5, 10, 25].map((v) => (
+            <div className="trade-guide">
+              {t('trade.guidance')}
+            </div>
+
+            <div className="trade-context-grid">
+              <div className="trade-context-item">
+                <div className="trade-context-label">{t("trade.availableCash")}</div>
+                <div className="trade-context-value">
+                  {stock.currency === "KRW"
+                    ? `₩${Math.round(availableCash).toLocaleString()}`
+                    : `$${availableCash.toFixed(2)}`}
+                </div>
+              </div>
+              <div className="trade-context-item">
+                <div className="trade-context-label">{t("trade.ownedQuantity")}</div>
+                <div className="trade-context-value">
+                  {safeWholeHolding} {t('holdings.shares')}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+              {t("trade.quickQuantity")}
+            </div>
+            <div className="quantity-chip-row">
+              {quickQuantities.map((preset) => (
                 <button
-                  key={v}
-                  className="btn"
-                  onClick={() => setQuantity(v)}
-                  disabled={submitting}
+                  key={preset.key}
+                  type="button"
+                  className="btn quantity-chip"
+                  onClick={() => setQuickQuantity(preset.value)}
+                  disabled={submitting || preset.disabled}
                   style={{
-                    flex: 1,
                     fontSize: 13,
-                    padding: "8px 0",
                     background:
-                      quantity === v ? "var(--text-primary)" : "transparent",
+                      isWholeQuantity && quantityNumber === preset.value ? "var(--text-primary)" : "transparent",
                     color:
-                      quantity === v
+                      isWholeQuantity && quantityNumber === preset.value
                         ? "var(--bg-primary)"
                         : "var(--text-primary)",
                     border: "1px solid var(--border)",
                   }}
                 >
-                  {v}
+                  {preset.label}
                 </button>
               ))}
             </div>
@@ -259,10 +320,11 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
             <input
               className="input"
               type="number"
-              min="0.01"
-              step="0.01"
+              min="1"
+              step="1"
+              inputMode="numeric"
               value={quantity}
-              onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+              onChange={handleQuantityChange}
               disabled={submitting}
               style={{ marginBottom: 8, textAlign: "center", fontSize: 16 }}
             />
@@ -270,28 +332,26 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
             <div
               style={{
                 textAlign: "center",
-                fontSize: 14,
+                fontSize: 13,
                 color: "var(--text-secondary)",
-                marginBottom: 16,
+                marginBottom: 12,
               }}
             >
-              = {fmt(stock.price * quantity)}
+              <div style={{ marginBottom: 4 }}>{t("trade.estimatedTotal")}</div>
+              <strong style={{ color: 'var(--text-primary)', fontSize: 16 }}>
+                {fmt(estimatedTotal)}
+              </strong>
             </div>
 
-            {account && (
-              <div
-                style={{
-                  textAlign: "center",
-                  fontSize: 13,
-                  color: 'var(--accent)',
-                  marginBottom: 16,
-                  fontWeight: 500,
-                }}
-              >
-                {t("trade.availableCash")}:{" "}
-                {stock.currency === "KRW"
-                  ? `₩${Math.round(account.balance_krw).toLocaleString()}`
-                  : `$${account.balance_usd.toFixed(2)}`}
+            {(invalidQuantity || showCashWarning || showHoldingWarning) && (
+              <div className="trade-warning">
+                {invalidWholeQuantity ? (
+                  <div>{t("trade.quantityWholeNumber")}</div>
+                ) : (
+                  invalidQuantity && <div>{t("trade.quantityInvalid")}</div>
+                )}
+                {showCashWarning && <div>{t("trade.exceedsCash")}</div>}
+                {showHoldingWarning && <div>{t("trade.exceedsHolding")}</div>}
               </div>
             )}
 
@@ -305,10 +365,10 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
                     {confirmAction === 'BUY' ? t("stock.buy") : t("stock.sell")}
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
-                    {displayName} × {quantity}
+                    {displayName} × {quantityNumber}
                   </div>
                   <div style={{ fontSize: 16, color: 'var(--text-secondary)', marginTop: 4 }}>
-                    {fmt(stock.price * quantity)}
+                    {fmt(estimatedTotal)}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -321,7 +381,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
                     className={confirmAction === 'BUY' ? "btn btn-buy" : "btn btn-sell"}
                     style={{ flex: 1 }}
                     onClick={submitTrade}
-                    disabled={submitting || quantity <= 0}
+                    disabled={confirmDisabled}
                   >
                     {submitting ? t("common.loading") : t("common.confirm")}
                   </button>
@@ -329,10 +389,10 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
               </div>
             ) : (
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-buy" style={{ flex: 1 }} onClick={() => setConfirmAction('BUY')} disabled={submitting || quantity <= 0}>
+                <button className="btn btn-buy" style={{ flex: 1 }} onClick={() => setConfirmAction('BUY')} disabled={submitting || invalidQuantity || exceedsCash}>
                   {t("stock.buy")}
                 </button>
-                <button className="btn btn-sell" style={{ flex: 1 }} onClick={() => setConfirmAction('SELL')} disabled={submitting || quantity <= 0}>
+                <button className="btn btn-sell" style={{ flex: 1 }} onClick={() => setConfirmAction('SELL')} disabled={submitting || invalidQuantity || exceedsHolding}>
                   {t("stock.sell")}
                 </button>
               </div>

@@ -53,8 +53,12 @@ function Market() {
           {stocks.map((s, i) => {
             const name = getStockName(s.ticker, s.name, i18n.language);
             return (
-              <div
+              <button
                 key={s.ticker}
+                type="button"
+                className="interactive-row"
+                onClick={() => setTradeTicker(s.ticker)}
+                aria-label={`${name} ${t('stock.openTrade')}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -63,13 +67,6 @@ function Market() {
                   borderBottom: "1px solid var(--border-light)",
                   cursor: "pointer",
                 }}
-                onClick={() => setTradeTicker(s.ticker)}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = 'var(--bg-tertiary)')
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span
@@ -110,7 +107,7 @@ function Market() {
                     {s.change_pct}%
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
