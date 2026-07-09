@@ -19,5 +19,8 @@ export function sessionStatusLabelKey(session) {
 }
 
 export function isSessionEnded(session) {
-  return session?.status === 'expired'
+  return Boolean(
+    session?.is_expired ||
+    ['completed', 'expired', 'archived'].includes(session?.status)
+  )
 }

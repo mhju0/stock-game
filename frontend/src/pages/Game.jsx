@@ -1,11 +1,20 @@
 import { apiFetch } from '../api'
-import { useState, useEffect, useMemo } from 'react'
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
-import { formatMoney } from '../utils/formatters'
+import { formatDateTime, formatMoney } from '../utils/formatters'
 import { gamePath } from '../sessionRoutes'
+
+function ResultMetric({ label, children, tone = '' }) {
+  return (
+    <div className="metric-card">
+      <div className="metric-label">{label}</div>
+      <div className={`metric-value ${tone}`}>{children}</div>
+    </div>
+  )
+}
 
 function Game() {
   const { t, i18n } = useTranslation()
@@ -14,21 +23,23 @@ function Game() {
   
   const [status, setStatus] = useState(null)
   const [summary, setSummary] = useState(null)
+  const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [benchmarkData, setBenchmarkData] = useState([])
   const [portfolioData, setPortfolioData] = useState([])
   const [benchmarkIndex, setBenchmarkIndex] = useState('SP500')
   const [showSummary, setShowSummary] = useState(false)
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setLoading(true)
     Promise.all([
       apiFetch(`/game/sessions/${sessionId}/status`).then(d => { if (d) setStatus(d) }),
       apiFetch(`/game/sessions/${sessionId}/summary`).then(d => { if (d) setSummary(d) }),
+      apiFetch(`/game/sessions/${sessionId}/result`).then(d => { if (d) setResult(d) }),
     ]).finally(() => setLoading(false))
-  }
+  }, [sessionId])
 
-  useEffect(() => { fetchData() }, [sessionId])
+  useEffect(() => { fetchData() }, [fetchData])
 
   useEffect(() => {
     if (!status) return
@@ -63,6 +74,7 @@ function Game() {
 
   const formatKRW = (v) => formatMoney(v, 'KRW')
   const isKo = i18n.language === 'ko'
+  const locale = isKo ? 'ko-KR' : 'en-US'
 
   if (loading) return <p>{t('common.loading')}</p>
   if (!status) return (
@@ -72,18 +84,178 @@ function Game() {
     </div>
   )
 
-  if (!status.active && !status.is_expired) {
+  if (!status.active || status.is_expired) {
+    const completedResult = result || {}
+    const returnTone = (completedResult.total_return_krw || 0) >= 0 ? 'positive' : 'negative'
+    const realizedCurrencies = completedResult.realized_pnl?.by_currency || {}
+    const realizedEntries = Object.entries(realizedCurrencies)
+    const holdings = completedResult.final_holdings || []
+    const hasResultData = completedResult.result_data_available
+
     return (
-      <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-          {status.is_expired ? t('game.gameOver') : t('game.notPlayable')}
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-          {t('game.notPlayableDesc')}
-        </p>
-        <button className="btn btn-primary" onClick={() => navigate('/games')}>
-          {t('nav.myGames')}
-        </button>
+      <div>
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">{completedResult.title || status.title || t('game.title')}</h1>
+            <p className="page-subtitle">{t('game.completedSubtitle')}</p>
+          </div>
+          <div className="page-actions">
+            <button type="button" className="btn" onClick={() => navigate(gamePath(sessionId, 'transactions'))}>
+              {t('nav.transactions')}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/games/new')}>
+              {t('game.playAgain')}
+            </button>
+          </div>
+        </div>
+
+        <div className="game-status-bar game-expired">
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{t('game.endedTitle')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              {t('game.completedBody')}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+              {formatDateTime(completedResult.start_date || status.start_date, locale, false)} → {formatDateTime(completedResult.end_date || status.end_date, locale, false)}
+            </div>
+          </div>
+          <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}
+            onClick={() => navigate('/games')}>{t('nav.myGames')}</button>
+        </div>
+
+        {!hasResultData && (
+          <div className="summary-card">
+            <div className="summary-title">{t('game.resultUnavailableTitle')}</div>
+            <p className="summary-body">{t('game.resultUnavailableBody')}</p>
+          </div>
+        )}
+
+        <div className="metric-grid">
+          <ResultMetric label={t('game.startingValue')}>
+            {formatKRW(completedResult.starting_value_krw)}
+          </ResultMetric>
+          <ResultMetric label={t('game.endingValue')}>
+            {completedResult.ending_value_krw === null || completedResult.ending_value_krw === undefined
+              ? t('common.unavailable')
+              : formatKRW(completedResult.ending_value_krw)}
+          </ResultMetric>
+          <ResultMetric label={t('game.totalReturnAmount')} tone={returnTone}>
+            {completedResult.total_return_krw === null || completedResult.total_return_krw === undefined
+              ? t('common.unavailable')
+              : `${completedResult.total_return_krw >= 0 ? '+' : ''}${formatKRW(completedResult.total_return_krw)}`}
+          </ResultMetric>
+          <ResultMetric label={t('game.totalReturnPct')} tone={returnTone}>
+            {completedResult.total_return_pct === null || completedResult.total_return_pct === undefined
+              ? t('common.unavailable')
+              : `${completedResult.total_return_pct >= 0 ? '+' : ''}${completedResult.total_return_pct}%`}
+          </ResultMetric>
+        </div>
+
+        <div className="metric-grid">
+          <ResultMetric label={t('game.finalCashKrw')}>
+            {formatMoney(completedResult.final_cash_krw, 'KRW')}
+          </ResultMetric>
+          <ResultMetric label={t('game.finalCashUsd')}>
+            {formatMoney(completedResult.final_cash_usd, 'USD')}
+          </ResultMetric>
+          <ResultMetric label={t('game.totalTrades')}>
+            {completedResult.trade_count ?? 0}
+          </ResultMetric>
+          <ResultMetric label={t('game.exchangeCount')}>
+            {completedResult.exchange_count ?? 0}
+          </ResultMetric>
+        </div>
+
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-title">{t('analytics.realizedPnl')}</div>
+          {realizedEntries.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              {t('game.realizedUnavailable')}
+            </p>
+          ) : (
+            <div className="metric-grid" style={{ marginBottom: 0 }}>
+              {realizedEntries.map(([currency, amount]) => (
+                <ResultMetric key={currency} label={currency} tone={amount >= 0 ? 'positive' : 'negative'}>
+                  {amount >= 0 ? '+' : ''}{formatMoney(amount, currency)}
+                </ResultMetric>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {(completedResult.best_stock || completedResult.worst_stock) && (
+          <div className="metric-grid">
+            {completedResult.best_stock && (
+              <ResultMetric label={t('game.bestStock')} tone={completedResult.best_stock.realized_pnl >= 0 ? 'positive' : 'negative'}>
+                {getStockName(completedResult.best_stock.ticker, completedResult.best_stock.name, i18n.language)}
+                <div style={{ fontSize: 13, marginTop: 4 }}>
+                  {completedResult.best_stock.realized_pnl >= 0 ? '+' : ''}{formatMoney(completedResult.best_stock.realized_pnl, completedResult.best_stock.currency)}
+                </div>
+              </ResultMetric>
+            )}
+            {completedResult.worst_stock && (
+              <ResultMetric label={t('game.worstStock')} tone={completedResult.worst_stock.realized_pnl >= 0 ? 'positive' : 'negative'}>
+                {getStockName(completedResult.worst_stock.ticker, completedResult.worst_stock.name, i18n.language)}
+                <div style={{ fontSize: 13, marginTop: 4 }}>
+                  {completedResult.worst_stock.realized_pnl >= 0 ? '+' : ''}{formatMoney(completedResult.worst_stock.realized_pnl, completedResult.worst_stock.currency)}
+                </div>
+              </ResultMetric>
+            )}
+          </div>
+        )}
+
+        <div className="card">
+          <div className="card-title">{t('game.finalHoldings')}</div>
+          {holdings.length === 0 ? (
+            <div className="empty-state" style={{ padding: '24px 0' }}>
+              <h2 style={{ fontSize: 18, color: 'var(--text-primary)', marginBottom: 8 }}>
+                {t('game.noFinalHoldingsTitle')}
+              </h2>
+              <p>{completedResult.trade_count ? t('game.noFinalHoldingsSold') : t('game.noTradesBody')}</p>
+            </div>
+          ) : (
+            <div>
+              {holdings.map((holding) => (
+                <div key={`${holding.market}-${holding.ticker}`} className="interactive-row" style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '14px 0', borderBottom: '1px solid var(--border-light)',
+                }}>
+                  <div>
+                    <strong style={{ fontSize: 15 }}>
+                      {getStockName(holding.ticker, holding.name, i18n.language)}
+                    </strong>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {holding.ticker} · {holding.market}{holding.sector ? ` · ${holding.sector}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>
+                      {holding.quantity} {t('holdings.shares')}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {t('holdings.avgPrice')} {formatMoney(holding.avg_price, holding.currency)}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {t('game.bookCost')} {formatMoney(holding.book_cost, holding.currency)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="cta-row" style={{ marginTop: 16 }}>
+          <button className="btn btn-primary" onClick={() => navigate('/games/new')}>
+            {t('game.playAgain')}
+          </button>
+          <button className="btn" onClick={() => navigate(gamePath(sessionId, 'portfolio'))}>
+            {t('nav.portfolio')}
+          </button>
+          <button className="btn" onClick={() => navigate(gamePath(sessionId, 'analytics'))}>
+            {t('nav.analytics')}
+          </button>
+        </div>
       </div>
     )
   }

@@ -369,6 +369,155 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
     }
 
 
+def _build_session_result(db: Session, user: User, session: GameSession) -> dict:
+    _ensure_session_cash_for_read(db, session, user)
+    user_id = user.id
+    now = datetime.now(timezone.utc)
+    effective_status = _effective_status(session, now)
+    start_date = _as_aware_utc(session.start_date)
+    end_date = _as_aware_utc(session.end_date)
+    snapshots = _session_snapshots(db, user_id, session.id)
+    holdings = _session_holdings(db, user_id, session.id)
+    transactions = _session_transactions(db, user_id, session.id)
+
+    first_snapshot = snapshots[0] if snapshots else None
+    last_snapshot = snapshots[-1] if snapshots else None
+    fallback_rate = get_exchange_rate()
+    start_rate = first_snapshot.exchange_rate if first_snapshot else fallback_rate
+
+    starting_value = (
+        first_snapshot.total_value_krw
+        if first_snapshot
+        else _session_starting_value_krw(session, start_rate)
+    )
+    starting_source = "first_snapshot" if first_snapshot else "session_starting_balance"
+
+    ending_value = None
+    ending_source = None
+    if last_snapshot:
+        ending_value = last_snapshot.total_value_krw
+        ending_source = "last_snapshot"
+    elif session.final_value_krw is not None:
+        ending_value = session.final_value_krw
+        ending_source = "session_final_value"
+    elif not holdings and not transactions:
+        ending_value = (session.cash_krw or 0.0) + ((session.cash_usd or 0.0) * fallback_rate)
+        ending_source = "cash_only_session_balance"
+
+    total_return = None
+    total_return_pct = None
+    if ending_value is not None:
+        total_return = ending_value - starting_value
+        if starting_value:
+            total_return_pct = (total_return / starting_value) * 100
+
+    buys = [t for t in transactions if t.transaction_type == "BUY"]
+    sells = [t for t in transactions if t.transaction_type == "SELL"]
+    exchanges = [t for t in transactions if t.transaction_type == "EXCHANGE"]
+
+    realized_by_currency: dict[str, float] = {}
+    realized_available = True
+    for tx in sells:
+        if tx.realized_pnl is None:
+            realized_available = False
+            continue
+        realized_by_currency[tx.currency] = realized_by_currency.get(tx.currency, 0.0) + tx.realized_pnl
+
+    realized_pnl = {
+        "available": realized_available,
+        "by_currency": {
+            currency: round(amount, 2)
+            for currency, amount in sorted(realized_by_currency.items())
+        },
+    }
+    if not realized_available:
+        realized_pnl["reason"] = "missing_sell_realized_pnl"
+
+    best_stock = None
+    worst_stock = None
+    stock_result_reason = None
+    sell_currencies = {tx.currency for tx in sells}
+    if sells and len(sell_currencies) == 1:
+        realized_by_stock: dict[str, dict] = {}
+        for tx in sells:
+            if tx.realized_pnl is None:
+                continue
+            item = realized_by_stock.setdefault(
+                tx.ticker,
+                {
+                    "ticker": tx.ticker,
+                    "name": tx.name,
+                    "market": tx.market,
+                    "currency": tx.currency,
+                    "realized_pnl": 0.0,
+                    "sell_trades": 0,
+                },
+            )
+            item["realized_pnl"] += tx.realized_pnl
+            item["sell_trades"] += 1
+
+        if realized_by_stock:
+            best_stock = max(realized_by_stock.values(), key=lambda item: item["realized_pnl"])
+            worst_stock = min(realized_by_stock.values(), key=lambda item: item["realized_pnl"])
+            best_stock["realized_pnl"] = round(best_stock["realized_pnl"], 2)
+            worst_stock["realized_pnl"] = round(worst_stock["realized_pnl"], 2)
+    elif sells:
+        stock_result_reason = "mixed_realized_pnl_currencies"
+
+    peak_value = max((snapshot.total_value_krw for snapshot in snapshots), default=None)
+    trough_value = min((snapshot.total_value_krw for snapshot in snapshots), default=None)
+
+    final_cash_krw = last_snapshot.cash_krw if last_snapshot else (session.cash_krw or 0.0)
+    final_cash_usd = last_snapshot.cash_usd if last_snapshot else (session.cash_usd or 0.0)
+
+    return {
+        "session_id": session.id,
+        "title": session.title,
+        "status": effective_status,
+        "is_completed": effective_status in {"completed", "expired", "archived"},
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "completed_at": _iso(session.completed_at),
+        "duration_days": session.duration_days,
+        "starting_value_krw": round(starting_value, 2),
+        "starting_value_source": starting_source,
+        "ending_value_krw": round(ending_value, 2) if ending_value is not None else None,
+        "ending_value_source": ending_source,
+        "total_return_krw": round(total_return, 2) if total_return is not None else None,
+        "total_return_pct": round(total_return_pct, 2) if total_return_pct is not None else None,
+        "return_available": ending_value is not None and bool(starting_value),
+        "final_cash_krw": round(final_cash_krw, 2),
+        "final_cash_usd": round(final_cash_usd, 2),
+        "final_holdings": [
+            {
+                "ticker": holding.ticker,
+                "name": holding.name,
+                "market": holding.market,
+                "sector": holding.sector,
+                "industry": holding.industry,
+                "quantity": holding.quantity,
+                "avg_price": holding.avg_price,
+                "currency": holding.currency,
+                "book_cost": round(holding.avg_price * holding.quantity, 2),
+            }
+            for holding in holdings
+        ],
+        "trade_count": len(buys) + len(sells),
+        "buy_count": len(buys),
+        "sell_count": len(sells),
+        "exchange_count": len(exchanges),
+        "transaction_count": len(transactions),
+        "realized_pnl": realized_pnl,
+        "best_stock": best_stock,
+        "worst_stock": worst_stock,
+        "stock_result_unavailable_reason": stock_result_reason,
+        "snapshot_count": len(snapshots),
+        "peak_value_krw": round(peak_value, 2) if peak_value is not None else None,
+        "trough_value_krw": round(trough_value, 2) if trough_value is not None else None,
+        "result_data_available": ending_value is not None,
+    }
+
+
 @router.get("/sessions")
 def game_sessions(
     include_all: bool = False,
@@ -497,6 +646,16 @@ def get_game_session_summary(
 ):
     session = get_owned_session(db, current_user, session_id)
     return _build_session_summary(db, current_user, session)
+
+
+@router.get("/sessions/{session_id}/result")
+def get_game_session_result(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_owned_session(db, current_user, session_id)
+    return _build_session_result(db, current_user, session)
 
 
 @router.post("/new")

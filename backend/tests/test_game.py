@@ -577,3 +577,227 @@ class TestGameSessions:
         assert body["title"] == "B"
         assert body["cash_krw"] == 2_000_000
         assert body["session_id"] != session_a.id
+
+    def test_game_session_result_uses_session_snapshots_and_scoped_data(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(
+            db_session,
+            user,
+            title="Finished",
+            status="completed",
+            is_active=False,
+            cash_krw=820_000,
+            starting_balance_krw=900_000,
+        )
+        other_session = create_session(
+            db_session,
+            user,
+            title="Other",
+            status="completed",
+            is_active=False,
+            cash_krw=1_000_000,
+        )
+        created_at = datetime.now(timezone.utc)
+        db_session.add_all(
+            [
+                PortfolioSnapshot(
+                    user_id=user.id,
+                    game_session_id=session.id,
+                    total_value_krw=1_000_000,
+                    total_holdings_value_krw=0,
+                    cash_krw=1_000_000,
+                    cash_usd=0,
+                    exchange_rate=1300,
+                    created_at=created_at,
+                ),
+                PortfolioSnapshot(
+                    user_id=user.id,
+                    game_session_id=session.id,
+                    total_value_krw=1_120_000,
+                    total_holdings_value_krw=300_000,
+                    cash_krw=820_000,
+                    cash_usd=0,
+                    exchange_rate=1300,
+                    created_at=created_at + timedelta(days=3),
+                ),
+                Holding(
+                    user_id=user.id,
+                    game_session_id=session.id,
+                    ticker="AAA",
+                    name="AAA Corp",
+                    market="KRX",
+                    sector="Technology",
+                    industry="Software",
+                    quantity=3,
+                    avg_price=100_000,
+                    currency="KRW",
+                ),
+                Transaction(
+                    user_id=user.id,
+                    game_session_id=session.id,
+                    ticker="AAA",
+                    name="AAA Corp",
+                    market="KRX",
+                    transaction_type="BUY",
+                    quantity=4,
+                    price=100_000,
+                    currency="KRW",
+                    sector="Technology",
+                    industry="Software",
+                    total_amount=400_000,
+                    created_at=created_at,
+                ),
+                Transaction(
+                    user_id=user.id,
+                    game_session_id=session.id,
+                    ticker="AAA",
+                    name="AAA Corp",
+                    market="KRX",
+                    transaction_type="SELL",
+                    quantity=1,
+                    price=150_000,
+                    currency="KRW",
+                    sector="Technology",
+                    industry="Software",
+                    total_amount=150_000,
+                    realized_pnl=50_000,
+                    created_at=created_at + timedelta(days=1),
+                ),
+                Transaction(
+                    user_id=user.id,
+                    game_session_id=session.id,
+                    ticker="KRW/USD",
+                    name="Currency Exchange",
+                    market="FX",
+                    transaction_type="EXCHANGE",
+                    quantity=1,
+                    price=1300,
+                    currency="KRW",
+                    sector="Currency",
+                    industry="Foreign Exchange",
+                    total_amount=130_000,
+                    realized_pnl=0,
+                    created_at=created_at + timedelta(days=2),
+                ),
+                Transaction(
+                    user_id=user.id,
+                    game_session_id=other_session.id,
+                    ticker="BBB",
+                    name="BBB Corp",
+                    market="KRX",
+                    transaction_type="SELL",
+                    quantity=1,
+                    price=1,
+                    currency="KRW",
+                    total_amount=1,
+                    realized_pnl=999_999,
+                ),
+            ]
+        )
+        db_session.commit()
+
+        resp = client.get(f"/game/sessions/{session.id}/result", headers=auth_headers)
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["session_id"] == session.id
+        assert body["status"] == "completed"
+        assert body["starting_value_krw"] == 1_000_000
+        assert body["starting_value_source"] == "first_snapshot"
+        assert body["ending_value_krw"] == 1_120_000
+        assert body["ending_value_source"] == "last_snapshot"
+        assert body["total_return_krw"] == 120_000
+        assert body["total_return_pct"] == 12
+        assert body["final_cash_krw"] == 820_000
+        assert body["final_cash_usd"] == 0
+        assert body["trade_count"] == 2
+        assert body["buy_count"] == 1
+        assert body["sell_count"] == 1
+        assert body["exchange_count"] == 1
+        assert body["realized_pnl"] == {
+            "available": True,
+            "by_currency": {"KRW": 50_000},
+        }
+        assert body["best_stock"]["ticker"] == "AAA"
+        assert body["best_stock"]["realized_pnl"] == 50_000
+        assert body["worst_stock"]["ticker"] == "AAA"
+        assert body["final_holdings"] == [
+            {
+                "ticker": "AAA",
+                "name": "AAA Corp",
+                "market": "KRX",
+                "sector": "Technology",
+                "industry": "Software",
+                "quantity": 3,
+                "avg_price": 100_000,
+                "currency": "KRW",
+                "book_cost": 300_000,
+            }
+        ]
+        assert body["snapshot_count"] == 2
+        assert body["peak_value_krw"] == 1_120_000
+        assert body["trough_value_krw"] == 1_000_000
+
+    def test_game_session_result_without_snapshots_does_not_invent_ending_value(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(
+            db_session,
+            user,
+            title="Missing Snapshot",
+            status="completed",
+            is_active=False,
+        )
+        db_session.add(
+            Transaction(
+                user_id=user.id,
+                game_session_id=session.id,
+                ticker="AAA",
+                name="AAA Corp",
+                market="KRX",
+                transaction_type="BUY",
+                quantity=1,
+                price=100_000,
+                currency="KRW",
+                total_amount=100_000,
+            )
+        )
+        db_session.commit()
+
+        resp = client.get(f"/game/sessions/{session.id}/result", headers=auth_headers)
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["starting_value_source"] == "session_starting_balance"
+        assert body["ending_value_krw"] is None
+        assert body["total_return_krw"] is None
+        assert body["total_return_pct"] is None
+        assert body["return_available"] is False
+        assert body["result_data_available"] is False
+
+    def test_game_session_result_cross_user_returns_404(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        other = User(username="other_result", hashed_password="hash", balance_krw=1_000_000)
+        db_session.add(other)
+        db_session.flush()
+        other_session = create_session(db_session, other, title="Other")
+
+        resp = client.get(f"/game/sessions/{other_session.id}/result", headers=auth_headers)
+
+        assert resp.status_code == 404
