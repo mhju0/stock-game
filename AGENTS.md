@@ -188,7 +188,7 @@ Validation previously passed:
 
 Latest status:
 
-- Implemented small replay/setup polish but not staged/committed/pushed yet, unless git history now shows otherwise.
+- Implemented, committed, pushed, and validated.
 - Changed frontend only:
   - `frontend/src/pages/Game.jsx`
   - `frontend/src/pages/Games.jsx`

@@ -2,7 +2,7 @@
 
 가상 자금으로 미국·한국 주식을 거래하고, 벤치마크(S&P 500, KOSPI) 대비 포트폴리오 성과를 측정하는 모의 투자 시뮬레이터입니다. 단순 기능 구현을 넘어, 금융 서비스 수준의 데이터 정합성과 확장 가능한 아키텍처 설계에 중점을 두었습니다.
 
-**[Live App](https://stock-game-gray.vercel.app)** · **[API Docs](https://stock-game-api-6411.onrender.com/docs)**
+**[Live App](https://stock-game-gray.vercel.app)** · **[API Docs](https://stock-game-6411.onrender.com/docs)**
 
 ---
 
@@ -48,7 +48,7 @@ HTTP `routes`는 요청 검증과 응답 포맷팅, 인증(`Depends(get_current_
 
 | 레이어 | 구성 |
 |---|---|
-| Backend | Python 3.11 · FastAPI · SQLAlchemy · SQLite · yfinance |
+| Backend | Python 3.11 · FastAPI · SQLAlchemy · Supabase Postgres · SQLite local fallback · yfinance |
 | Auth | JWT (`python-jose`) · `bcrypt` |
 | Frontend | React 19 · Vite · React Router 7 · TanStack Query · Recharts · react-i18next |
 | Deploy | Vercel (Frontend) · Render (API, gunicorn + Uvicorn workers) |
@@ -75,6 +75,7 @@ uvicorn app.main:app --reload
 ```
 
 > SQLite DB(`backend/stock_game.db`)는 최초 실행 시 자동 생성됩니다.
+> Production은 Supabase Postgres를 사용하며, SQLite는 로컬 개발 fallback입니다.
 
 ### Frontend
 
@@ -127,7 +128,7 @@ stock-game/
 
 ## 알려진 제약 (Known Limitations)
 
-- **SQLite 영속성** — Render 무료 티어는 파일시스템이 ephemeral하므로, 영구 디스크를 연결하지 않으면 재배포 시 데이터가 초기화될 수 있습니다.
+- **로컬 SQLite fallback** — Production은 Supabase Postgres를 사용합니다. 로컬 SQLite DB(`backend/stock_game.db`)는 개발용이며 재생성될 수 있습니다.
 - **yfinance 안정성** — 비공식 데이터 소스로, 일시적 장애 시 일부 시세가 비어 보일 수 있습니다 (캐시로 완화).
 - **콜드 스타트** — Render 무료 티어 백엔드는 첫 요청 시 약 30–60초의 wake-up 지연이 있습니다.
 
@@ -135,7 +136,7 @@ stock-game/
 
 ## Roadmap
 
-- **데이터 영속성** — Render 영구 디스크 연결 또는 PostgreSQL 마이그레이션 (동시성 제어 · 수평 확장)
+- **운영 DB hardening** — Supabase Postgres 운영 스키마와 백업/복구 절차 점검
 - **테스트 커버리지** — service 레이어 대상 pytest 도입 (평균 단가 · 실현 손익 · 환전 · 스냅샷 로직)
 - **WebSocket 스트리밍** — polling 방식을 실시간 시세 피드로 전환
 - **Redis 캐싱** — yfinance rate limit 대응 및 인메모리 캐시의 워커 간 공유
