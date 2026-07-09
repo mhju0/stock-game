@@ -1,15 +1,16 @@
 import { apiDelete } from '../api'
 import { useState, useContext, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/userContext";
 import { useWatchlistQuery, queryKeys } from '../query/queries'
+import { gamePath } from "../sessionRoutes";
 
 
-function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n, t, isKR }) {
+function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort, setSort, i18n, t, isKR }) {
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
       const nameA = getStockName(a.ticker, a.name, i18n.language)
@@ -50,8 +51,8 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
             <button
               type="button"
               className="watchlist-row-main"
-              onClick={() => onTrade(item.ticker)}
-              aria-label={`${name} ${t('stock.openTrade')}`}
+              onClick={() => onOpenDetails(item.ticker)}
+              aria-label={`${name} ${t('stock.viewDetails')}`}
             >
               <div>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
@@ -67,7 +68,14 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
                 </div>
               </div>
             </button>
-            <div style={{ display: "flex", alignItems: "center" }}>
+            <div className="watchlist-actions">
+              <button
+                type="button"
+                className="btn watchlist-trade-btn"
+                onClick={() => onTrade(item.ticker)}
+              >
+                {t("watchlist.trade")}
+              </button>
               <button
                 type="button"
                 className="btn watchlist-remove-btn"
@@ -87,6 +95,7 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
 function Watchlist() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { sessionId } = useParams();
   const { currentUserId } = useContext(UserContext);
   const queryClient = useQueryClient()
 
@@ -98,6 +107,11 @@ function Watchlist() {
   const remove = async (ticker) => {
     await apiDelete(`/watchlist/remove/${ticker}?user_id=${currentUserId}`);
     queryClient.invalidateQueries({ queryKey: queryKeys.watchlist(currentUserId) })
+  };
+
+  const openStockDetails = (ticker) => {
+    const query = `?ticker=${encodeURIComponent(ticker)}`;
+    navigate(sessionId ? `${gamePath(sessionId, 'search')}${query}` : `/search${query}`);
   };
 
   const usStocks = useMemo(() => watchlist.filter(w => w.market === 'US'), [watchlist])
@@ -131,6 +145,7 @@ function Watchlist() {
       <WatchlistSection
         title={i18n.language === 'ko' ? '🇰🇷 한국' : '🇰🇷 Korea'}
         items={krStocks}
+        onOpenDetails={openStockDetails}
         onTrade={setTradeTicker}
         onRemove={remove}
         sort={sortKR}
@@ -143,6 +158,7 @@ function Watchlist() {
       <WatchlistSection
         title={i18n.language === 'ko' ? '🇺🇸 미국' : '🇺🇸 US'}
         items={usStocks}
+        onOpenDetails={openStockDetails}
         onTrade={setTradeTicker}
         onRemove={remove}
         sort={sortUS}
@@ -155,6 +171,7 @@ function Watchlist() {
       {tradeTicker && (
         <TradeModal
           ticker={tradeTicker}
+          sessionId={sessionId}
           onClose={() => setTradeTicker(null)}
           onWatchlistUpdated={refetchWatchlist}
           onComplete={() => {

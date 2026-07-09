@@ -136,6 +136,7 @@
     "emptyTitle": "No stocks in your watchlist",
     "emptyBody": "Save stocks you are curious about so you can check them quickly later.",
     "add": "Add",
+    "trade": "Trade",
     "remove": "Remove",
     "delayed": "Prices are 15-min delayed"
   },

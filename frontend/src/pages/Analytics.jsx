@@ -163,7 +163,7 @@ function Analytics() {
     { label: t('nav.portfolio'), to: gamePath(sessionId, 'portfolio'), primary: byStock.length > 0 },
     { label: t('nav.search'), to: gamePath(sessionId, 'search'), primary: byStock.length === 0 },
     { label: t('nav.transactions'), to: gamePath(sessionId, 'transactions') },
-    { label: t('nav.watchlist'), to: '/watchlist' },
+    { label: t('nav.watchlist'), to: gamePath(sessionId, 'watchlist') },
   ]
 
   if (perfLoading) return <p>{t('common.loading')}</p>

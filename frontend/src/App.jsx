@@ -139,7 +139,7 @@ function AppLayout() {
       ];
   const secondaryNav = selectedGameBase
     ? [
-        { to: "/watchlist", label: t("nav.watchlist") },
+        { to: `${selectedGameBase}/watchlist`, label: t("nav.watchlist") },
         { to: `${selectedGameBase}/transactions`, label: t("nav.transactions") },
         { to: `${selectedGameBase}/analytics`, label: t("nav.analytics") },
         { to: `${selectedGameBase}/market`, label: t("nav.market") },
@@ -200,7 +200,7 @@ function AppLayout() {
       <main className="main">
         <ErrorBoundary>
           <Routes>
-            <Route path="/watchlist" element={<Watchlist />} />
+            <Route path="/watchlist" element={<ResolveGameRedirect section="watchlist" />} />
             <Route path="/market" element={<Market />} />
             <Route path="/games" element={<Games />} />
             <Route path="/games/new" element={<Games startSetup />} />
@@ -210,6 +210,7 @@ function AppLayout() {
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="search" element={<SearchStock />} />
               <Route path="exchange" element={<Exchange />} />
+              <Route path="watchlist" element={<Watchlist />} />
               <Route path="market" element={<Market />} />
               <Route path="transactions" element={<Transactions />} />
               <Route path="analytics" element={<Analytics />} />
