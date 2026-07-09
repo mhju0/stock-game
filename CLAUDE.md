@@ -265,9 +265,11 @@ Focus:
 - remove confusing or duplicate CTAs
 - keep the core loop clear: create game -> trade/search/watchlist -> portfolio/analytics -> ended result -> play again
 
-## Future Phase 6 - Final release pass
+## Phase 6 - Final release pass
 
 Goal: freeze features and prepare final deployment/submission confidence.
+
+Status: release validation in progress. Do not add feature scope during this phase.
 
 Focus:
 
@@ -284,6 +286,7 @@ Focus:
 
 - Frontend lint may pass with an existing non-blocking React hook dependency warning in `frontend/src/pages/Portfolio.jsx`.
 - Vite may show an existing large chunk warning during build.
+- Backend pytest may show an existing Starlette/httpx deprecation warning from `fastapi/testclient.py`.
 
 ## Directory map
 
