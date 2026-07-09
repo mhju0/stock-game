@@ -456,15 +456,15 @@ function Game() {
             <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, textAlign: 'left', fontSize: 14 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
                 <span style={{ fontSize: 18 }}>1️⃣</span>
-                <span>{isKo ? '종목 탭에서 관심 종목을 검색하세요' : 'Search for stocks in the Stocks tab'}</span>
+                <span>{t('game.day1StepSearch')}</span>
               </div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
                 <span style={{ fontSize: 18 }}>2️⃣</span>
-                <span>{isKo ? '미국 주식이라면 먼저 환전하세요' : 'Exchange KRW to USD for US stocks'}</span>
+                <span>{t('game.day1StepExchange')}</span>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 18 }}>3️⃣</span>
-                <span>{isKo ? '매수 후 여기서 벤치마크와 비교하세요' : 'Buy stocks and compare vs benchmarks here'}</span>
+                <span>{t('game.day1StepCompare')}</span>
               </div>
             </div>
           </div>

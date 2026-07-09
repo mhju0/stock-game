@@ -232,7 +232,7 @@ function Dashboard() {
 
         {sorted.length === 0 ? (
           <div className="empty-state">
-            <p>{t('stock.notFound')}</p>
+            <p>{holdingsSafe.length === 0 ? t('portfolio.emptyTitle') : t('dashboard.noHoldingsForFilter')}</p>
             {filterMarket === 'ALL' && (
               <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => navigate(gamePath(sessionId, 'search'))}>
                 {t('nav.search')}

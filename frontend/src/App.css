@@ -1014,12 +1014,12 @@ body {
 }
 
 .game-expired {
-  background: var(--negative-bg);
-  border-color: rgba(248, 113, 113, 0.15);
+  background: var(--accent-bg);
+  border-color: rgba(96, 165, 250, 0.18);
 }
 
 .game-expired div:first-child > div:first-child {
-  color: var(--negative);
+  color: var(--accent);
   font-family: var(--font-display);
   font-weight: 600;
 }
@@ -1451,8 +1451,8 @@ body {
   font-size: 20px;
   font-weight: 700;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .trade-modal-actions {
@@ -1648,15 +1648,46 @@ body {
 }
 
 .trade-unavailable-notice {
-  background: var(--negative-bg);
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  background: var(--accent-bg);
+  border: 1px solid rgba(96, 165, 250, 0.2);
   border-radius: 12px;
-  color: var(--negative);
+  color: var(--text-primary);
   font-size: 13px;
   line-height: 1.45;
   margin-bottom: 12px;
   padding: 10px 12px;
   text-align: center;
+}
+
+.search-empty-state {
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 12px 2px 2px;
+}
+
+.transaction-row {
+  align-items: center;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 0;
+}
+
+.transaction-main {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.transaction-main strong {
+  overflow-wrap: anywhere;
+}
+
+.transaction-meta {
+  flex-shrink: 0;
+  text-align: right;
 }
 
 /* Glass specular on modal */
@@ -1845,4 +1876,10 @@ body {
   .game-manage-text { display: none; }
   .game-manage-dots { display: inline; }
   .game-modal-title { font-size: 21px; }
+  .transaction-row { align-items: stretch; flex-direction: column; }
+  .transaction-meta { text-align: left; }
+}
+
+@media (max-width: 420px) {
+  .metric-grid { grid-template-columns: 1fr; }
 }

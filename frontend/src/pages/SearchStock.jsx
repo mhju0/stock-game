@@ -24,6 +24,7 @@ function SearchStock() {
   const [historyPeriod, setHistoryPeriod] = useState('1mo')
   const [historyLoading, setHistoryLoading] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
   const [tradeTicker, setTradeTicker] = useState(null)
   const [message, setMessage] = useState('')
   const [stockLoadError, setStockLoadError] = useState('')
@@ -33,11 +34,17 @@ function SearchStock() {
   const selectedTicker = stock?.ticker
 
   useEffect(() => {
-    if (query.length < 1) { setResults([]); return }
+    const normalizedQuery = query.trim()
+    if (normalizedQuery.length < 1) {
+      setResults([])
+      setHasSearched(false)
+      return
+    }
     const timer = setTimeout(async () => {
       setSearching(true)
-      const data = await apiFetch(`/stock/search/${encodeURIComponent(query)}`)
-      if (data) setResults(data)
+      const data = await apiFetch(`/stock/search/${encodeURIComponent(normalizedQuery)}`)
+      setResults(Array.isArray(data) ? data : [])
+      setHasSearched(true)
       setSearching(false)
     }, 300)
     return () => clearTimeout(timer)
@@ -63,6 +70,7 @@ function SearchStock() {
     if (!normalizedTicker) return false
     setResults([])
     setQuery('')
+    setHasSearched(false)
     setHistory([])
     setStock(null)
     setStockLoadError('')
@@ -146,6 +154,12 @@ function SearchStock() {
                 </button>
               )
             })}
+          </div>
+        )}
+
+        {hasSearched && !searching && query.trim().length > 0 && results.length === 0 && (
+          <div className="search-empty-state">
+            {t('stock.noSearchResults')}
           </div>
         )}
       </div>

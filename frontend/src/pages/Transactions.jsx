@@ -69,7 +69,11 @@ function Transactions() {
       </div>
 
       <div className="card">
-        {filtered.map(tx => {
+        {filtered.length === 0 ? (
+          <div className="empty-state" style={{ padding: '24px 0' }}>
+            {t('transactions.emptyFilter')}
+          </div>
+        ) : filtered.map(tx => {
           const fmt = v => formatMoney(v, tx.currency)
           const date = formatDateTime(tx.created_at, i18n.language === 'ko' ? 'ko-KR' : 'en-US')
           const typeColor = tx.transaction_type === 'BUY' ? 'var(--positive)'
@@ -81,11 +85,8 @@ function Transactions() {
           const stockName = getStockName(tx.ticker, tx.name, i18n.language)
 
           return (
-            <div key={tx.id} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '14px 0', borderBottom: '1px solid var(--border-light)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div key={tx.id} className="transaction-row">
+              <div className="transaction-main">
                 <span style={{
                   padding: '4px 10px', borderRadius: 6, fontSize: 12,
                   fontWeight: 600, background: typeBg, color: typeColor,
@@ -124,7 +125,7 @@ function Transactions() {
                   )}
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
+              <div className="transaction-meta">
                 {tx.transaction_type === 'EXCHANGE' ? (
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('exchange.title')}</div>
                 ) : (

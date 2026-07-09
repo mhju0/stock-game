@@ -54,6 +54,7 @@
     "nextActionTitle": "Suggested next step",
     "nextActionNoHoldings": "Explore a stock and practice your first buy.",
     "nextActionHasHoldings": "Review your holdings and decide what to do next.",
+    "noHoldingsForFilter": "No holdings match this filter.",
     "viewPortfolio": "View Portfolio",
     "viewAnalytics": "View Analytics"
   },
@@ -96,6 +97,7 @@
     "openTrade": "Trade",
     "viewDetails": "View details",
     "loadingDetails": "Loading stock details...",
+    "noSearchResults": "No matching stocks. Try another ticker or company name.",
     "intradayDataLimited": "Not enough intraday data yet.",
     "chartDataLimited": "Not enough chart data yet."
   },
@@ -146,6 +148,7 @@
     "empty": "No transactions yet",
     "emptyTitle": "No transactions yet",
     "emptyBody": "Your buys, sells, and exchanges will appear here.",
+    "emptyFilter": "No transactions match this filter.",
     "buy": "Buy",
     "sell": "Sell",
     "date": "Date",
@@ -266,6 +269,9 @@
     "makeTradesPrompt": "Make some trades to compare your performance",
     "day1Title": "Game just started!",
     "day1Desc": "Start trading to track your progress here",
+    "day1StepSearch": "Search for stocks in the Stocks tab",
+    "day1StepExchange": "Exchange KRW to USD for US stocks",
+    "day1StepCompare": "Buy stocks and compare against benchmarks here",
     "myPortfolio": "My Portfolio",
     "vsBenchmark": "My Portfolio vs Benchmark"
   },

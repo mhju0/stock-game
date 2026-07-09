@@ -54,6 +54,7 @@
     "nextActionTitle": "다음으로 해볼 일",
     "nextActionNoHoldings": "관심 있는 종목을 찾아 첫 매수를 연습해 보세요.",
     "nextActionHasHoldings": "보유 종목의 수익률을 확인하고 다음 매매를 결정해 보세요.",
+    "noHoldingsForFilter": "조건에 맞는 보유 종목이 없어요.",
     "viewPortfolio": "포트폴리오 보기",
     "viewAnalytics": "투자 분석 보기"
   },
@@ -96,6 +97,7 @@
     "openTrade": "거래하기",
     "viewDetails": "자세히 보기",
     "loadingDetails": "종목 정보를 불러오는 중...",
+    "noSearchResults": "일치하는 종목이 없어요. 티커나 이름을 다시 입력해 보세요.",
     "intradayDataLimited": "오늘 차트 데이터가 아직 충분하지 않아요.",
     "chartDataLimited": "차트 데이터가 아직 충분하지 않아요."
   },
@@ -146,6 +148,7 @@
     "empty": "거래내역이 없습니다",
     "emptyTitle": "아직 거래내역이 없어요",
     "emptyBody": "매수, 매도, 환전을 하면 기록이 여기에 쌓여요.",
+    "emptyFilter": "이 유형의 거래내역이 없어요.",
     "buy": "매수",
     "sell": "매도",
     "date": "날짜",
@@ -266,6 +269,9 @@
     "makeTradesPrompt": "거래를 하면 수익률을 비교할 수 있어요",
     "day1Title": "게임이 시작되었습니다!",
     "day1Desc": "매매를 시작하면 여기서 진행 상황을 확인할 수 있어요",
+    "day1StepSearch": "종목 탭에서 관심 종목을 검색하세요",
+    "day1StepExchange": "미국 주식이라면 먼저 환전하세요",
+    "day1StepCompare": "매수 후 여기서 벤치마크와 비교하세요",
     "myPortfolio": "내 포트폴리오",
     "vsBenchmark": "내 포트폴리오 vs 벤치마크"
   },
