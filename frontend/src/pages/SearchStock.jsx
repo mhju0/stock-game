@@ -1,7 +1,7 @@
 import { apiFetch } from '../api'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useOutletContext, useParams } from 'react-router-dom'
+import { useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
@@ -12,6 +12,7 @@ import { isSessionEnded } from '../sessionRoutes'
 function SearchStock() {
   const { t, i18n } = useTranslation()
   const { sessionId } = useParams()
+  const [searchParams] = useSearchParams()
   const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
   const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
@@ -21,11 +22,15 @@ function SearchStock() {
   const [stock, setStock] = useState(null)
   const [history, setHistory] = useState([])
   const [historyPeriod, setHistoryPeriod] = useState('1mo')
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [searching, setSearching] = useState(false)
   const [tradeTicker, setTradeTicker] = useState(null)
   const [message, setMessage] = useState('')
+  const [stockLoadError, setStockLoadError] = useState('')
   const [loadingStock, setLoadingStock] = useState(false)
   const [showDelayedStockLoading, setShowDelayedStockLoading] = useState(false)
+  const lastQueryTickerAttemptRef = useRef('')
+  const selectedTicker = stock?.ticker
 
   useEffect(() => {
     if (query.length < 1) { setResults([]); return }
@@ -39,27 +44,52 @@ function SearchStock() {
   }, [query])
 
   useEffect(() => {
-    if (!stock) return
-    apiFetch(`/stock/${stock.ticker}/history?period=${historyPeriod}`)
-      .then(data => { if (Array.isArray(data)) setHistory(data) })
-  }, [stock?.ticker, historyPeriod])
+    if (!selectedTicker) return
+    let cancelled = false
+    setHistory([])
+    setHistoryLoading(true)
+    apiFetch(`/stock/${selectedTicker}/history?period=${historyPeriod}`)
+      .then(data => {
+        if (!cancelled && Array.isArray(data)) setHistory(data)
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [selectedTicker, historyPeriod])
 
-  const selectStock = async (ticker) => {
+  const selectStock = useCallback(async (ticker) => {
+    const normalizedTicker = String(ticker || '').trim()
+    if (!normalizedTicker) return false
     setResults([])
     setQuery('')
     setHistory([])
     setStock(null)
+    setStockLoadError('')
     setLoadingStock(true)
     setShowDelayedStockLoading(false)
     const loadingTimer = window.setTimeout(() => {
       setShowDelayedStockLoading(true)
     }, 300)
-    const data = await apiFetch(`/stock/${ticker}`)
+    const data = await apiFetch(`/stock/${encodeURIComponent(normalizedTicker)}`)
     window.clearTimeout(loadingTimer)
     setLoadingStock(false)
     setShowDelayedStockLoading(false)
-    if (data && !data.error) setStock(data)
-  }
+    if (data && !data.error) {
+      setStock(data)
+      return true
+    }
+    setStockLoadError(t('stock.notFound'))
+    return false
+  }, [t])
+
+  useEffect(() => {
+    const ticker = (searchParams.get('ticker') || '').trim()
+    if (!ticker || ticker === selectedTicker || loadingStock) return
+    if (lastQueryTickerAttemptRef.current === ticker) return
+    lastQueryTickerAttemptRef.current = ticker
+    selectStock(ticker)
+  }, [searchParams, selectedTicker, loadingStock, selectStock])
 
   const addToWatchlist = async () => {
     setMessage('')
@@ -73,7 +103,9 @@ function SearchStock() {
   const chartData = history.map(h => ({
     date: h.date,
     close: h.close,
-    label: new Date(h.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+    label: historyPeriod === '1d'
+      ? new Date(h.date).toLocaleTimeString(i18n.language === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+      : new Date(h.date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' }),
   }))
 
   const priceChange = chartData.length >= 2
@@ -128,6 +160,12 @@ function SearchStock() {
         </div>
       )}
 
+      {stockLoadError && !loadingStock && !stock && (
+        <div className="empty-state stock-chart-state">
+          {stockLoadError}
+        </div>
+      )}
+
       {stock && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
@@ -151,32 +189,38 @@ function SearchStock() {
             )}
           </div>
 
-          {chartData.length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', gap: 4, marginBottom: 12, justifyContent: 'flex-end' }}>
-                {['1d', '1w', '1mo', '3mo', '1y'].map(p => (
-                  <button key={p} className={`btn segmented-button ${historyPeriod === p ? 'segmented-button-selected' : ''}`} onClick={() => setHistoryPeriod(p)} style={{
-                    fontSize: 12, padding: '4px 10px',
-                  }}>{p.toUpperCase()}</button>
-                ))}
-              </div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {['1d', '1w', '1mo', '3mo', '1y'].map(p => (
+                <button key={p} className={`btn segmented-button ${historyPeriod === p ? 'segmented-button-selected' : ''}`} onClick={() => setHistoryPeriod(p)} style={{
+                  fontSize: 12, padding: '4px 10px',
+                }}>{p.toUpperCase()}</button>
+              ))}
+            </div>
+            {historyLoading ? (
+              <div className="empty-state stock-chart-state">{t('common.loading')}</div>
+            ) : chartData.length >= 2 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={chartData}>
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }} tickLine={false} axisLine={false}
                     interval={Math.max(0, Math.floor(chartData.length / 5) - 1)} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }} tickLine={false} axisLine={false}
                     domain={['dataMin - 1', 'dataMax + 1']}
                     tickFormatter={v => stock.currency === 'KRW' ? `₩${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`} />
                   <Tooltip
                     formatter={(value) => [stock.currency === 'KRW' ? `₩${Math.round(value).toLocaleString()}` : `$${value.toFixed(2)}`, '']}
-                    contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
+                    contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'var(--font-body)', background: 'var(--card-bg)' }}
                   />
                   <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? '#34c759' : '#ff3b30'}
                     strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          )}
+            ) : (
+              <div className="empty-state stock-chart-state">
+                {historyPeriod === '1d' ? t('stock.intradayDataLimited') : t('stock.chartDataLimited')}
+              </div>
+            )}
+          </div>
 
           <div className="metric-grid">
             {stock.sector && <div className="metric-card" style={{ background: 'var(--bg-secondary)' }}>

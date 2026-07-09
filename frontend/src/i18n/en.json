@@ -94,7 +94,9 @@
     "notFound": "Stock not found",
     "openTrade": "Trade",
     "viewDetails": "View details",
-    "loadingDetails": "Loading stock details..."
+    "loadingDetails": "Loading stock details...",
+    "intradayDataLimited": "Not enough intraday data yet.",
+    "chartDataLimited": "Not enough chart data yet."
   },
   "trade": {
     "buySuccess": "Purchase complete",

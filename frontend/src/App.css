@@ -121,6 +121,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.numeric {
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+}
+
 .app {
   min-height: 100vh;
   position: relative;
@@ -166,7 +173,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════
-   NAVIGATION — FLOATING GLASS BAR
+   NAVIGATION — SOLID READABLE BAR
    ═══════════════════════════════════════════════ */
 .nav {
   display: flex;
@@ -175,14 +182,15 @@ body {
   gap: 16px;
   padding: 0 24px;
   min-height: 58px;
-  background: var(--glass);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
-  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-solid);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 200;
   overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
 
 .nav-scroll {
@@ -256,9 +264,9 @@ body {
 
 .nav-link.active {
   color: var(--text-primary);
-  background: var(--glass-elevated);
+  background: var(--surface-panel-strong);
   box-shadow:
-    0 0 0 1px var(--glass-border-hover),
+    0 0 0 1px var(--border),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -276,10 +284,10 @@ body {
 }
 
 .lang-toggle {
-  background: var(--glass);
+  background: var(--surface-panel);
   backdrop-filter: var(--blur-sm);
   -webkit-backdrop-filter: var(--blur-sm);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border);
   padding: 6px 16px;
   border-radius: 20px;
   font-family: var(--font-display);
@@ -486,10 +494,12 @@ body {
 }
 
 .metric-value {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
@@ -669,11 +679,13 @@ body {
 }
 
 .hero-value {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 34px;
-  font-weight: 800;
+  font-weight: 700;
   margin-top: 4px;
-  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
   line-height: 1.15;
 }
 
@@ -707,7 +719,7 @@ body {
 .change-grid { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
 .change-item { display: flex; flex-direction: column; align-items: flex-start; }
 .change-label { font-size: 12px; color: var(--text-secondary); font-family: var(--font-display); }
-.change-value { font-size: 14px; font-weight: 600; font-family: var(--font-display); }
+.change-value { font-size: 14px; font-weight: 600; font-family: var(--font-body); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .change-amount { font-size: 11px; }
 
 .exchange-rate-note {
@@ -790,6 +802,16 @@ body {
   background: var(--glass-hover);
 }
 
+.market-detail-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+}
+
 .watchlist-row {
   display: flex;
   justify-content: space-between;
@@ -831,6 +853,14 @@ body {
 
 .search-result-row:hover {
   background: var(--glass-hover);
+}
+
+.stock-chart-state {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 220px;
+  padding: 24px;
 }
 
 .price-hero {
@@ -881,10 +911,12 @@ body {
 }
 
 .price-hero-value {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -1px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
   position: relative;
 }
 
@@ -912,9 +944,11 @@ body {
 
 .insight-value {
   color: var(--text-primary);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   margin-bottom: 6px;
 }
 
@@ -1128,9 +1162,11 @@ body {
 }
 
 .game-card-metric-value {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   line-height: 1.25;
 }
 
@@ -1273,9 +1309,11 @@ body {
 }
 
 .game-detail-value {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
@@ -1465,6 +1503,13 @@ body {
   text-align: center;
 }
 
+.trade-price-panel > div:last-child {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
 .trade-context-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1488,7 +1533,10 @@ body {
 .trade-context-value {
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .quantity-chip-row {
@@ -1551,9 +1599,11 @@ body {
 
 .trade-order-title {
   color: var(--text-primary);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -1561,7 +1611,10 @@ body {
 .trade-order-total {
   color: var(--text-primary);
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   margin-top: 6px;
 }
 
@@ -1730,6 +1783,7 @@ body {
   .hero-value { font-size: 28px; }
   .change-grid { gap: 12px; }
   .price-hero-value { font-size: 28px; }
+  .market-detail-pill { display: none; }
   .game-status-bar { flex-direction: column; gap: 12px; align-items: flex-start; }
   .games-page-header { align-items: flex-start; }
   .games-create-btn { width: 100%; }

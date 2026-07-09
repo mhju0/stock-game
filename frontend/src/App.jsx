@@ -30,6 +30,7 @@ function RequireAuth({ children }) {
 
 function ResolveGameRedirect({ section = "status" }) {
   const { t } = useTranslation();
+  const location = useLocation();
   const [target, setTarget] = useState("");
 
   useEffect(() => {
@@ -37,10 +38,11 @@ function ResolveGameRedirect({ section = "status" }) {
     apiFetch("/game/sessions").then((data) => {
       if (cancelled) return;
       const session = Array.isArray(data?.sessions) ? data.sessions[0] : null;
-      setTarget(session?.id ? gamePath(session.id, section) : "/games");
+      const path = session?.id ? gamePath(session.id, section) : "/games";
+      setTarget(session?.id ? `${path}${location.search}` : path);
     });
     return () => { cancelled = true; };
-  }, [section]);
+  }, [section, location.search]);
 
   if (target) return <Navigate to={target} replace />;
   return <p>{t("common.loading")}</p>;
@@ -140,7 +142,7 @@ function AppLayout() {
         { to: "/watchlist", label: t("nav.watchlist") },
         { to: `${selectedGameBase}/transactions`, label: t("nav.transactions") },
         { to: `${selectedGameBase}/analytics`, label: t("nav.analytics") },
-        { to: "/market", label: t("nav.market") },
+        { to: `${selectedGameBase}/market`, label: t("nav.market") },
         { to: `${selectedGameBase}/dashboard`, label: t("nav.dashboard") },
       ]
     : [
@@ -208,6 +210,7 @@ function AppLayout() {
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="search" element={<SearchStock />} />
               <Route path="exchange" element={<Exchange />} />
+              <Route path="market" element={<Market />} />
               <Route path="transactions" element={<Transactions />} />
               <Route path="analytics" element={<Analytics />} />
             </Route>

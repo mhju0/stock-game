@@ -1,16 +1,18 @@
 import { apiFetch } from '../api'
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import TradeModal from "../components/TradeModal";
+import { useNavigate, useParams } from "react-router-dom";
 import { getStockName } from "../utils/stockNames";
+import { gamePath } from "../sessionRoutes";
 
 
 function Market() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const { sessionId } = useParams();
   const [market, setMarket] = useState("US");
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tradeTicker, setTradeTicker] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -21,6 +23,11 @@ function Market() {
       })
       .catch(() => setLoading(false));
   }, [market]);
+
+  const openStockDetails = (ticker) => {
+    const query = `?ticker=${encodeURIComponent(ticker)}`;
+    navigate(sessionId ? `${gamePath(sessionId, 'search')}${query}` : `/search${query}`);
+  };
 
   return (
     <div>
@@ -54,8 +61,8 @@ function Market() {
                 key={s.ticker}
                 type="button"
                 className="interactive-row"
-                onClick={() => setTradeTicker(s.ticker)}
-                aria-label={`${name} ${t('stock.openTrade')}`}
+                onClick={() => openStockDetails(s.ticker)}
+                aria-label={`${name} ${t('stock.viewDetails')}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -90,34 +97,29 @@ function Market() {
                     </div>
                   </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>
-                    {s.currency === "KRW"
-                      ? `₩${s.price.toLocaleString()}`
-                      : `$${s.price.toFixed(2)}`}
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="numeric" style={{ fontSize: 15, fontWeight: 600 }}>
+                      {s.currency === "KRW"
+                        ? `₩${s.price.toLocaleString()}`
+                        : `$${s.price.toFixed(2)}`}
+                    </div>
+                    <div
+                      className={s.change >= 0 ? "positive numeric" : "negative numeric"}
+                      style={{ fontSize: 13 }}
+                    >
+                      {s.change >= 0 ? "+" : ""}
+                      {s.change_pct}%
+                    </div>
                   </div>
-                  <div
-                    className={s.change >= 0 ? "positive" : "negative"}
-                    style={{ fontSize: 13 }}
-                  >
-                    {s.change >= 0 ? "+" : ""}
-                    {s.change_pct}%
-                  </div>
+                  <span className="market-detail-pill">
+                    {t('stock.viewDetails')}
+                  </span>
                 </div>
               </button>
             );
           })}
         </div>
-      )}
-
-      {tradeTicker && (
-        <TradeModal
-          ticker={tradeTicker}
-          onClose={() => setTradeTicker(null)}
-          onComplete={() => {
-            setTradeTicker(null);
-          }}
-        />
       )}
     </div>
   );

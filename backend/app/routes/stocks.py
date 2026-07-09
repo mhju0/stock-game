@@ -23,13 +23,17 @@ def stock_history(ticker: str, period: str = "1mo"):
     yf_period = valid_periods.get(period, "1mo")
     try:
         stock = yf.Ticker(ticker)
-        data = stock.history(period=yf_period)
+        history_kwargs = {"period": yf_period}
+        if period == "1d":
+            history_kwargs["interval"] = "5m"
+        data = stock.history(**history_kwargs)
         if data.empty:
             return []
         result = []
         for date, row in data.iterrows():
+            timestamp = date.to_pydatetime() if hasattr(date, "to_pydatetime") else date
             result.append({
-                "date": date.strftime("%Y-%m-%d"),
+                "date": timestamp.isoformat(timespec="seconds") if period == "1d" else date.strftime("%Y-%m-%d"),
                 "open": round(float(row["Open"]), 2),
                 "high": round(float(row["High"]), 2),
                 "low": round(float(row["Low"]), 2),
