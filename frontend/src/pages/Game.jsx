@@ -76,6 +76,17 @@ function Game() {
   const formatKRW = (v) => formatMoney(v, 'KRW')
   const isKo = i18n.language === 'ko'
   const locale = isKo ? 'ko-KR' : 'en-US'
+  const openReplaySetup = (completedResult) => {
+    navigate('/games/new', {
+      state: {
+        setupDefaults: {
+          title: completedResult.title || status?.title || '',
+          starting_balance_krw: status?.starting_balance_krw ?? completedResult.starting_value_krw,
+          duration_days: completedResult.duration_days || status?.duration_days,
+        },
+      },
+    })
+  }
 
   if (loading) return <p>{t('common.loading')}</p>
   if (!status) return (
@@ -116,7 +127,7 @@ function Game() {
             <button type="button" className="btn" onClick={() => navigate(gamePath(sessionId, 'transactions'))}>
               {t('nav.transactions')}
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/games/new')}>
+            <button type="button" className="btn btn-primary" onClick={() => openReplaySetup(completedResult)}>
               {t('game.playAgain')}
             </button>
           </div>
@@ -259,7 +270,7 @@ function Game() {
         </div>
 
         <div className="cta-row" style={{ marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={() => navigate('/games/new')}>
+          <button className="btn btn-primary" onClick={() => openReplaySetup(completedResult)}>
             {t('game.playAgain')}
           </button>
           <button className="btn" onClick={() => navigate(gamePath(sessionId, 'portfolio'))}>

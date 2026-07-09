@@ -305,6 +305,7 @@
     "setupTitle": "Game setup",
     "createModalTitle": "Create new game",
     "createModalHelper": "Set a goal and time horizon to practice a new investing strategy.",
+    "replaySetupHelper": "Supported setup values from the previous game are prefilled. Adjust them before starting a separate new game.",
     "gameName": "Game name",
     "gameNamePlaceholder": "Example: 90-day growth strategy",
     "startingCash": "Starting cash",

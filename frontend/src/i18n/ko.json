@@ -305,6 +305,7 @@
     "setupTitle": "게임 설정",
     "createModalTitle": "새 게임 만들기",
     "createModalHelper": "목표와 기간을 정하고 새로운 투자 전략을 연습해 보세요.",
+    "replaySetupHelper": "이전 게임의 지원되는 설정값을 불러왔어요. 필요하면 바꾼 뒤 별도의 새 게임으로 시작하세요.",
     "gameName": "게임 이름",
     "gameNamePlaceholder": "예: 90일 성장 전략",
     "startingCash": "시작 금액",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { apiDelete, apiFetch, apiPatch, apiPost } from '../api'
 import { formatDateTime, formatMoney } from '../utils/formatters'
 import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
@@ -29,6 +29,23 @@ function formatIntegerInput(value) {
   const normalized = String(value).replace(/[^\d]/g, '')
   if (!normalized) return ''
   return Number(normalized).toLocaleString('ko-KR')
+}
+
+function normalizeSetupDefaults(defaults) {
+  if (!defaults || typeof defaults !== 'object') return null
+
+  const startingBalance = Number(defaults.starting_balance_krw)
+  const durationDays = Number(defaults.duration_days)
+
+  return {
+    title: typeof defaults.title === 'string' ? defaults.title : '',
+    starting_balance_krw: Number.isFinite(startingBalance) && startingBalance > 0
+      ? startingBalance
+      : 10_000_000,
+    duration_days: Number.isFinite(durationDays) && durationDays > 0
+      ? Math.round(durationDays)
+      : 30,
+  }
 }
 
 function PageState({ title, body, actionLabel, onAction, loading = false, children }) {
@@ -113,12 +130,13 @@ function ModalShell({ titleId, title, descriptionId, description, closeLabel, on
   )
 }
 
-function CreateGameModal({ t, onClose, onCreated }) {
-  const [title, setTitle] = useState('')
+function CreateGameModal({ t, initialSetup, onClose, onCreated }) {
+  const setupDefaults = normalizeSetupDefaults(initialSetup)
+  const [title, setTitle] = useState(setupDefaults?.title || '')
   const [cashMode, setCashMode] = useState('preset')
-  const [cashInput, setCashInput] = useState(formatIntegerInput('10000000'))
+  const [cashInput, setCashInput] = useState(formatIntegerInput(String(setupDefaults?.starting_balance_krw || 10_000_000)))
   const [durationMode, setDurationMode] = useState('preset')
-  const [durationInput, setDurationInput] = useState('30')
+  const [durationInput, setDurationInput] = useState(String(setupDefaults?.duration_days || 30))
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const cashInputRef = useRef(null)
@@ -173,9 +191,9 @@ function CreateGameModal({ t, onClose, onCreated }) {
   return (
     <ModalShell
       titleId="create-game-title"
-      title={t('games.createModalTitle')}
+      title={t('games.setupTitle')}
       descriptionId="create-game-description"
-      description={t('games.createModalHelper')}
+      description={setupDefaults ? t('games.replaySetupHelper') : t('games.createModalHelper')}
       closeLabel={t('common.close')}
       onClose={creating ? () => null : onClose}
       maxWidth={640}
@@ -528,10 +546,12 @@ function DeleteGameModal({ session, t, onClose, onDeleted }) {
 function Games({ startSetup = false }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showSetup, setShowSetup] = useState(startSetup)
+  const [setupDefaults, setSetupDefaults] = useState(() => normalizeSetupDefaults(location.state?.setupDefaults))
   const [managingSession, setManagingSession] = useState(null)
   const [deletingSession, setDeletingSession] = useState(null)
   const [error, setError] = useState('')
@@ -539,8 +559,11 @@ function Games({ startSetup = false }) {
   const locale = i18n.language === 'ko' ? 'ko-KR' : 'en-US'
 
   useEffect(() => {
-    if (startSetup) setShowSetup(true)
-  }, [startSetup])
+    if (startSetup) {
+      setSetupDefaults(normalizeSetupDefaults(location.state?.setupDefaults))
+      setShowSetup(true)
+    }
+  }, [startSetup, location.state])
 
   const loadSessions = useCallback(async () => {
     setLoading(true)
@@ -612,7 +635,10 @@ function Games({ startSetup = false }) {
             {t('games.selectBody')}
           </p>
         </div>
-        <button type="button" className="btn btn-primary games-create-btn" onClick={() => setShowSetup(true)}>
+        <button type="button" className="btn btn-primary games-create-btn" onClick={() => {
+          setSetupDefaults(null)
+          setShowSetup(true)
+        }}>
           {t('games.create')}
         </button>
       </div>
@@ -622,7 +648,10 @@ function Games({ startSetup = false }) {
           title={t('games.emptyTitle')}
           body={t('games.emptyBody')}
           actionLabel={t('games.create')}
-          onAction={() => setShowSetup(true)}
+          onAction={() => {
+            setSetupDefaults(null)
+            setShowSetup(true)
+          }}
         />
       )}
 
@@ -665,7 +694,11 @@ function Games({ startSetup = false }) {
       {showSetup && (
         <CreateGameModal
           t={t}
-          onClose={() => setShowSetup(false)}
+          initialSetup={setupDefaults}
+          onClose={() => {
+            setShowSetup(false)
+            setSetupDefaults(null)
+          }}
           onCreated={handleCreated}
         />
       )}
