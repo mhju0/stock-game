@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
 import { formatDateTime, formatMoney } from '../utils/formatters'
-import { gamePath } from '../sessionRoutes'
+import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
 
 function ResultMetric({ label, children, tone = '' }) {
   return (
@@ -43,6 +43,7 @@ function Game() {
 
   useEffect(() => {
     if (!status) return
+    if (!status.active || status.is_expired) return
     const days = status.duration_days
 
     apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
@@ -85,12 +86,24 @@ function Game() {
   )
 
   if (!status.active || status.is_expired) {
-    const completedResult = result || {}
+    if (!result) {
+      return (
+        <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+          <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+          <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
+        </div>
+      )
+    }
+
+    const completedResult = result
     const returnTone = (completedResult.total_return_krw || 0) >= 0 ? 'positive' : 'negative'
+    const hasReturnAmount = completedResult.total_return_krw !== null && completedResult.total_return_krw !== undefined
+    const hasReturnPct = completedResult.total_return_pct !== null && completedResult.total_return_pct !== undefined
     const realizedCurrencies = completedResult.realized_pnl?.by_currency || {}
     const realizedEntries = Object.entries(realizedCurrencies)
     const holdings = completedResult.final_holdings || []
     const hasResultData = completedResult.result_data_available
+    const statusLabel = t(sessionStatusLabelKey(completedResult))
 
     return (
       <div>
@@ -111,7 +124,7 @@ function Game() {
 
         <div className="game-status-bar game-expired">
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{t('game.endedTitle')}</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{statusLabel}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               {t('game.completedBody')}
             </div>
@@ -139,13 +152,13 @@ function Game() {
               ? t('common.unavailable')
               : formatKRW(completedResult.ending_value_krw)}
           </ResultMetric>
-          <ResultMetric label={t('game.totalReturnAmount')} tone={returnTone}>
-            {completedResult.total_return_krw === null || completedResult.total_return_krw === undefined
+          <ResultMetric label={t('game.totalReturnAmount')} tone={hasReturnAmount ? returnTone : ''}>
+            {!hasReturnAmount
               ? t('common.unavailable')
               : `${completedResult.total_return_krw >= 0 ? '+' : ''}${formatKRW(completedResult.total_return_krw)}`}
           </ResultMetric>
-          <ResultMetric label={t('game.totalReturnPct')} tone={returnTone}>
-            {completedResult.total_return_pct === null || completedResult.total_return_pct === undefined
+          <ResultMetric label={t('game.totalReturnPct')} tone={hasReturnPct ? returnTone : ''}>
+            {!hasReturnPct
               ? t('common.unavailable')
               : `${completedResult.total_return_pct >= 0 ? '+' : ''}${completedResult.total_return_pct}%`}
           </ResultMetric>
