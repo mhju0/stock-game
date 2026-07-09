@@ -1,16 +1,16 @@
 import { apiFetch } from '../api'
-import { useState, useEffect, useContext, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
-import { UserContext } from '../context/userContext'
 import { formatMoney } from '../utils/formatters'
+import { gamePath } from '../sessionRoutes'
 
 function Game() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { currentUserId } = useContext(UserContext)
+  const { sessionId } = useParams()
   
   const [status, setStatus] = useState(null)
   const [summary, setSummary] = useState(null)
@@ -23,12 +23,12 @@ function Game() {
   const fetchData = () => {
     setLoading(true)
     Promise.all([
-      apiFetch(`/game/status?user_id=${currentUserId}`).then(d => { if (d) setStatus(d) }),
-      apiFetch(`/game/summary?user_id=${currentUserId}`).then(d => { if (d) setSummary(d) }),
+      apiFetch(`/game/sessions/${sessionId}/status`).then(d => { if (d) setStatus(d) }),
+      apiFetch(`/game/sessions/${sessionId}/summary`).then(d => { if (d) setSummary(d) }),
     ]).finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchData() }, [currentUserId])
+  useEffect(() => { fetchData() }, [sessionId])
 
   useEffect(() => {
     if (!status?.active) return
@@ -37,7 +37,7 @@ function Game() {
     apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
       .then(data => { if (Array.isArray(data)) setBenchmarkData(data) })
 
-    apiFetch(`/analytics/performance?user_id=${currentUserId}`)
+    apiFetch(`/game/sessions/${sessionId}/analytics/performance`)
       .then(data => {
         if (data?.snapshots) {
           const startVal = data.starting_value
@@ -48,7 +48,7 @@ function Game() {
           })))
         }
       })
-  }, [status?.active, benchmarkIndex, currentUserId])
+  }, [status?.active, benchmarkIndex, sessionId])
 
   const mergedChartData = useMemo(() => {
     const map = {}
@@ -75,12 +75,11 @@ function Game() {
   if (!status.active) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🎮</div>
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-          {t('game.noActive')}
+          {status.is_expired ? t('game.gameOver') : t('game.notPlayable')}
         </h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-          {t('game.noActiveDesc')}
+          {t('game.notPlayableDesc')}
         </p>
         <button className="btn btn-primary" onClick={() => navigate('/games')}>
           {t('nav.myGames')}
@@ -186,7 +185,7 @@ function Game() {
           <p className="page-subtitle">{t('game.subtitle')}</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn" onClick={() => navigate('/dashboard')}>
+          <button type="button" className="btn" onClick={() => navigate(gamePath(sessionId, 'dashboard'))}>
             {t('nav.dashboard')}
           </button>
           <button type="button" className="btn" onClick={() => navigate('/games')}>

@@ -8,17 +8,21 @@ async function apiFetchOrThrow(path) {
 }
 
 export const queryKeys = {
-  account: (userId) => ['account', userId],
-  holdings: (userId) => ['holdings', userId],
+  account: (userId, sessionId) => ['account', userId, sessionId || 'legacy'],
+  holdings: (userId, sessionId) => ['holdings', userId, sessionId || 'legacy'],
   watchlist: (userId) => ['watchlist', userId],
   watchlistContains: (userId, ticker) => ['watchlist-contains', userId, ticker],
-  analyticsPerformance: (userId) => ['analytics-performance', userId],
+  analyticsPerformance: (userId, sessionId) => ['analytics-performance', userId, sessionId || 'legacy'],
 }
 
-export function useAccountQuery(userId) {
+export function useAccountQuery(userId, sessionId = null) {
   return useQuery({
-    queryKey: queryKeys.account(userId),
-    queryFn: () => apiFetchOrThrow('/portfolio/account'),
+    queryKey: queryKeys.account(userId, sessionId),
+    queryFn: () => apiFetchOrThrow(
+      sessionId
+        ? `/game/sessions/${sessionId}/portfolio/account`
+        : '/portfolio/account'
+    ),
     enabled: !!userId,
     staleTime: 30000,
     retry: 2,
@@ -26,10 +30,14 @@ export function useAccountQuery(userId) {
   })
 }
 
-export function useHoldingsQuery(userId) {
+export function useHoldingsQuery(userId, sessionId = null) {
   return useQuery({
-    queryKey: queryKeys.holdings(userId),
-    queryFn: () => apiFetchOrThrow('/portfolio/holdings'),
+    queryKey: queryKeys.holdings(userId, sessionId),
+    queryFn: () => apiFetchOrThrow(
+      sessionId
+        ? `/game/sessions/${sessionId}/portfolio/holdings`
+        : '/portfolio/holdings'
+    ),
     enabled: !!userId,
     staleTime: 30000,
     retry: 2,
@@ -48,10 +56,14 @@ export function useWatchlistQuery(userId) {
   })
 }
 
-export function useAnalyticsPerformanceQuery(userId) {
+export function useAnalyticsPerformanceQuery(userId, sessionId = null) {
   return useQuery({
-    queryKey: queryKeys.analyticsPerformance(userId),
-    queryFn: () => apiFetchOrThrow('/analytics/performance'),
+    queryKey: queryKeys.analyticsPerformance(userId, sessionId),
+    queryFn: () => apiFetchOrThrow(
+      sessionId
+        ? `/game/sessions/${sessionId}/analytics/performance`
+        : '/analytics/performance'
+    ),
     enabled: !!userId,
     staleTime: 30000,
     retry: 2,

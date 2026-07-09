@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAccountQuery, useWatchlistContainsQuery, useWatchlistToggleMutation, queryKeys } from '../query/queries'
 
 
-function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
+function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlistUpdated }) {
   const { t, i18n } = useTranslation();
   const { currentUserId } = useContext(UserContext);
   const queryClient = useQueryClient()
@@ -23,7 +23,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
   const [submitting, setSubmitting] = useState(false);
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
-  const { data: account } = useAccountQuery(currentUserId)
+  const { data: account } = useAccountQuery(currentUserId, sessionId)
   const { data: watchlistContains } = useWatchlistContainsQuery(currentUserId, ticker)
   const toggleWatchlistMutation = useWatchlistToggleMutation(currentUserId)
   const isInWatchlist = !!watchlistContains?.in_watchlist
@@ -53,7 +53,13 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
 
     Promise.all([
       apiFetch(`/stock/${ticker}`, {}, setMessage),
-      apiFetch(`/portfolio/holdings?user_id=${currentUserId}`, {}, setMessage),
+      apiFetch(
+        sessionId
+          ? `/game/sessions/${sessionId}/portfolio/holdings`
+          : `/portfolio/holdings?user_id=${currentUserId}`,
+        {},
+        setMessage
+      ),
     ])
       .then(([stockData, holdingsData]) => {
         setStock(stockData);
@@ -65,7 +71,7 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
         setMessage(t("common.error"));
         setLoading(false);
       });
-  }, [ticker, currentUserId, t]);
+  }, [ticker, currentUserId, sessionId, t]);
 
   if (!ticker) return null;
 
@@ -75,7 +81,9 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
     setIsSuccess(false);
     setSubmitting(true);
     const data = await apiPost(
-      `/trade/buy?user_id=${currentUserId}`,
+      sessionId
+        ? `/game/sessions/${sessionId}/trade/buy`
+        : `/trade/buy?user_id=${currentUserId}`,
       { ticker, quantity: quantityNumber },
       (err) => setMessage(err)
     );
@@ -83,9 +91,9 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
     if (data) {
       setMessage(t("trade.buySuccess"));
       setIsSuccess(true);
-      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId, sessionId) })
       if (onComplete) setTimeout(onComplete, 800);
       return true;
     }
@@ -98,7 +106,9 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
     setIsSuccess(false);
     setSubmitting(true);
     const data = await apiPost(
-      `/trade/sell?user_id=${currentUserId}`,
+      sessionId
+        ? `/game/sessions/${sessionId}/trade/sell`
+        : `/trade/sell?user_id=${currentUserId}`,
       { ticker, quantity: quantityNumber },
       (err) => setMessage(err)
     );
@@ -106,9 +116,9 @@ function TradeModal({ ticker, onClose, onComplete, onWatchlistUpdated }) {
     if (data) {
       setMessage(t("trade.sellSuccess"));
       setIsSuccess(true);
-      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId, sessionId) })
       if (onComplete) setTimeout(onComplete, 800);
       return true;
     }

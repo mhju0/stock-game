@@ -1,11 +1,13 @@
 import { apiFetch, apiPost } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams } from 'react-router-dom'
 import { UserContext } from '../context/userContext'
 
 
 function Exchange() {
   const { t } = useTranslation()
+  const { sessionId } = useParams()
   const { currentUserId } = useContext(UserContext)
   
   const [rate, setRate] = useState(null)
@@ -20,11 +22,11 @@ function Exchange() {
     setLoading(true)
     Promise.all([
       apiFetch('/exchange-rate').then(d => { if (d) setRate(d.usd_to_krw) }),
-      apiFetch(`/portfolio/account?user_id=${currentUserId}`).then(d => { if (d) setAccount(d) }),
+      apiFetch(`/game/sessions/${sessionId}/portfolio/account`).then(d => { if (d) setAccount(d) }),
     ]).finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchData() }, [currentUserId])
+  useEffect(() => { fetchData() }, [currentUserId, sessionId])
 
   const toCurrency = fromCurrency === 'KRW' ? 'USD' : 'KRW'
   const converted = amount && rate
@@ -35,7 +37,7 @@ function Exchange() {
     setMessage('')
     setIsSuccess(false)
     const data = await apiPost(
-      `/trade/exchange?user_id=${currentUserId}`,
+      `/game/sessions/${sessionId}/trade/exchange`,
       { from_currency: fromCurrency, to_currency: toCurrency, amount: parseFloat(amount) },
       (err) => setMessage(err)
     )

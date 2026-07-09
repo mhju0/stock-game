@@ -1,18 +1,20 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/userContext'
+import { gamePath } from '../sessionRoutes'
 
 
 function Portfolio() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const { sessionId } = useParams()
   const { currentUserId } = useContext(UserContext)
   
   const [account, setAccount] = useState(null)
@@ -27,15 +29,15 @@ function Portfolio() {
   const fetchData = async () => {
     setLoading(true)
     const [holdingsData, accountData] = await Promise.all([
-      apiFetch(`/portfolio/holdings?user_id=${currentUserId}`),
-      apiFetch(`/portfolio/account?user_id=${currentUserId}`)
+      apiFetch(`/game/sessions/${sessionId}/portfolio/holdings`),
+      apiFetch(`/game/sessions/${sessionId}/portfolio/account`)
     ])
     setHoldings(Array.isArray(holdingsData) ? holdingsData : [])
     setAccount(accountData || null)
     setLoading(false)
   }
 
-  useEffect(() => { fetchData() }, [currentUserId])
+  useEffect(() => { fetchData() }, [currentUserId, sessionId])
 
   const sorted = useMemo(() => {
     let filtered = holdings
@@ -94,7 +96,7 @@ function Portfolio() {
           {t('portfolio.emptyTitle')}
         </h2>
         <p style={{ marginBottom: 18 }}>{t('portfolio.emptyBody')}</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+        <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'search'))}>
           {t('portfolio.emptyAction')}
         </button>
       </div>
@@ -250,6 +252,7 @@ function Portfolio() {
 
       {tradeTicker && (
         <TradeModal ticker={tradeTicker}
+          sessionId={sessionId}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null); fetchData() }} />
       )}

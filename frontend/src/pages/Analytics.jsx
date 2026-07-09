@@ -1,7 +1,7 @@
 import { apiGet } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -12,12 +12,14 @@ import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/userContext'
 import { useAnalyticsPerformanceQuery, useAccountQuery } from '../query/queries'
+import { gamePath } from '../sessionRoutes'
 
 const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
 
 function Analytics() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const { sessionId } = useParams()
   const { currentUserId } = useContext(UserContext)
   
   const [byStock, setByStock] = useState([])
@@ -29,7 +31,7 @@ function Analytics() {
   const [tradeTicker, setTradeTicker] = useState(null)
   const [displayCurrency, setDisplayCurrency] = useState('KRW')
 
-  const { data: accountData } = useAccountQuery(currentUserId)
+  const { data: accountData } = useAccountQuery(currentUserId, sessionId)
   const exchangeRate = accountData?.exchange_rate || 1350
 
   const {
@@ -37,13 +39,13 @@ function Analytics() {
     isLoading: perfLoading,
     isError: perfError,
     refetch: refetchPerformance,
-  } = useAnalyticsPerformanceQuery(currentUserId)
+  } = useAnalyticsPerformanceQuery(currentUserId, sessionId)
 
   useEffect(() => {
-    apiGet(`/analytics/by-stock?user_id=${currentUserId}`, setByStock)
-    apiGet(`/analytics/by-sector?user_id=${currentUserId}`, setBySector)
-    apiGet(`/analytics/realized?user_id=${currentUserId}`, setRealized)
-  }, [currentUserId])
+    apiGet(`/game/sessions/${sessionId}/analytics/by-stock`, setByStock)
+    apiGet(`/game/sessions/${sessionId}/analytics/by-sector`, setBySector)
+    apiGet(`/game/sessions/${sessionId}/analytics/realized`, setRealized)
+  }, [currentUserId, sessionId])
 
   const startVal = performance?.starting_value || 0
   const snapshots = useMemo(() => performance?.snapshots || [], [performance?.snapshots])
@@ -156,9 +158,9 @@ function Analytics() {
         ? t('analytics.summaryConcentrated')
         : t('analytics.summaryBalanced')
   const analyticsNextActions = [
-    { label: t('nav.portfolio'), to: '/portfolio', primary: byStock.length > 0 },
-    { label: t('nav.search'), to: '/search', primary: byStock.length === 0 },
-    { label: t('nav.transactions'), to: '/transactions' },
+    { label: t('nav.portfolio'), to: gamePath(sessionId, 'portfolio'), primary: byStock.length > 0 },
+    { label: t('nav.search'), to: gamePath(sessionId, 'search'), primary: byStock.length === 0 },
+    { label: t('nav.transactions'), to: gamePath(sessionId, 'transactions') },
     { label: t('nav.watchlist'), to: '/watchlist' },
   ]
 
@@ -511,6 +513,7 @@ function Analytics() {
 
       {tradeTicker && (
         <TradeModal ticker={tradeTicker}
+          sessionId={sessionId}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null) }} />
       )}

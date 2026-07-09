@@ -1,7 +1,7 @@
 import { apiPost } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
@@ -10,11 +10,13 @@ import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/userContext'
 import { useAccountQuery, useHoldingsQuery, queryKeys } from '../query/queries'
+import { gamePath } from '../sessionRoutes'
 
 
 function Dashboard() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const { sessionId } = useParams()
   const { currentUserId } = useContext(UserContext)
   const queryClient = useQueryClient()
   const enableDevTools = import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true'
@@ -29,17 +31,17 @@ function Dashboard() {
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [error, setError] = useState('')
 
-  const { data: account, isLoading: accountLoading, isError: accountError } = useAccountQuery(currentUserId)
-  const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId)
+  const { data: account, isLoading: accountLoading, isError: accountError } = useAccountQuery(currentUserId, sessionId)
+  const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId, sessionId)
   const holdingsSafe = useMemo(() => Array.isArray(holdings) ? holdings : [], [holdings])
 
   const fetchData = () => {
     setError('')
-    queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
   }
 
-  useEffect(() => { setError('') }, [currentUserId])
+  useEffect(() => { setError('') }, [currentUserId, sessionId])
 
   const addFunds = async () => {
     setDevMessage('')
@@ -120,7 +122,7 @@ function Dashboard() {
           <p className="page-subtitle">{t('dashboard.subtitle')}</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/')}>
+          <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId))}>
             {t('dashboard.viewGame')}
           </button>
           <button type="button" className="btn" onClick={() => navigate('/games')}>
@@ -180,15 +182,15 @@ function Dashboard() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {holdingsSafe.length === 0 ? (
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+            <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'search'))}>
               {t('nav.search')}
             </button>
           ) : (
             <>
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/portfolio')}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'portfolio'))}>
                 {t('dashboard.viewPortfolio')}
               </button>
-              <button type="button" className="btn" onClick={() => navigate('/analytics')}>
+              <button type="button" className="btn" onClick={() => navigate(gamePath(sessionId, 'analytics'))}>
                 {t('dashboard.viewAnalytics')}
               </button>
             </>
@@ -232,7 +234,7 @@ function Dashboard() {
           <div className="empty-state">
             <p>{t('stock.notFound')}</p>
             {filterMarket === 'ALL' && (
-              <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => navigate('/search')}>
+              <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => navigate(gamePath(sessionId, 'search'))}>
                 {t('nav.search')}
               </button>
             )}
@@ -282,6 +284,7 @@ function Dashboard() {
       {tradeTicker && (
         <TradeModal
           ticker={tradeTicker}
+          sessionId={sessionId}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null); fetchData() }}
         />

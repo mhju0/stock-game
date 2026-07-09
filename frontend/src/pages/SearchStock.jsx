@@ -1,6 +1,7 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
@@ -9,6 +10,7 @@ import { UserContext } from '../context/userContext'
 
 function SearchStock() {
   const { t, i18n } = useTranslation()
+  const { sessionId } = useParams()
   const { currentUserId } = useContext(UserContext)
   
   const [query, setQuery] = useState('')
@@ -190,6 +192,7 @@ function SearchStock() {
       {tradeTicker && (
         <TradeModal
           ticker={tradeTicker}
+          sessionId={sessionId}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null) }}
         />

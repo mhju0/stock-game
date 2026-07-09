@@ -1,15 +1,17 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../context/userContext'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney, formatDateTime } from '../utils/formatters'
+import { gamePath } from '../sessionRoutes'
 
 
 function Transactions() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const { sessionId } = useParams()
   const { currentUserId } = useContext(UserContext)
   
   const [transactions, setTransactions] = useState([])
@@ -18,10 +20,10 @@ function Transactions() {
 
   useEffect(() => {
     setLoading(true)
-    apiFetch(`/portfolio/transactions?user_id=${currentUserId}`)
+    apiFetch(`/game/sessions/${sessionId}/portfolio/transactions`)
       .then(data => { if (data) setTransactions(data) })
       .finally(() => setLoading(false))
-  }, [currentUserId])
+  }, [currentUserId, sessionId])
 
   const filtered = filter === 'ALL'
     ? transactions
@@ -42,7 +44,7 @@ function Transactions() {
           {t('transactions.emptyTitle')}
         </h2>
         <p style={{ marginBottom: 18 }}>{t('transactions.emptyBody')}</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+        <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'search'))}>
           {t('nav.search')}
         </button>
       </div>
