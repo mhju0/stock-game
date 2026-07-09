@@ -214,11 +214,9 @@ function Analytics() {
             <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
             <div style={{ display: 'flex', gap: 2 }}>
               {['KRW', 'USD'].map(c => (
-                <button key={c} className="btn" onClick={() => setDisplayCurrency(c)} style={{
+                <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
                   fontSize: 11, padding: '2px 8px', borderRadius: 6,
-                  background: displayCurrency === c ? 'var(--text-primary)' : 'transparent',
-                  color: displayCurrency === c ? 'var(--bg-primary)' : 'var(--text-secondary)',
-                  border: '1px solid var(--border)', lineHeight: '16px',
+                  lineHeight: '16px',
                 }}>{c === 'KRW' ? '₩' : '$'}</button>
               ))}
             </div>
@@ -262,11 +260,8 @@ function Analytics() {
           <div className="card-title" style={{ marginBottom: 0 }}>{t('analytics.portfolioOverTime')}</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {['1W', '1M', '3M', 'ALL'].map(range => (
-              <button key={range} className="btn" onClick={() => setTimeRange(range)} style={{
+              <button key={range} className={`btn segmented-button ${timeRange === range ? 'segmented-button-selected' : ''}`} onClick={() => setTimeRange(range)} style={{
                 fontSize: 12, padding: '4px 10px',
-                background: timeRange === range ? 'var(--text-primary)' : 'transparent',
-                color: timeRange === range ? 'var(--bg-primary)' : 'var(--text-secondary)',
-                border: '1px solid var(--border)',
               }}>{range}</button>
             ))}
           </div>
@@ -354,17 +349,11 @@ function Analytics() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div className="card-title" style={{ marginBottom: 0 }}>{t('analytics.byStock')} ({byStock.length})</div>
             <div style={{ display: 'flex', gap: 4 }}>
-              <button className="btn" onClick={() => setStockView('grid')} style={{
+              <button className={`btn segmented-button ${stockView === 'grid' ? 'segmented-button-selected' : ''}`} onClick={() => setStockView('grid')} style={{
                 fontSize: 12, padding: '4px 10px',
-                background: stockView === 'grid' ? 'var(--text-primary)' : 'transparent',
-                color: stockView === 'grid' ? 'var(--bg-primary)' : 'var(--text-secondary)',
-                border: '1px solid var(--border)',
               }}>{t('analytics.grid')}</button>
-              <button className="btn" onClick={() => setStockView('list')} style={{
+              <button className={`btn segmented-button ${stockView === 'list' ? 'segmented-button-selected' : ''}`} onClick={() => setStockView('list')} style={{
                 fontSize: 12, padding: '4px 10px',
-                background: stockView === 'list' ? 'var(--text-primary)' : 'transparent',
-                color: stockView === 'list' ? 'var(--bg-primary)' : 'var(--text-secondary)',
-                border: '1px solid var(--border)',
               }}>{t('analytics.list')}</button>
               
               <SortSelect value={stockSort} onChange={e => setStockSort(e.target.value)} />

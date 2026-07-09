@@ -24,17 +24,14 @@ function Market() {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div className="segmented-control" style={{ marginBottom: 16 }}>
         {["US", "KR"].map((m) => (
           <button
             key={m}
-            className="btn"
+            className={`btn segmented-button ${market === m ? 'segmented-button-selected' : ''}`}
             onClick={() => setMarket(m)}
             style={{
               minWidth: 80,
-              background: market === m ? 'var(--text-primary)' : "transparent",
-              color: market === m ? "white" : 'var(--text-secondary)',
-              border: "1px solid var(--border)",
             }}
           >
             {m === "US" ? t("market.us") : t("market.kr")}

@@ -8,6 +8,7 @@
     "retry": "Try Again",
     "loadError": "Could not load data. Please try again shortly.",
     "connectionError": "Unable to connect to the server. Please try again shortly.",
+    "serverError": "The request could not be completed. Please try again shortly.",
     "pageErrorTitle": "Could not load this page",
     "pageErrorBody": "Please try again shortly.",
     "mainNavigation": "Main navigation",
@@ -121,7 +122,10 @@
     "currentRate": "Current Rate",
     "execute": "Exchange",
     "allFunds": "ALL",
-    "perUsd": "per $1 USD"
+    "perUsd": "per $1 USD",
+    "success": "Exchanged {{from}} → {{to}}",
+    "invalidAmount": "Enter an amount greater than 0.",
+    "insufficientFunds": "This is above your available balance."
   },
   "watchlist": {
     "title": "Watchlist",

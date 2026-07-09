@@ -464,6 +464,27 @@ class TestSessionScopedTrading:
         snapshot = db_session.query(PortfolioSnapshot).filter_by(game_session_id=session.id).one()
         assert snapshot.game_session_id == session.id
 
+    def test_session_buy_returns_success_when_snapshot_capture_fails(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000)
+
+        with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
+             patch("app.services.trading_service.take_session_snapshot", side_effect=RuntimeError("snapshot failed")):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/buy",
+                json={"ticker": "KB", "quantity": 2},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "success"
+        db_session.refresh(session)
+        holding = db_session.query(Holding).filter_by(game_session_id=session.id, ticker="KB").one()
+        transaction = db_session.query(Transaction).filter_by(game_session_id=session.id, ticker="KB").one()
+        assert session.cash_krw == 998_000
+        assert holding.quantity == 2
+        assert transaction.transaction_type == "BUY"
+
     def test_session_sell_writes_snapshot_with_game_session_id(self, client, db_session, registered_user, auth_headers):
         user = current_user(db_session, registered_user)
         session = create_game_session(db_session, user, cash_krw=1_000_000)
@@ -515,6 +536,25 @@ class TestSessionScopedTrading:
         assert resp.status_code == 200
         snapshot = db_session.query(PortfolioSnapshot).filter_by(game_session_id=session.id).one()
         assert snapshot.game_session_id == session.id
+
+    def test_session_exchange_returns_success_when_snapshot_capture_fails(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_300_000, cash_usd=0)
+
+        with patch("app.services.trading_service.take_session_snapshot", side_effect=RuntimeError("snapshot failed")):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/exchange",
+                json={"from_currency": "KRW", "to_currency": "USD", "amount": 130_000},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "success"
+        db_session.refresh(session)
+        tx = db_session.query(Transaction).filter_by(game_session_id=session.id, transaction_type="EXCHANGE").one()
+        assert session.cash_krw == 1_170_000
+        assert session.cash_usd == 100
+        assert tx.ticker == "KRW/USD"
 
     def test_watchlist_remains_untouched_by_session_trade(self, client, db_session, registered_user, auth_headers):
         user = current_user(db_session, registered_user)

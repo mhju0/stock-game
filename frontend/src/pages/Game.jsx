@@ -240,11 +240,8 @@ function Game() {
           <div className="card-title" style={{ marginBottom: 0 }}>{t('game.vsBenchmark')}</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {['SP500', 'KOSPI'].map(idx => (
-              <button key={idx} className="btn" onClick={() => setBenchmarkIndex(idx)} style={{
+              <button key={idx} className={`btn segmented-button ${benchmarkIndex === idx ? 'segmented-button-selected' : ''}`} onClick={() => setBenchmarkIndex(idx)} style={{
                 fontSize: 12, padding: '4px 10px',
-                background: benchmarkIndex === idx ? 'var(--text-primary)' : 'transparent',
-                color: benchmarkIndex === idx ? 'var(--bg-primary)' : 'var(--text-secondary)',
-                border: '1px solid var(--border)',
               }}>{idx === 'SP500' ? 'S&P 500' : 'KOSPI'}</button>
             ))}
           </div>

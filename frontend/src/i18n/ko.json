@@ -8,6 +8,7 @@
     "retry": "다시 시도",
     "loadError": "정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
     "connectionError": "서버에 연결할 수 없어요. 잠시 후 다시 시도해 주세요.",
+    "serverError": "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
     "pageErrorTitle": "화면을 불러오지 못했어요",
     "pageErrorBody": "잠시 후 다시 시도해 주세요.",
     "mainNavigation": "주요 메뉴",
@@ -121,7 +122,10 @@
     "currentRate": "현재 환율",
     "execute": "환전하기",
     "allFunds": "전액",
-    "perUsd": "1달러 기준"
+    "perUsd": "1달러 기준",
+    "success": "{{from}} → {{to}} 환전 완료",
+    "invalidAmount": "0보다 큰 금액을 입력해 주세요.",
+    "insufficientFunds": "환전 가능 금액을 초과했어요."
   },
   "watchlist": {
     "title": "관심종목",

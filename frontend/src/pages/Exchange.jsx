@@ -1,5 +1,5 @@
 import { apiFetch, apiPost } from '../api'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { UserContext } from '../context/userContext'
@@ -17,35 +17,51 @@ function Exchange() {
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setLoading(true)
     Promise.all([
       apiFetch('/exchange-rate').then(d => { if (d) setRate(d.usd_to_krw) }),
-      apiFetch(`/game/sessions/${sessionId}/portfolio/account`).then(d => { if (d) setAccount(d) }),
+      apiFetch(
+        sessionId ? `/game/sessions/${sessionId}/portfolio/account` : '/portfolio/account'
+      ).then(d => { if (d) setAccount(d) }),
     ]).finally(() => setLoading(false))
-  }
+  }, [sessionId])
 
-  useEffect(() => { fetchData() }, [currentUserId, sessionId])
+  useEffect(() => { fetchData() }, [fetchData, currentUserId])
 
   const toCurrency = fromCurrency === 'KRW' ? 'USD' : 'KRW'
-  const converted = amount && rate
-    ? fromCurrency === 'KRW' ? (parseFloat(amount) / rate) : (parseFloat(amount) * rate)
+  const numericAmount = Number(amount)
+  const hasAmount = amount !== ''
+  const invalidAmount = hasAmount && (!Number.isFinite(numericAmount) || numericAmount <= 0)
+  const availableBalance = account
+    ? fromCurrency === 'KRW'
+      ? account.balance_krw
+      : account.balance_usd
     : 0
+  const exceedsBalance = Number.isFinite(numericAmount) && numericAmount > availableBalance
+  const converted = hasAmount && rate && !invalidAmount
+    ? fromCurrency === 'KRW' ? (numericAmount / rate) : (numericAmount * rate)
+    : 0
+  const executeDisabled = submitting || !hasAmount || invalidAmount || exceedsBalance
 
   const execute = async () => {
+    if (executeDisabled) return
     setMessage('')
     setIsSuccess(false)
+    setSubmitting(true)
     const data = await apiPost(
-      `/game/sessions/${sessionId}/trade/exchange`,
-      { from_currency: fromCurrency, to_currency: toCurrency, amount: parseFloat(amount) },
+      sessionId ? `/game/sessions/${sessionId}/trade/exchange` : '/trade/exchange',
+      { from_currency: fromCurrency, to_currency: toCurrency, amount: numericAmount },
       (err) => setMessage(err)
     )
-    if (data) {
+    setSubmitting(false)
+    if (data?.exchange && data?.balance) {
       const ex = data.exchange
       const fromFmt = ex.from === 'KRW' ? `₩${Math.round(ex.amount).toLocaleString()}` : `$${Number(ex.amount).toFixed(2)}`
       const toFmt = ex.to === 'KRW' ? `₩${Math.round(ex.converted).toLocaleString()}` : `$${Number(ex.converted).toFixed(2)}`
-      setMessage(`${fromFmt} → ${toFmt}`)
+      setMessage(t('exchange.success', { from: fromFmt, to: toFmt }))
       setIsSuccess(true)
       setAccount({ ...account, balance_krw: data.balance.krw, balance_usd: data.balance.usd })
       setAmount('')
@@ -86,18 +102,12 @@ function Exchange() {
       <div className="card">
         <div className="card-title">{t('exchange.title')}</div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button className="btn" onClick={() => { setFromCurrency('KRW'); setAmount('') }} style={{
+        <div className="segmented-control" style={{ marginBottom: 16 }}>
+          <button className={`btn segmented-button ${fromCurrency === 'KRW' ? 'segmented-button-selected' : ''}`} onClick={() => { setFromCurrency('KRW'); setAmount(''); setMessage('') }} style={{
             flex: 1, minWidth: 120,
-            background: fromCurrency === 'KRW' ? 'var(--accent)' : 'transparent',
-            color: fromCurrency === 'KRW' ? 'white' : 'var(--text-primary)',
-            border: '1px solid var(--border)',
           }}>KRW → USD</button>
-          <button className="btn" onClick={() => { setFromCurrency('USD'); setAmount('') }} style={{
+          <button className={`btn segmented-button ${fromCurrency === 'USD' ? 'segmented-button-selected' : ''}`} onClick={() => { setFromCurrency('USD'); setAmount(''); setMessage('') }} style={{
             flex: 1, minWidth: 120,
-            background: fromCurrency === 'USD' ? 'var(--accent)' : 'transparent',
-            color: fromCurrency === 'USD' ? 'white' : 'var(--text-primary)',
-            border: '1px solid var(--border)',
           }}>USD → KRW</button>
         </div>
 
@@ -122,9 +132,9 @@ function Exchange() {
         <input className="input" type="number" placeholder={t('exchange.amount')} value={amount}
           onChange={e => setAmount(e.target.value)} style={{ marginBottom: 12, fontSize: 16, textAlign: 'center' }} />
 
-        {amount && (
+        {hasAmount && !invalidAmount && (
           <div style={{
-            background: 'var(--border-light)', borderRadius: 12, padding: 16, textAlign: 'center', marginBottom: 16,
+            background: 'var(--surface-panel-strong)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, textAlign: 'center', marginBottom: 16,
           }}>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('exchange.convertedAmount')}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>
@@ -133,8 +143,15 @@ function Exchange() {
           </div>
         )}
 
-        <button className="btn btn-primary" style={{ width: '100%' }} onClick={execute} disabled={!amount}>
-          {t('exchange.execute')}
+        {(invalidAmount || exceedsBalance) && (
+          <div className="trade-warning">
+            {invalidAmount && <div>{t('exchange.invalidAmount')}</div>}
+            {exceedsBalance && <div>{t('exchange.insufficientFunds')}</div>}
+          </div>
+        )}
+
+        <button className="btn btn-primary" style={{ width: '100%' }} onClick={execute} disabled={executeDisabled}>
+          {submitting ? t('common.loading') : t('exchange.execute')}
         </button>
 
         {message && (

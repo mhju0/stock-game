@@ -137,11 +137,9 @@ function Dashboard() {
             <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
             <div style={{ display: 'flex', gap: 2 }}>
               {['KRW', 'USD'].map(c => (
-                <button key={c} className="btn" onClick={() => setDisplayCurrency(c)} style={{
+                <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
                   fontSize: 11, padding: '2px 8px', borderRadius: 6,
-                  background: displayCurrency === c ? 'var(--text-primary)' : 'transparent',
-                  color: displayCurrency === c ? 'var(--bg-primary)' : 'var(--text-secondary)',
-                  border: '1px solid var(--border)', lineHeight: '16px',
+                  lineHeight: '16px',
                 }}>{c === 'KRW' ? '₩' : '$'}</button>
               ))}
             </div>

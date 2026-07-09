@@ -57,8 +57,7 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
         sessionId
           ? `/game/sessions/${sessionId}/portfolio/holdings`
           : `/portfolio/holdings?user_id=${currentUserId}`,
-        {},
-        setMessage
+        {}
       ),
     ])
       .then(([stockData, holdingsData]) => {
@@ -91,6 +90,14 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
     if (data) {
       setMessage(t("trade.buySuccess"));
       setIsSuccess(true);
+      setMyHolding((current) => current + quantityNumber);
+      if (data.balance) {
+        queryClient.setQueryData(queryKeys.account(currentUserId, sessionId), (current) => ({
+          ...(current || {}),
+          balance_krw: data.balance.krw,
+          balance_usd: data.balance.usd,
+        }))
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId, sessionId) })
@@ -116,6 +123,14 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
     if (data) {
       setMessage(t("trade.sellSuccess"));
       setIsSuccess(true);
+      setMyHolding((current) => Math.max(0, current - quantityNumber));
+      if (data.balance) {
+        queryClient.setQueryData(queryKeys.account(currentUserId, sessionId), (current) => ({
+          ...(current || {}),
+          balance_krw: data.balance.krw,
+          balance_usd: data.balance.usd,
+        }))
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId, sessionId) })
@@ -247,7 +262,7 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
               ref={closeButtonRef}
               className="modal-close-btn"
               onClick={onClose}
-              aria-label="닫기"
+              aria-label={t("common.close")}
             >
               ×
             </button>

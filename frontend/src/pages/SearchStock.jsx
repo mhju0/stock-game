@@ -145,11 +145,8 @@ function SearchStock() {
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', gap: 4, marginBottom: 12, justifyContent: 'flex-end' }}>
                 {['1d', '1w', '1mo', '3mo', '1y'].map(p => (
-                  <button key={p} className="btn" onClick={() => setHistoryPeriod(p)} style={{
+                  <button key={p} className={`btn segmented-button ${historyPeriod === p ? 'segmented-button-selected' : ''}`} onClick={() => setHistoryPeriod(p)} style={{
                     fontSize: 12, padding: '4px 10px',
-                    background: historyPeriod === p ? 'var(--text-primary)' : 'transparent',
-                    color: historyPeriod === p ? 'var(--bg-primary)' : 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
                   }}>{p.toUpperCase()}</button>
                 ))}
               </div>

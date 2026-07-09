@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.models import Holding, Transaction, User
@@ -10,6 +12,8 @@ from app.services.game_session_service import (
 )
 from app.services.snapshot_service import take_session_snapshot, take_snapshot
 from app.services.stock_service import get_stock_info, get_stock_price
+
+logger = logging.getLogger(__name__)
 
 
 def _load_user(db: Session, user_id: int) -> User:
@@ -41,6 +45,17 @@ def _transaction_response(transaction_type, ticker, name, quantity, price, amoun
     if realized_pnl is not None:
         body["realized_pnl"] = realized_pnl
     return body
+
+
+def _capture_post_trade_snapshot(snapshot_func, *args) -> None:
+    try:
+        snapshot_func(*args)
+    except Exception:
+        logger.exception("Post-trade snapshot capture failed")
+        # The trade/exchange mutation is already committed. Keep the API
+        # response aligned with persisted state instead of reporting a false
+        # transaction failure to the user.
+        args[0].rollback()
 
 
 def _buy_legacy(db: Session, user: User, ticker: str, quantity: int, stock_info: dict) -> dict:
@@ -100,7 +115,7 @@ def _buy_legacy(db: Session, user: User, ticker: str, quantity: int, stock_info:
         )
     )
     db.commit()
-    take_snapshot(db, user.id)
+    _capture_post_trade_snapshot(take_snapshot, db, user.id)
 
     return {
         "status": "success",
@@ -177,7 +192,7 @@ def _buy_for_session(db: Session, user: User, session, ticker: str, quantity: in
     )
     sync_legacy_user_balance(user, session)
     db.commit()
-    take_session_snapshot(db, user.id, session.id)
+    _capture_post_trade_snapshot(take_session_snapshot, db, user.id, session.id)
 
     return {
         "status": "success",
@@ -253,7 +268,7 @@ def _sell_legacy(db: Session, user: User, ticker: str, quantity: int) -> dict:
     name = holding.name
     currency = holding.currency
     db.commit()
-    take_snapshot(db, user.id)
+    _capture_post_trade_snapshot(take_snapshot, db, user.id)
 
     return {
         "status": "success",
@@ -331,7 +346,7 @@ def _sell_for_session(db: Session, user: User, session, ticker: str, quantity: i
     currency = holding.currency
     sync_legacy_user_balance(user, session)
     db.commit()
-    take_session_snapshot(db, user.id, session.id)
+    _capture_post_trade_snapshot(take_session_snapshot, db, user.id, session.id)
 
     return {
         "status": "success",
@@ -390,7 +405,7 @@ def _exchange_legacy(
 
     db.add(_exchange_transaction(user.id, None, from_currency, to_currency, amount, rate))
     db.commit()
-    take_snapshot(db, user.id)
+    _capture_post_trade_snapshot(take_snapshot, db, user.id)
 
     return _exchange_response(from_currency, to_currency, amount, converted, rate, user.balance_krw, user.balance_usd)
 
@@ -453,7 +468,7 @@ def _exchange_for_session(
     db.add(_exchange_transaction(user.id, session.id, from_currency, to_currency, amount, rate))
     sync_legacy_user_balance(user, session)
     db.commit()
-    take_session_snapshot(db, user.id, session.id)
+    _capture_post_trade_snapshot(take_session_snapshot, db, user.id, session.id)
 
     response = _exchange_response(
         from_currency, to_currency, amount, converted, rate, session.cash_krw, session.cash_usd

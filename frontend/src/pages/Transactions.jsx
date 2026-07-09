@@ -57,13 +57,10 @@ function Transactions() {
         {filters.map(f => (
           <button
             key={f.key}
-            className="btn"
+            className={`btn segmented-button ${filter === f.key ? 'segmented-button-selected' : ''}`}
             onClick={() => setFilter(f.key)}
             style={{
               fontSize: 13, padding: '6px 14px',
-              background: filter === f.key ? 'var(--text-primary)' : 'transparent',
-              color: filter === f.key ? 'white' : 'var(--text-secondary)',
-              border: '1px solid var(--border)',
             }}
           >
             {f.label}

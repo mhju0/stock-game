@@ -6,6 +6,19 @@ function getConnectionErrorMessage() {
   return i18n.t('common.connectionError')
 }
 
+function getResponseErrorMessage(data, status) {
+  if (typeof data.detail === 'string') return data.detail
+  if (typeof data.error === 'string') return data.error
+  if (Array.isArray(data.detail) && data.detail.length > 0) {
+    return data.detail
+      .map((item) => item?.msg)
+      .filter(Boolean)
+      .join(' ')
+  }
+  if (status >= 500) return i18n.t('common.serverError')
+  return `Request failed (${status})`
+}
+
 export async function apiFetch(path, options = {}, onError = null) {
   try {
     const headers = { ...options.headers }
@@ -24,7 +37,10 @@ export async function apiFetch(path, options = {}, onError = null) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      const message = data.detail || data.error || `Request failed (${res.status})`
+      const message = getResponseErrorMessage(data, res.status)
+      if (import.meta.env.DEV) {
+        console.error(`API response error [${path}]`, { status: res.status, data })
+      }
       if (onError) onError(message)
       return null
     }
