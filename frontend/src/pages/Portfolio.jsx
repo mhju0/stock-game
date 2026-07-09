@@ -1,21 +1,23 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/userContext'
-import { gamePath } from '../sessionRoutes'
+import { gamePath, isSessionEnded } from '../sessionRoutes'
 
 
 function Portfolio() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { sessionId } = useParams()
+  const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
+  const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   
   const [account, setAccount] = useState(null)
   const [holdings, setHoldings] = useState([])
@@ -251,6 +253,7 @@ function Portfolio() {
       {tradeTicker && (
         <TradeModal ticker={tradeTicker}
           sessionId={sessionId}
+          tradeDisabledReason={tradeDisabledReason}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null); fetchData() }} />
       )}

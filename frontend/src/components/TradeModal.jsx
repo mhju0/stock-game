@@ -7,7 +7,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAccountQuery, useWatchlistContainsQuery, useWatchlistToggleMutation, queryKeys } from '../query/queries'
 
 
-function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlistUpdated }) {
+function TradeModal({
+  ticker,
+  sessionId = null,
+  onClose,
+  onComplete,
+  onWatchlistUpdated,
+  tradeDisabledReason = "",
+}) {
   const { t, i18n } = useTranslation();
   const { currentUserId } = useContext(UserContext);
   const queryClient = useQueryClient()
@@ -21,6 +28,7 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
   const [confirmAction, setConfirmAction] = useState(null); // "BUY" or "SELL"
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showDelayedLoading, setShowDelayedLoading] = useState(false);
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
   const { data: account } = useAccountQuery(currentUserId, sessionId)
@@ -30,7 +38,6 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement;
-    closeButtonRef.current?.focus();
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") onClose();
@@ -44,12 +51,21 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
   }, [onClose]);
 
   useEffect(() => {
+    if (!loading || showDelayedLoading) closeButtonRef.current?.focus();
+  }, [loading, showDelayedLoading]);
+
+  useEffect(() => {
     if (!ticker) return;
     setLoading(true);
     setMessage("");
     setIsSuccess(false);
     setConfirmAction(null);
     setQuantity("1");
+    setShowDelayedLoading(false);
+
+    const loadingTimer = window.setTimeout(() => {
+      setShowDelayedLoading(true);
+    }, 300);
 
     Promise.all([
       apiFetch(`/stock/${ticker}`, {}, setMessage),
@@ -65,11 +81,15 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
         const held = (holdingsData || []).find(h => h.ticker === ticker);
         setMyHolding(held ? held.quantity : 0);
         setLoading(false);
+        setShowDelayedLoading(false);
       })
       .catch(() => {
         setMessage(t("common.error"));
         setLoading(false);
+        setShowDelayedLoading(true);
       });
+
+    return () => window.clearTimeout(loadingTimer);
   }, [ticker, currentUserId, sessionId, t]);
 
   if (!ticker) return null;
@@ -184,7 +204,9 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
   const exceedsHolding = !!stock && quantityNumber > safeWholeHolding;
   const showCashWarning = !invalidQuantity && exceedsCash && (!confirmAction || confirmAction === 'BUY');
   const showHoldingWarning = !invalidQuantity && exceedsHolding && confirmAction === 'SELL';
+  const tradeBlocked = Boolean(tradeDisabledReason);
   const confirmDisabled = submitting ||
+    tradeBlocked ||
     invalidQuantity ||
     (confirmAction === 'BUY' && exceedsCash) ||
     (confirmAction === 'SELL' && exceedsHolding);
@@ -207,10 +229,14 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
     }
   };
 
+  if (loading && !showDelayedLoading) return null;
+
+  const modalTitle = loading ? t("stock.loadingDetails") : displayName;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-content"
+        className="modal-content trade-modal-content"
         role="dialog"
         aria-modal="true"
         aria-labelledby="trade-modal-title"
@@ -219,7 +245,7 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
         <div className="trade-modal-header">
           <div className="trade-modal-heading">
             <div id="trade-modal-title" className="trade-modal-title">
-              {displayName}
+              {modalTitle}
             </div>
             {!loading && stock && !stock.error && (
               <>
@@ -270,7 +296,10 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
         </div>
 
         {loading ? (
-          <p>{t("common.loading")}</p>
+          <div className="trade-loading-state">
+            <div className="trade-loading-spinner" aria-hidden="true" />
+            <p>{t("stock.loadingDetails")}</p>
+          </div>
         ) : !stock || stock.error ? (
           <p style={{ color: message ? 'var(--negative)' : 'var(--text-secondary)' }}>
             {message || t("stock.notFound")}
@@ -278,13 +307,7 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
         ) : (
           <>
             <div
-              style={{
-                background: "var(--bg-secondary)",
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 16,
-                textAlign: "center",
-              }}
+              className="trade-price-panel"
             >
               <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                 {t("stock.price")}
@@ -326,16 +349,8 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
                   className="btn quantity-chip"
                   onClick={() => setQuickQuantity(preset.value)}
                   disabled={submitting || preset.disabled}
-                  style={{
-                    fontSize: 13,
-                    background:
-                      isWholeQuantity && quantityNumber === preset.value ? "var(--text-primary)" : "transparent",
-                    color:
-                      isWholeQuantity && quantityNumber === preset.value
-                        ? "var(--bg-primary)"
-                        : "var(--text-primary)",
-                    border: "1px solid var(--border)",
-                  }}
+                  aria-pressed={isWholeQuantity && quantityNumber === preset.value}
+                  style={{ fontSize: 13 }}
                 >
                   {preset.label}
                 </button>
@@ -382,20 +397,22 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
 
             {confirmAction ? (
               <div>
-                <div style={{
-                  background: 'var(--bg-secondary)', borderRadius: 12, padding: 16,
-                  marginBottom: 12, textAlign: 'center',
-                }}>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                <div className={`trade-order-summary ${confirmAction === 'BUY' ? 'trade-order-buy' : 'trade-order-sell'}`}>
+                  <div className="trade-order-label">
                     {confirmAction === 'BUY' ? t("stock.buy") : t("stock.sell")}
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 700 }}>
+                  <div className="trade-order-title">
                     {displayName} × {quantityNumber}
                   </div>
-                  <div style={{ fontSize: 16, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  <div className="trade-order-total">
                     {fmt(estimatedTotal)}
                   </div>
                 </div>
+                {tradeBlocked && (
+                  <div className="trade-unavailable-notice">
+                    {tradeDisabledReason}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn" style={{ flex: 1, border: '1px solid var(--border)' }}
                     onClick={() => setConfirmAction(null)}
@@ -413,14 +430,21 @@ function TradeModal({ ticker, sessionId = null, onClose, onComplete, onWatchlist
                 </div>
               </div>
             ) : (
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-buy" style={{ flex: 1 }} onClick={() => setConfirmAction('BUY')} disabled={submitting || invalidQuantity || exceedsCash}>
+              <>
+                {tradeBlocked && (
+                  <div className="trade-unavailable-notice">
+                    {tradeDisabledReason}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-buy" style={{ flex: 1 }} onClick={() => setConfirmAction('BUY')} disabled={submitting || invalidQuantity || exceedsCash || tradeBlocked}>
                   {t("stock.buy")}
                 </button>
-                <button className="btn btn-sell" style={{ flex: 1 }} onClick={() => setConfirmAction('SELL')} disabled={submitting || invalidQuantity || exceedsHolding}>
+                <button className="btn btn-sell" style={{ flex: 1 }} onClick={() => setConfirmAction('SELL')} disabled={submitting || invalidQuantity || exceedsHolding || tradeBlocked}>
                   {t("stock.sell")}
                 </button>
-              </div>
+                </div>
+              </>
             )}
 
             {message && (

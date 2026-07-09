@@ -1,7 +1,7 @@
 import { apiPost } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
@@ -10,14 +10,16 @@ import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/userContext'
 import { useAccountQuery, useHoldingsQuery, queryKeys } from '../query/queries'
-import { gamePath } from '../sessionRoutes'
+import { gamePath, isSessionEnded } from '../sessionRoutes'
 
 
 function Dashboard() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { sessionId } = useParams()
+  const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
+  const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   const queryClient = useQueryClient()
   const enableDevTools = import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true'
 
@@ -283,6 +285,7 @@ function Dashboard() {
         <TradeModal
           ticker={tradeTicker}
           sessionId={sessionId}
+          tradeDisabledReason={tradeDisabledReason}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null); fetchData() }}
         />

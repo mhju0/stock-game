@@ -1362,6 +1362,10 @@ body {
   overflow: hidden;
 }
 
+.trade-modal-content {
+  max-width: 460px;
+}
+
 .trade-modal-header {
   display: flex;
   justify-content: space-between;
@@ -1376,7 +1380,8 @@ body {
 }
 
 .trade-modal-title {
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-size: 20px;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1422,6 +1427,44 @@ body {
   padding: 12px;
 }
 
+.trade-loading-state {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 120px;
+  justify-content: center;
+  text-align: center;
+}
+
+.trade-loading-state p {
+  margin: 0;
+}
+
+.trade-loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: trade-spin 0.9s linear infinite;
+}
+
+@keyframes trade-spin {
+  to { transform: rotate(360deg); }
+}
+
+.trade-price-panel,
+.trade-order-summary {
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
 .trade-context-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1459,6 +1502,15 @@ body {
   flex: 1 1 64px;
   min-height: 40px;
   padding: 8px 10px;
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--border);
+}
+
+.quantity-chip[aria-pressed="true"] {
+  background: var(--control-selected-bg);
+  border-color: transparent;
+  color: var(--control-selected-fg);
+  box-shadow: 0 6px 18px rgba(96, 165, 250, 0.16);
 }
 
 .trade-warning {
@@ -1466,6 +1518,62 @@ body {
   font-size: 12px;
   line-height: 1.4;
   margin: -4px 0 12px;
+  text-align: center;
+}
+
+.trade-order-summary {
+  margin-bottom: 12px;
+}
+
+.trade-order-buy {
+  border-color: rgba(74, 222, 128, 0.32);
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.08) inset;
+}
+
+.trade-order-sell {
+  border-color: rgba(248, 113, 113, 0.32);
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.08) inset;
+}
+
+.trade-order-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.trade-order-buy .trade-order-label {
+  color: var(--positive);
+}
+
+.trade-order-sell .trade-order-label {
+  color: var(--negative);
+}
+
+.trade-order-title {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.trade-order-total {
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.trade-unavailable-notice {
+  background: var(--negative-bg);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 12px;
+  color: var(--negative);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 12px;
+  padding: 10px 12px;
   text-align: center;
 }
 

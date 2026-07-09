@@ -93,7 +93,8 @@
     "realizedPnl": "Realized P&L",
     "notFound": "Stock not found",
     "openTrade": "Trade",
-    "viewDetails": "View details"
+    "viewDetails": "View details",
+    "loadingDetails": "Loading stock details..."
   },
   "trade": {
     "buySuccess": "Purchase complete",
@@ -221,7 +222,9 @@
     "return": "Return",
     "daysLeft": "Days Left",
     "done": "Done",
-    "gameOver": "Game Over",
+    "gameOver": "Ended",
+    "endedTitle": "Ended",
+    "endedBody": "This game has ended.",
     "gameActive": "Game Active",
     "summary": "Summary",
     "progress": "Current Progress",
@@ -235,6 +238,7 @@
     "noActiveDesc": "Create a new game from the game hub",
     "notPlayable": "This game is not playable",
     "notPlayableDesc": "Open an active game or create a new one from My Games.",
+    "tradeUnavailableEnded": "Trading and exchange are unavailable for ended games.",
     "makeTradesPrompt": "Make some trades to compare your performance",
     "day1Title": "Game just started!",
     "day1Desc": "Start trading to track your progress here",

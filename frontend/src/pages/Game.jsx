@@ -31,7 +31,7 @@ function Game() {
   useEffect(() => { fetchData() }, [sessionId])
 
   useEffect(() => {
-    if (!status?.active) return
+    if (!status) return
     const days = status.duration_days
 
     apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
@@ -48,7 +48,7 @@ function Game() {
           })))
         }
       })
-  }, [status?.active, benchmarkIndex, sessionId])
+  }, [status, benchmarkIndex, sessionId])
 
   const mergedChartData = useMemo(() => {
     const map = {}
@@ -72,7 +72,7 @@ function Game() {
     </div>
   )
 
-  if (!status.active) {
+  if (!status.active && !status.is_expired) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 24px' }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
@@ -89,7 +89,7 @@ function Game() {
   }
 
   // Summary view
-  if (showSummary && summary?.active) {
+  if (showSummary && summary) {
     const isPositive = summary.total_return >= 0
     return (
       <div>
@@ -220,11 +220,16 @@ function Game() {
       <div className={`game-status-bar ${status.is_expired ? 'game-expired' : 'game-active'}`}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>
-            {status.is_expired ? (t('game.gameOver')) : (t('game.gameActive'))}
+          {status.is_expired ? (t('game.endedTitle')) : (t('game.gameActive'))}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {new Date(status.start_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')} → {new Date(status.end_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')}
+            {status.is_expired ? t('game.endedBody') : `${new Date(status.start_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')} → ${new Date(status.end_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')}`}
           </div>
+          {status.is_expired && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+              {t('game.tradeUnavailableEnded')}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}

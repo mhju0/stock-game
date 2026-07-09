@@ -1,17 +1,20 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router-dom'
+import { useOutletContext, useParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/userContext'
+import { isSessionEnded } from '../sessionRoutes'
 
 
 function SearchStock() {
   const { t, i18n } = useTranslation()
   const { sessionId } = useParams()
+  const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
+  const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -22,6 +25,7 @@ function SearchStock() {
   const [tradeTicker, setTradeTicker] = useState(null)
   const [message, setMessage] = useState('')
   const [loadingStock, setLoadingStock] = useState(false)
+  const [showDelayedStockLoading, setShowDelayedStockLoading] = useState(false)
 
   useEffect(() => {
     if (query.length < 1) { setResults([]); return }
@@ -46,8 +50,14 @@ function SearchStock() {
     setHistory([])
     setStock(null)
     setLoadingStock(true)
+    setShowDelayedStockLoading(false)
+    const loadingTimer = window.setTimeout(() => {
+      setShowDelayedStockLoading(true)
+    }, 300)
     const data = await apiFetch(`/stock/${ticker}`)
+    window.clearTimeout(loadingTimer)
     setLoadingStock(false)
+    setShowDelayedStockLoading(false)
     if (data && !data.error) setStock(data)
   }
 
@@ -112,9 +122,9 @@ function SearchStock() {
         <div className="card" style={{ color: 'var(--positive)', fontSize: 14 }}>{message}</div>
       )}
 
-      {loadingStock && (
+      {loadingStock && showDelayedStockLoading && (
         <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>
-          {t('common.loading')}
+          {t('stock.loadingDetails')}
         </div>
       )}
 
@@ -190,6 +200,7 @@ function SearchStock() {
         <TradeModal
           ticker={tradeTicker}
           sessionId={sessionId}
+          tradeDisabledReason={tradeDisabledReason}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null) }}
         />

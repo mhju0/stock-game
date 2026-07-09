@@ -17,3 +17,7 @@ export function sessionStatusLabelKey(session) {
   if (session?.status === 'archived') return 'games.statusArchived'
   return 'games.statusExpired'
 }
+
+export function isSessionEnded(session) {
+  return session?.status === 'expired'
+}

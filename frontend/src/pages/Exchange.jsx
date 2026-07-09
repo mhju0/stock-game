@@ -1,14 +1,17 @@
 import { apiFetch, apiPost } from '../api'
 import { useState, useEffect, useContext, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router-dom'
+import { useOutletContext, useParams } from 'react-router-dom'
 import { UserContext } from '../context/userContext'
+import { isSessionEnded } from '../sessionRoutes'
 
 
 function Exchange() {
   const { t } = useTranslation()
   const { sessionId } = useParams()
+  const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
+  const ended = isSessionEnded(session)
   
   const [rate, setRate] = useState(null)
   const [account, setAccount] = useState(null)
@@ -75,6 +78,17 @@ function Exchange() {
       <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
     </div>
   )
+
+  if (ended) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+        <h1 className="page-title" style={{ marginBottom: 8 }}>{t('game.endedTitle')}</h1>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>
+          {t('game.tradeUnavailableEnded')}
+        </p>
+      </div>
+    )
+  }
 
   const krwQuick = [10000, 50000, 100000, 500000, 1000000]
   const usdQuick = [100, 500, 1000, 5000]

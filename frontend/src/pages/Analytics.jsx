@@ -1,7 +1,7 @@
 import { apiGet } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -12,7 +12,7 @@ import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/userContext'
 import { useAnalyticsPerformanceQuery, useAccountQuery } from '../query/queries'
-import { gamePath } from '../sessionRoutes'
+import { gamePath, isSessionEnded } from '../sessionRoutes'
 
 const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
 
@@ -20,7 +20,9 @@ function Analytics() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { sessionId } = useParams()
+  const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
+  const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   
   const [byStock, setByStock] = useState([])
   const [bySector, setBySector] = useState([])
@@ -503,6 +505,7 @@ function Analytics() {
       {tradeTicker && (
         <TradeModal ticker={tradeTicker}
           sessionId={sessionId}
+          tradeDisabledReason={tradeDisabledReason}
           onClose={() => setTradeTicker(null)}
           onComplete={() => { setTradeTicker(null) }} />
       )}
