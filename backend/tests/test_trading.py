@@ -409,10 +409,16 @@ class TestSessionScopedTrading:
             json={"from_currency": "KRW", "to_currency": "USD", "amount": 1000},
             headers=auth_headers,
         )
+        archived_exchange_resp = client.post(
+            f"/game/sessions/{archived.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "USD", "amount": 1000},
+            headers=auth_headers,
+        )
 
         assert buy_resp.status_code == 400
         assert sell_resp.status_code == 400
         assert exchange_resp.status_code == 400
+        assert archived_exchange_resp.status_code == 400
 
     def test_cross_user_session_trade_returns_404(self, client, db_session, registered_user, auth_headers):
         other = User(username="other", hashed_password="hash", balance_krw=1_000_000, balance_usd=0)
@@ -522,6 +528,50 @@ class TestSessionScopedTrading:
         assert session_b.cash_krw == 2_000_000
         tx = db_session.query(Transaction).filter_by(game_session_id=session_a.id, transaction_type="EXCHANGE").one()
         assert tx.ticker == "KRW/USD"
+        assert tx.user_id == user.id
+        assert tx.name == "Currency Exchange"
+        assert tx.market == "FX"
+        assert tx.quantity == 1
+        assert tx.price == 1300.0
+        assert tx.currency == "KRW"
+        assert tx.total_amount == 130_000
+
+    def test_exchange_initializes_nullable_legacy_usd_cash(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        user.balance_usd = None
+        session = create_game_session(db_session, user, cash_krw=1_300_000, cash_usd=None)
+
+        resp = client.post(
+            f"/game/sessions/{session.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "USD", "amount": 130_000},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(session)
+        db_session.refresh(user)
+        assert session.cash_krw == 1_170_000
+        assert session.cash_usd == 100
+        assert user.balance_krw == 1_170_000
+        assert user.balance_usd == 100
+
+    def test_session_exchange_usd_to_krw_succeeds_with_enough_usd(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_000_000, cash_usd=250)
+
+        resp = client.post(
+            f"/game/sessions/{session.id}/trade/exchange",
+            json={"from_currency": "USD", "to_currency": "KRW", "amount": 100},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(session)
+        body = resp.json()
+        assert session.cash_usd == 150
+        assert session.cash_krw == 1_130_000
+        assert body["exchange"]["converted"] == 130_000
+        assert body["balance"] == {"krw": 1_130_000, "usd": 150}
 
     def test_session_exchange_writes_snapshot_with_game_session_id(self, client, db_session, registered_user, auth_headers):
         user = current_user(db_session, registered_user)
@@ -555,6 +605,46 @@ class TestSessionScopedTrading:
         assert session.cash_krw == 1_170_000
         assert session.cash_usd == 100
         assert tx.ticker == "KRW/USD"
+
+    def test_session_exchange_insufficient_balance_returns_400(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=50_000, cash_usd=0)
+
+        resp = client.post(
+            f"/game/sessions/{session.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "USD", "amount": 100_000},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 400
+        assert "Insufficient KRW" in resp.json()["detail"]
+
+    def test_session_exchange_invalid_currency_returns_400(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_300_000, cash_usd=0)
+
+        resp = client.post(
+            f"/game/sessions/{session.id}/trade/exchange",
+            json={"from_currency": "KRW", "to_currency": "EUR", "amount": 100_000},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 400
+        assert "Only KRW and USD supported" in resp.json()["detail"]
+
+    def test_session_exchange_bad_rate_returns_400(self, client, db_session, registered_user, auth_headers):
+        user = current_user(db_session, registered_user)
+        session = create_game_session(db_session, user, cash_krw=1_300_000, cash_usd=0)
+
+        with patch("app.services.trading_service.get_exchange_rate", return_value=None):
+            resp = client.post(
+                f"/game/sessions/{session.id}/trade/exchange",
+                json={"from_currency": "KRW", "to_currency": "USD", "amount": 100_000},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 400
+        assert "Could not fetch exchange rate" in resp.json()["detail"]
 
     def test_watchlist_remains_untouched_by_session_trade(self, client, db_session, registered_user, auth_headers):
         user = current_user(db_session, registered_user)

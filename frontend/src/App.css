@@ -831,6 +831,19 @@ body {
   cursor: pointer;
 }
 
+.watchlist-remove-btn {
+  align-items: center;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  color: var(--negative);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  justify-content: center;
+  min-width: 48px;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
 /* ═══════════════════════════════════════════════
    SEARCH
    ═══════════════════════════════════════════════ */

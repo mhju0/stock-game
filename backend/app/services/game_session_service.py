@@ -84,9 +84,9 @@ def ensure_session_cash_initialized(session: GameSession, user: User) -> GameSes
     and never overwrites existing per-session cash.
     """
     if session.cash_krw is None:
-        session.cash_krw = user.balance_krw
+        session.cash_krw = user.balance_krw or 0.0
     if session.cash_usd is None:
-        session.cash_usd = user.balance_usd
+        session.cash_usd = user.balance_usd or 0.0
     return session
 
 

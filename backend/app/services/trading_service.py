@@ -382,6 +382,16 @@ def _validate_exchange_request(from_currency: str, to_currency: str) -> tuple[st
     return from_currency, to_currency
 
 
+def _exchange_rate() -> float:
+    try:
+        rate = float(get_exchange_rate())
+    except (TypeError, ValueError):
+        raise ValueError("Could not fetch exchange rate")
+    if rate <= 0:
+        raise ValueError("Could not fetch exchange rate")
+    return rate
+
+
 def _exchange_legacy(
     db: Session,
     user: User,
@@ -389,7 +399,9 @@ def _exchange_legacy(
     to_currency: str,
     amount: float,
 ) -> dict:
-    rate = get_exchange_rate()
+    rate = _exchange_rate()
+    user.balance_krw = user.balance_krw or 0.0
+    user.balance_usd = user.balance_usd or 0.0
     if from_currency == "KRW":
         if user.balance_krw < amount:
             raise ValueError(f"Insufficient KRW. Have ₩{user.balance_krw:,.0f}")
@@ -451,7 +463,7 @@ def _exchange_for_session(
     amount: float,
 ) -> dict:
     ensure_session_cash_initialized(session, user)
-    rate = get_exchange_rate()
+    rate = _exchange_rate()
     if from_currency == "KRW":
         if session.cash_krw < amount:
             raise ValueError(f"Insufficient KRW. Have ₩{session.cash_krw:,.0f}")

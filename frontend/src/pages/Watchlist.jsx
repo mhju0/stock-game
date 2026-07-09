@@ -70,9 +70,8 @@ function WatchlistSection({ title, items, onTrade, onRemove, sort, setSort, i18n
             <div style={{ display: "flex", alignItems: "center" }}>
               <button
                 type="button"
-                className="btn"
+                className="btn watchlist-remove-btn"
                 onClick={() => onRemove(item.ticker)}
-                style={{ fontSize: 12, color: 'var(--negative)', border: "1px solid #fde8e8", padding: "4px 10px" }}
               >
                 {t("watchlist.remove")}
               </button>
