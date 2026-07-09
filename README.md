@@ -15,7 +15,7 @@
 - **벤치마크 비교** — S&P 500, KOSPI 지수 대비 수익률 측정
 - **Analytics 대시보드** — Recharts 기반 수익률·자산 배분 추이, 종목별 시각화
 - **게임 세션** — 시작 자본·기간을 설정한 투자 챌린지, 종료 시 성과 요약 (best/worst trade, win rate 등)
-- **Watchlist & Top 30** — 관심 종목 저장, 시가총액 상위 30개 종목 랭킹
+- **Watchlist & Top 30** — 관심 종목 저장, 시가총액 상위 30개 종목 목록
 - **한국어 / 영어 i18n** — react-i18next 기반 전체 UI 다국어 지원
 
 ---
@@ -40,7 +40,7 @@ HTTP `routes`는 요청 검증과 응답 포맷팅, 인증(`Depends(get_current_
 
 ### yfinance 의존성 완화
 
-비공식 데이터 소스(yfinance)의 불안정성에 대응하기 위해 다층 방어를 적용했습니다 — 가격/정보/환율 **인메모리 캐시**(TTL 300/600/3600초), 섹터·산업 **정적 매핑**(`static_fundamentals.py`), 시가총액 상위 종목 **정적 랭킹 리스트**, 호출 throttling(`Semaphore`), 그리고 실패 시 **stale-cache fallback**.
+비공식 데이터 소스(yfinance)의 불안정성에 대응하기 위해 다층 방어를 적용했습니다 — 가격/정보/환율 **인메모리 캐시**(TTL 300/600/3600초), 섹터·산업 **정적 매핑**(`static_fundamentals.py`), 시가총액 상위 종목 **정적 목록**, 호출 throttling(`Semaphore`), 그리고 실패 시 **stale-cache fallback**.
 
 ---
 

@@ -225,9 +225,11 @@ Manual check still recommended:
 - Replay setup modal on mobile.
 - Title/cash/duration prefill from ended game.
 
-## Future Phase 4 - Production hardening / deployment QA
+## Completed Phase 4 - Production hardening / deployment QA
 
 Goal: make sure Vercel + Render + Supabase production behavior is stable.
+
+Status: implemented, committed, pushed, and manually production-checked.
 
 Focus:
 
@@ -242,7 +244,11 @@ Focus:
 
 Do not mutate unrelated production user data. Create/delete only throwaway sessions.
 
-## Future Phase 5 - UX cleanup / demo-readiness
+Production note:
+
+- Render had a transient instance fail/recover with a Supabase/Postgres SSL error. Treat this as a watch item only if repeated failures appear.
+
+## Phase 5 - UX cleanup / demo-readiness
 
 Goal: make the app feel polished, not just functional.
 
