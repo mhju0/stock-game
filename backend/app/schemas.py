@@ -27,3 +27,8 @@ class GameSessionCreateRequest(BaseModel):
     duration_days: int = Field(default=90, gt=0)
     starting_balance_krw: float = Field(default=10_000_000, gt=0)
     starting_balance_usd: float = Field(default=0.0, ge=0)
+
+
+class GameSessionUpdateRequest(BaseModel):
+    title: str | None = None
+    status: str | None = None

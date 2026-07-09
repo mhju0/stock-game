@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import GameSession, Holding, PortfolioSnapshot, Transaction, User
-from app.schemas import GameSessionCreateRequest, NewGameRequest
+from app.schemas import GameSessionCreateRequest, GameSessionUpdateRequest, NewGameRequest
 from app.services.benchmark_service import get_benchmark_data
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
@@ -164,6 +164,12 @@ def _create_session(
     db.refresh(session)
     db.refresh(user)
     return session
+
+
+def _request_updates(request) -> dict:
+    if hasattr(request, "model_dump"):
+        return request.model_dump(exclude_unset=True)
+    return request.dict(exclude_unset=True)
 
 
 def _serialize_session(db: Session, user: User, session: GameSession) -> dict:
@@ -417,6 +423,60 @@ def get_game_session(
 ):
     session = get_owned_session(db, current_user, session_id)
     return {"session": _serialize_session(db, current_user, session)}
+
+
+@router.patch("/sessions/{session_id}")
+def update_game_session(
+    session_id: int,
+    request: GameSessionUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_owned_session(db, current_user, session_id)
+    updates = _request_updates(request)
+
+    if "title" in updates:
+        title = (request.title or "").strip()
+        session.title = title[:80] or "Trading Simulation"
+
+    if "status" in updates:
+        status = (request.status or "").strip().lower()
+        if status not in {"active", "completed", "archived"}:
+            raise HTTPException(status_code=400, detail="Invalid game session status")
+
+        session.status = status
+        if status == "active":
+            session.is_active = True
+            session.completed_at = None
+        else:
+            session.is_active = False
+            if session.completed_at is None:
+                session.completed_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(session)
+    return {"status": "success", "session": _serialize_session(db, current_user, session)}
+
+
+@router.delete("/sessions/{session_id}")
+def delete_game_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = get_owned_session(db, current_user, session_id)
+    scoped_filter = {
+        "user_id": current_user.id,
+        "game_session_id": session.id,
+    }
+
+    db.query(Holding).filter_by(**scoped_filter).delete(synchronize_session=False)
+    db.query(Transaction).filter_by(**scoped_filter).delete(synchronize_session=False)
+    db.query(PortfolioSnapshot).filter_by(**scoped_filter).delete(synchronize_session=False)
+    db.delete(session)
+    db.commit()
+
+    return {"status": "success", "deleted_session_id": session_id}
 
 
 @router.get("/sessions/{session_id}/status")

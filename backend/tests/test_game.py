@@ -329,6 +329,202 @@ class TestGameSessions:
 
         assert resp.status_code == 404
 
+    def test_user_can_archive_own_session(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(db_session, user, title="Archive Me")
+
+        resp = client.patch(
+            f"/game/sessions/{session.id}",
+            json={"status": "archived"},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()["session"]
+        assert body["status"] == "archived"
+        assert body["is_active"] is False
+        db_session.refresh(session)
+        assert session.status == "archived"
+        assert session.is_active is False
+        assert session.completed_at is not None
+
+    def test_user_can_rename_own_session(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(db_session, user, title="Old Name")
+
+        resp = client.patch(
+            f"/game/sessions/{session.id}",
+            json={"title": "New Name"},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["session"]["title"] == "New Name"
+        db_session.refresh(session)
+        assert session.title == "New Name"
+
+    def test_cross_user_archive_returns_404(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        other = User(username="other", hashed_password="hash", balance_krw=1_000_000)
+        db_session.add(other)
+        db_session.flush()
+        other_session = create_session(db_session, other)
+
+        resp = client.patch(
+            f"/game/sessions/{other_session.id}",
+            json={"status": "archived"},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 404
+
+    def test_user_can_delete_own_session(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(db_session, user, title="Delete Me")
+        create_scoped_data(db_session, user, session)
+
+        resp = client.delete(f"/game/sessions/{session.id}", headers=auth_headers)
+
+        assert resp.status_code == 200
+        assert resp.json()["deleted_session_id"] == session.id
+        assert db_session.query(GameSession).filter_by(id=session.id).count() == 0
+
+    def test_delete_removes_only_selected_session_scoped_data_and_keeps_watchlist(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        deleted_session = create_session(db_session, user, title="Delete")
+        kept_session = create_session(db_session, user, title="Keep")
+        create_scoped_data(db_session, user, deleted_session)
+        create_scoped_data(db_session, user, kept_session)
+
+        resp = client.delete(f"/game/sessions/{deleted_session.id}", headers=auth_headers)
+
+        assert resp.status_code == 200
+        assert db_session.query(Holding).filter_by(game_session_id=deleted_session.id).count() == 0
+        assert db_session.query(Transaction).filter_by(game_session_id=deleted_session.id).count() == 0
+        assert (
+            db_session.query(PortfolioSnapshot)
+            .filter_by(game_session_id=deleted_session.id)
+            .count()
+            == 0
+        )
+        assert db_session.query(Holding).filter_by(game_session_id=kept_session.id).count() == 1
+        assert db_session.query(Transaction).filter_by(game_session_id=kept_session.id).count() == 1
+        assert (
+            db_session.query(PortfolioSnapshot)
+            .filter_by(game_session_id=kept_session.id)
+            .count()
+            == 1
+        )
+        assert db_session.query(Watchlist).filter_by(user_id=user.id).count() == 2
+
+    def test_delete_does_not_remove_other_users_session_data(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        own_session = create_session(db_session, user, title="Delete")
+        create_scoped_data(db_session, user, own_session)
+        other = User(username="other", hashed_password="hash", balance_krw=1_000_000)
+        db_session.add(other)
+        db_session.flush()
+        other_session = create_session(db_session, other, title="Other")
+        create_scoped_data(db_session, other, other_session)
+
+        resp = client.delete(f"/game/sessions/{own_session.id}", headers=auth_headers)
+
+        assert resp.status_code == 200
+        assert db_session.query(GameSession).filter_by(id=other_session.id).count() == 1
+        assert db_session.query(Holding).filter_by(game_session_id=other_session.id).count() == 1
+        assert db_session.query(Transaction).filter_by(game_session_id=other_session.id).count() == 1
+        assert (
+            db_session.query(PortfolioSnapshot)
+            .filter_by(game_session_id=other_session.id)
+            .count()
+            == 1
+        )
+
+    def test_cross_user_delete_returns_404(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        other = User(username="other", hashed_password="hash", balance_krw=1_000_000)
+        db_session.add(other)
+        db_session.flush()
+        other_session = create_session(db_session, other)
+
+        resp = client.delete(f"/game/sessions/{other_session.id}", headers=auth_headers)
+
+        assert resp.status_code == 404
+
+    def test_list_sessions_after_archive_and_delete_behaves_correctly(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        active_session = create_session(db_session, user, title="Active", start_offset_days=1)
+        archived_session = create_session(db_session, user, title="Archive", start_offset_days=-1)
+        deleted_session = create_session(db_session, user, title="Delete", start_offset_days=-2)
+
+        archive_resp = client.patch(
+            f"/game/sessions/{archived_session.id}",
+            json={"status": "archived"},
+            headers=auth_headers,
+        )
+        delete_resp = client.delete(f"/game/sessions/{deleted_session.id}", headers=auth_headers)
+
+        assert archive_resp.status_code == 200
+        assert delete_resp.status_code == 200
+
+        active_resp = client.get("/game/sessions", headers=auth_headers)
+        all_resp = client.get("/game/sessions?include_all=true", headers=auth_headers)
+
+        assert [s["id"] for s in active_resp.json()["sessions"]] == [active_session.id]
+        all_sessions = all_resp.json()["sessions"]
+        all_ids = [s["id"] for s in all_sessions]
+        assert active_session.id in all_ids
+        assert archived_session.id in all_ids
+        assert deleted_session.id not in all_ids
+        archived = next(s for s in all_sessions if s["id"] == archived_session.id)
+        assert archived["status"] == "archived"
+
     def test_title_duration_and_starting_cash_fields_are_persisted(
         self,
         client,

@@ -1,18 +1,44 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { apiFetch, apiPost } from '../api'
+import { apiDelete, apiFetch, apiPatch, apiPost } from '../api'
 import { formatDateTime, formatMoney } from '../utils/formatters'
 import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
 
+const CASH_PRESETS = [
+  { value: 1_000_000, labelKey: 'games.cashPreset1m' },
+  { value: 5_000_000, labelKey: 'games.cashPreset5m' },
+  { value: 10_000_000, labelKey: 'games.cashPreset10m' },
+  { value: 50_000_000, labelKey: 'games.cashPreset50m' },
+]
+
+const DURATION_PRESETS = [
+  { value: 7, labelKey: 'games.durationPreset7' },
+  { value: 30, labelKey: 'games.durationPreset30' },
+  { value: 90, labelKey: 'games.durationPreset90' },
+  { value: 180, labelKey: 'games.durationPreset180' },
+]
+
+function parseIntegerInput(value) {
+  const normalized = String(value).replace(/[^\d]/g, '')
+  if (!normalized) return NaN
+  return Number(normalized)
+}
+
+function formatIntegerInput(value) {
+  const normalized = String(value).replace(/[^\d]/g, '')
+  if (!normalized) return ''
+  return Number(normalized).toLocaleString('ko-KR')
+}
+
 function PageState({ title, body, actionLabel, onAction, loading = false, children }) {
   return (
-    <div className="card" style={{ textAlign: 'center', padding: '44px 24px' }}>
-      <h1 style={{ fontSize: 22, marginBottom: 10, fontFamily: 'var(--font-display)' }}>
+    <div className="card page-state-card">
+      <h1 className="page-state-title">
         {title}
       </h1>
       {body && (
-        <p style={{ color: 'var(--text-secondary)', marginBottom: actionLabel ? 22 : 0 }}>
+        <p className="page-state-body">
           {body}
         </p>
       )}
@@ -26,19 +52,104 @@ function PageState({ title, body, actionLabel, onAction, loading = false, childr
   )
 }
 
-function GameSetupForm({ t, onCancel, onCreated }) {
+function ModalShell({ titleId, title, descriptionId, description, closeLabel, onClose, children, maxWidth = 560 }) {
+  const dialogRef = useRef(null)
+
+  useEffect(() => {
+    const previousActiveElement = document.activeElement
+    const preferredFocusable = dialogRef.current?.querySelector('[data-autofocus="true"]')
+    const firstFocusable = preferredFocusable || dialogRef.current?.querySelector(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    firstFocusable?.focus()
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      previousActiveElement?.focus?.()
+    }
+  }, [onClose])
+
+  return (
+    <div
+      className="modal-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className="modal-content game-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        style={{ maxWidth }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="game-modal-header">
+          <div>
+            <h2 id={titleId} className="game-modal-title">{title}</h2>
+            {description && (
+              <p id={descriptionId} className="game-modal-subtitle">{description}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="modal-close-btn"
+            onClick={onClose}
+            aria-label={closeLabel}
+          >
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function CreateGameModal({ t, onClose, onCreated }) {
   const [title, setTitle] = useState('')
-  const [startingCash, setStartingCash] = useState('10000000')
-  const [durationDays, setDurationDays] = useState('90')
+  const [cashMode, setCashMode] = useState('preset')
+  const [cashInput, setCashInput] = useState(formatIntegerInput('10000000'))
+  const [durationMode, setDurationMode] = useState('preset')
+  const [durationInput, setDurationInput] = useState('30')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const cashInputRef = useRef(null)
+  const durationInputRef = useRef(null)
 
   const titleTooLong = title.trim().length > 80
-  const startingValue = Number(startingCash)
-  const durationValue = Number(durationDays)
+  const startingValue = parseIntegerInput(cashInput)
+  const durationValue = parseIntegerInput(durationInput)
   const invalidStartingCash = !Number.isFinite(startingValue) || startingValue <= 0
   const invalidDuration = !Number.isFinite(durationValue) || durationValue <= 0
   const disabled = creating || titleTooLong || invalidStartingCash || invalidDuration
+
+  const selectCashPreset = (value) => {
+    setCashMode('preset')
+    setCashInput(formatIntegerInput(String(value)))
+  }
+
+  const selectCustomCash = () => {
+    setCashMode('custom')
+    window.requestAnimationFrame(() => cashInputRef.current?.focus())
+  }
+
+  const selectDurationPreset = (value) => {
+    setDurationMode('preset')
+    setDurationInput(String(value))
+  }
+
+  const selectCustomDuration = () => {
+    setDurationMode('custom')
+    window.requestAnimationFrame(() => durationInputRef.current?.focus())
+  }
 
   const submit = async (event) => {
     event.preventDefault()
@@ -60,135 +171,357 @@ function GameSetupForm({ t, onCancel, onCreated }) {
   }
 
   return (
-    <form className="card" onSubmit={submit} style={{ marginBottom: 16 }}>
-      <div className="card-title">{t('games.setupTitle')}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+    <ModalShell
+      titleId="create-game-title"
+      title={t('games.createModalTitle')}
+      descriptionId="create-game-description"
+      description={t('games.createModalHelper')}
+      closeLabel={t('common.close')}
+      onClose={creating ? () => null : onClose}
+      maxWidth={640}
+    >
+      <form onSubmit={submit} className="game-create-form">
         <label>
-          <div className="metric-label">{t('games.gameName')}</div>
+          <span className="setup-label">{t('games.gameName')}</span>
           <input
             className="input"
+            data-autofocus="true"
             value={title}
             maxLength={80}
             onChange={(event) => setTitle(event.target.value)}
             placeholder={t('games.gameNamePlaceholder')}
           />
           {titleTooLong && (
-            <div style={{ color: 'var(--negative)', fontSize: 12, marginTop: 4 }}>
-              {t('games.titleTooLong')}
-            </div>
+            <span className="form-error">{t('games.titleTooLong')}</span>
           )}
         </label>
-        <label>
-          <div className="metric-label">{t('games.startingCash')}</div>
-          <input
-            className="input"
-            type="number"
-            min="1"
-            step="100000"
-            value={startingCash}
-            onChange={(event) => setStartingCash(event.target.value)}
-          />
-        </label>
-        <label>
-          <div className="metric-label">{t('games.duration')}</div>
-          <input
-            className="input"
-            type="number"
-            min="1"
-            step="1"
-            value={durationDays}
-            onChange={(event) => setDurationDays(event.target.value)}
-          />
-        </label>
-      </div>
-      {(invalidStartingCash || invalidDuration) && (
-        <div style={{ color: 'var(--negative)', fontSize: 13, marginTop: 12 }}>
-          {t('games.setupValidation')}
-        </div>
-      )}
-      {error && <div style={{ color: 'var(--negative)', fontSize: 13, marginTop: 12 }}>{error}</div>}
-      <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-        <button type="submit" className="btn btn-primary" disabled={disabled}>
-          {creating ? t('common.loading') : t('games.startGame')}
-        </button>
-        {onCancel && (
-          <button type="button" className="btn" onClick={onCancel} disabled={creating}>
+
+        <section className="game-option-section" aria-labelledby="cash-preset-title">
+          <div id="cash-preset-title" className="game-option-title">{t('games.startingCash')}</div>
+          <div className="game-chip-grid">
+            {CASH_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                className={`game-chip ${cashMode === 'preset' && startingValue === preset.value ? 'game-chip-selected' : ''}`}
+                onClick={() => selectCashPreset(preset.value)}
+              >
+                {t(preset.labelKey)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`game-chip ${cashMode === 'custom' ? 'game-chip-selected' : ''}`}
+              onClick={selectCustomCash}
+            >
+              {t('games.customAmount')}
+            </button>
+          </div>
+          {cashMode === 'custom' && (
+            <label className="game-custom-field">
+              <span className="setup-label">{t('games.customAmountLabel')}</span>
+              <input
+                ref={cashInputRef}
+                className="input"
+                inputMode="numeric"
+                value={cashInput}
+                onChange={(event) => setCashInput(formatIntegerInput(event.target.value))}
+                placeholder="10,000,000"
+              />
+            </label>
+          )}
+          {invalidStartingCash && (
+            <span className="form-error">{t('games.startingCashError')}</span>
+          )}
+        </section>
+
+        <section className="game-option-section" aria-labelledby="duration-preset-title">
+          <div id="duration-preset-title" className="game-option-title">{t('games.duration')}</div>
+          <div className="game-chip-grid">
+            {DURATION_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                className={`game-chip ${durationMode === 'preset' && durationValue === preset.value ? 'game-chip-selected' : ''}`}
+                onClick={() => selectDurationPreset(preset.value)}
+              >
+                {t(preset.labelKey)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`game-chip ${durationMode === 'custom' ? 'game-chip-selected' : ''}`}
+              onClick={selectCustomDuration}
+            >
+              {t('games.customDuration')}
+            </button>
+          </div>
+          {durationMode === 'custom' && (
+            <label className="game-custom-field">
+              <span className="setup-label">{t('games.customDurationLabel')}</span>
+              <input
+                ref={durationInputRef}
+                className="input"
+                inputMode="numeric"
+                value={durationInput}
+                onChange={(event) => setDurationInput(String(parseIntegerInput(event.target.value) || ''))}
+                placeholder="30"
+              />
+            </label>
+          )}
+          {invalidDuration && (
+            <span className="form-error">{t('games.durationError')}</span>
+          )}
+        </section>
+
+        {error && <div className="form-error form-error-block">{error}</div>}
+
+        <div className="game-modal-actions">
+          <button type="button" className="btn" onClick={onClose} disabled={creating}>
             {t('common.cancel')}
           </button>
-        )}
-      </div>
-    </form>
+          <button type="submit" className="btn btn-primary" disabled={disabled}>
+            {creating ? t('common.loading') : t('games.startGame')}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
   )
 }
 
-function GameSessionCard({ session, locale, onOpen, t }) {
+function GameSessionCard({ session, locale, onOpen, onManage, t }) {
   const isPlayable = session.status === 'active' && !session.is_expired
+
   return (
-    <button
-      type="button"
-      className="card interactive-card-button"
-      onClick={onOpen}
-      style={{
-        width: '100%',
-        textAlign: 'left',
-        display: 'block',
-        cursor: 'pointer',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-display)' }}>
+    <div className="card game-session-card">
+      <div className="game-card-topline">
+        <div className="game-card-title-group">
+          <div className="game-card-title">
             {session.title || t('games.cardTitle')}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+          <div className="game-card-date">
             {formatDateTime(session.start_date, locale, false)} {t('games.startedAt')}
           </div>
         </div>
-        <span
-          style={{
-            color: isPlayable ? 'var(--positive)' : 'var(--text-secondary)',
-            background: isPlayable ? 'var(--positive-bg)' : 'var(--bg-secondary)',
-            border: '1px solid var(--border)',
-            borderRadius: 999,
-            padding: '5px 10px',
-            fontSize: 12,
-            fontWeight: 700,
-            alignSelf: 'flex-start',
-          }}
-        >
-          {t(sessionStatusLabelKey(session))}
-        </span>
+        <div className="game-card-controls">
+          <span className={`game-status-pill ${isPlayable ? 'game-status-pill-active' : ''}`}>
+            {t(sessionStatusLabelKey(session))}
+          </span>
+          <button
+            type="button"
+            className="game-manage-btn"
+            onClick={onManage}
+            aria-label={t('games.manageGameAria', { title: session.title || t('games.cardTitle') })}
+          >
+            <span className="game-manage-text">{t('games.manageGame')}</span>
+            <span aria-hidden="true" className="game-manage-dots">•••</span>
+          </button>
+        </div>
       </div>
 
-      <div className="metric-grid" style={{ marginBottom: 0 }}>
+      <div className="metric-grid game-card-metrics">
         <div>
           <div className="metric-label">{t('games.currentValue')}</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>
+          <div className="game-card-metric-value">
             {formatMoney(session.current_value_krw, 'KRW')}
           </div>
         </div>
         <div>
           <div className="metric-label">{t('games.return')}</div>
-          <div className={session.current_return_pct >= 0 ? 'positive' : 'negative'} style={{ fontSize: 18, fontWeight: 700 }}>
+          <div className={session.current_return_pct >= 0 ? 'positive game-card-metric-value' : 'negative game-card-metric-value'}>
             {session.current_return_pct >= 0 ? '+' : ''}{session.current_return_pct}%
           </div>
         </div>
         <div>
           <div className="metric-label">{t('games.duration')}</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{t('games.days', { count: session.duration_days })}</div>
+          <div className="game-card-metric-value">{t('games.days', { count: session.duration_days })}</div>
         </div>
         <div>
           <div className="metric-label">{t('games.lastUpdated')}</div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+          <div className="game-card-muted">
             {formatDateTime(session.last_updated_at, locale)}
           </div>
         </div>
       </div>
 
-      <div className="btn btn-primary" style={{ width: '100%', marginTop: 16, textAlign: 'center' }}>
+      <button type="button" className="btn btn-primary game-open-btn" onClick={onOpen}>
         {isPlayable ? t('games.continue') : t('games.view')}
+      </button>
+    </div>
+  )
+}
+
+function DetailItem({ label, children }) {
+  return (
+    <div className="game-detail-item">
+      <div className="metric-label">{label}</div>
+      <div className="game-detail-value">{children}</div>
+    </div>
+  )
+}
+
+function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequestDelete }) {
+  const [title, setTitle] = useState(session.title || '')
+  const [submitting, setSubmitting] = useState('')
+  const [error, setError] = useState('')
+  const titleTooLong = title.trim().length > 80
+  const titleUnchanged = title.trim() === (session.title || '').trim()
+
+  const updateSession = async (payload, action) => {
+    setSubmitting(action)
+    setError('')
+    const data = await apiPatch(`/game/sessions/${session.id}`, payload, setError)
+    setSubmitting('')
+    if (data?.session) onUpdated(data.session)
+  }
+
+  return (
+    <ModalShell
+      titleId="game-management-title"
+      title={t('games.settingsTitle')}
+      descriptionId="game-management-description"
+      description={t('games.settingsSubtitle')}
+      closeLabel={t('common.close')}
+      onClose={submitting ? () => null : onClose}
+      maxWidth={620}
+    >
+      <div className="game-management">
+        <div className="game-management-hero">
+          <div>
+            <div className="game-card-title">{session.title || t('games.cardTitle')}</div>
+            <div className="game-card-date">{t(sessionStatusLabelKey(session))}</div>
+          </div>
+          <span className={`game-status-pill ${session.status === 'active' && !session.is_expired ? 'game-status-pill-active' : ''}`}>
+            {t(sessionStatusLabelKey(session))}
+          </span>
+        </div>
+
+        <div className="game-detail-grid">
+          <DetailItem label={t('games.startDate')}>
+            {formatDateTime(session.start_date, locale)}
+          </DetailItem>
+          <DetailItem label={t('games.endDate')}>
+            {formatDateTime(session.end_date, locale)}
+          </DetailItem>
+          <DetailItem label={t('games.startingCash')}>
+            {formatMoney(session.starting_balance_krw, 'KRW')}
+          </DetailItem>
+          <DetailItem label={t('games.currentValue')}>
+            {formatMoney(session.current_value_krw, 'KRW')}
+          </DetailItem>
+        </div>
+
+        <label className="game-rename-field">
+          <span className="setup-label">{t('games.gameName')}</span>
+          <input
+            className="input"
+            data-autofocus="true"
+            value={title}
+            maxLength={80}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder={t('games.gameNamePlaceholder')}
+            disabled={Boolean(submitting)}
+          />
+          {titleTooLong && <span className="form-error">{t('games.titleTooLong')}</span>}
+        </label>
+
+        {error && <div className="form-error form-error-block">{error}</div>}
+
+        <div className="game-settings-actions">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => updateSession({ title: title.trim() || null }, 'rename')}
+            disabled={Boolean(submitting) || titleTooLong || titleUnchanged}
+          >
+            {submitting === 'rename' ? t('common.loading') : t('games.saveName')}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => updateSession({ status: 'archived' }, 'archive')}
+            disabled={Boolean(submitting) || session.status === 'archived'}
+          >
+            {submitting === 'archive' ? t('common.loading') : t('games.archiveGame')}
+          </button>
+        </div>
+
+        <div className="danger-zone">
+          <div>
+            <div className="danger-zone-title">{t('games.deletePermanent')}</div>
+            <p className="danger-zone-copy">{t('games.deleteHint')}</p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => onRequestDelete(session)}
+            disabled={Boolean(submitting)}
+          >
+            {t('games.deleteGame')}
+          </button>
+        </div>
       </div>
-    </button>
+    </ModalShell>
+  )
+}
+
+function DeleteGameModal({ session, t, onClose, onDeleted }) {
+  const [confirmation, setConfirmation] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const requiredPhrase = t('games.deleteConfirmPhrase')
+  const canDelete = confirmation.trim() === requiredPhrase
+
+  const deleteSession = async () => {
+    if (!canDelete || submitting) return
+    setSubmitting(true)
+    setError('')
+    const data = await apiDelete(`/game/sessions/${session.id}`, setError)
+    setSubmitting(false)
+    if (data?.status === 'success') onDeleted()
+  }
+
+  return (
+    <ModalShell
+      titleId="delete-game-title"
+      title={t('games.deleteConfirmTitle')}
+      descriptionId="delete-game-description"
+      description={t('games.deleteConfirmBody', { title: session.title || t('games.cardTitle') })}
+      closeLabel={t('common.close')}
+      onClose={submitting ? () => null : onClose}
+      maxWidth={520}
+    >
+      <div className="delete-confirmation">
+        <p className="delete-confirmation-scope">
+          {t('games.deleteConfirmScope')}
+        </p>
+        <label>
+          <span className="setup-label">{t('games.deleteConfirmPhraseLabel', { phrase: requiredPhrase })}</span>
+          <input
+            className="input"
+            data-autofocus="true"
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+            placeholder={t('games.deleteConfirmPlaceholder')}
+            disabled={submitting}
+          />
+        </label>
+        {error && <div className="form-error form-error-block">{error}</div>}
+        <div className="game-modal-actions">
+          <button type="button" className="btn" onClick={onClose} disabled={submitting}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={deleteSession}
+            disabled={!canDelete || submitting}
+          >
+            {submitting ? t('common.loading') : t('games.deleteGame')}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
   )
 }
 
@@ -199,6 +532,8 @@ function Games({ startSetup = false }) {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showSetup, setShowSetup] = useState(startSetup)
+  const [managingSession, setManagingSession] = useState(null)
+  const [deletingSession, setDeletingSession] = useState(null)
   const [error, setError] = useState('')
 
   const locale = i18n.language === 'ko' ? 'ko-KR' : 'en-US'
@@ -234,6 +569,23 @@ function Games({ startSetup = false }) {
     navigate(gamePath(session.id), { replace: true })
   }
 
+  const handleUpdated = (updatedSession) => {
+    setSessions((currentSessions) => (
+      currentSessions.map((session) => (
+        session.id === updatedSession.id ? updatedSession : session
+      ))
+    ))
+    setManagingSession(null)
+    loadSessions()
+  }
+
+  const handleDeleted = () => {
+    setDeletingSession(null)
+    setManagingSession(null)
+    navigate('/games', { replace: true })
+    loadSessions()
+  }
+
   if (loading) {
     return <PageState title={t('games.loading')} />
   }
@@ -251,29 +603,21 @@ function Games({ startSetup = false }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="page-header games-page-header">
         <div>
-          <h1 style={{ fontSize: 24, fontFamily: 'var(--font-display)', marginBottom: 4 }}>
+          <h1 className="page-title">
             {t('games.title')}
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          <p className="page-subtitle">
             {t('games.selectBody')}
           </p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowSetup(true)}>
+        <button type="button" className="btn btn-primary games-create-btn" onClick={() => setShowSetup(true)}>
           {t('games.create')}
         </button>
       </div>
 
-      {showSetup && (
-        <GameSetupForm
-          t={t}
-          onCancel={sessions.length > 0 ? () => setShowSetup(false) : null}
-          onCreated={handleCreated}
-        />
-      )}
-
-      {sessions.length === 0 && !showSetup && (
+      {sessions.length === 0 && (
         <PageState
           title={t('games.emptyTitle')}
           body={t('games.emptyBody')}
@@ -283,37 +627,70 @@ function Games({ startSetup = false }) {
       )}
 
       {activeSessions.length > 0 && (
-        <>
-          <div className="summary-title" style={{ marginBottom: 10 }}>{t('games.activeTitle')}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <section className="games-section" aria-labelledby="active-games-title">
+          <div id="active-games-title" className="summary-title">{t('games.activeTitle')}</div>
+          <div className="games-grid">
             {activeSessions.map((session) => (
               <GameSessionCard
                 key={session.id}
                 session={session}
                 locale={locale}
                 onOpen={() => navigate(gamePath(session.id))}
+                onManage={() => setManagingSession(session)}
                 t={t}
               />
             ))}
           </div>
-        </>
+        </section>
       )}
 
       {otherSessions.length > 0 && (
-        <>
-          <div className="summary-title" style={{ marginBottom: 10 }}>{t('games.pastTitle')}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+        <section className="games-section" aria-labelledby="past-games-title">
+          <div id="past-games-title" className="summary-title">{t('games.pastTitle')}</div>
+          <div className="games-grid">
             {otherSessions.map((session) => (
               <GameSessionCard
                 key={session.id}
                 session={session}
                 locale={locale}
                 onOpen={() => navigate(gamePath(session.id))}
+                onManage={() => setManagingSession(session)}
                 t={t}
               />
             ))}
           </div>
-        </>
+        </section>
+      )}
+
+      {showSetup && (
+        <CreateGameModal
+          t={t}
+          onClose={() => setShowSetup(false)}
+          onCreated={handleCreated}
+        />
+      )}
+
+      {managingSession && (
+        <GameManagementModal
+          session={managingSession}
+          locale={locale}
+          t={t}
+          onClose={() => setManagingSession(null)}
+          onUpdated={handleUpdated}
+          onRequestDelete={(session) => {
+            setManagingSession(null)
+            setDeletingSession(session)
+          }}
+        />
+      )}
+
+      {deletingSession && (
+        <DeleteGameModal
+          session={deletingSession}
+          t={t}
+          onClose={() => setDeletingSession(null)}
+          onDeleted={handleDeleted}
+        />
       )}
     </div>
   )
