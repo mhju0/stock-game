@@ -48,6 +48,10 @@ function normalizeSetupDefaults(defaults) {
   }
 }
 
+function isPresetValue(presets, value) {
+  return presets.some((preset) => preset.value === value)
+}
+
 function PageState({ title, body, actionLabel, onAction, loading = false, children }) {
   return (
     <div className="card page-state-card">
@@ -132,11 +136,13 @@ function ModalShell({ titleId, title, descriptionId, description, closeLabel, on
 
 function CreateGameModal({ t, initialSetup, onClose, onCreated }) {
   const setupDefaults = normalizeSetupDefaults(initialSetup)
+  const initialCash = setupDefaults?.starting_balance_krw || 10_000_000
+  const initialDuration = setupDefaults?.duration_days || 30
   const [title, setTitle] = useState(setupDefaults?.title || '')
-  const [cashMode, setCashMode] = useState('preset')
-  const [cashInput, setCashInput] = useState(formatIntegerInput(String(setupDefaults?.starting_balance_krw || 10_000_000)))
-  const [durationMode, setDurationMode] = useState('preset')
-  const [durationInput, setDurationInput] = useState(String(setupDefaults?.duration_days || 30))
+  const [cashMode, setCashMode] = useState(isPresetValue(CASH_PRESETS, initialCash) ? 'preset' : 'custom')
+  const [cashInput, setCashInput] = useState(formatIntegerInput(String(initialCash)))
+  const [durationMode, setDurationMode] = useState(isPresetValue(DURATION_PRESETS, initialDuration) ? 'preset' : 'custom')
+  const [durationInput, setDurationInput] = useState(String(initialDuration))
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const cashInputRef = useRef(null)

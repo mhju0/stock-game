@@ -1,13 +1,13 @@
 import { apiDelete } from '../api'
 import { useState, useContext, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from "../components/TradeModal";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/userContext";
 import { useWatchlistQuery, queryKeys } from '../query/queries'
-import { gamePath } from "../sessionRoutes";
+import { gamePath, isSessionEnded } from "../sessionRoutes";
 
 
 function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort, setSort, i18n, t, isKR }) {
@@ -96,8 +96,10 @@ function Watchlist() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { sessionId } = useParams();
+  const { session } = useOutletContext() || {};
   const { currentUserId } = useContext(UserContext);
   const queryClient = useQueryClient()
+  const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
 
   const [tradeTicker, setTradeTicker] = useState(null);
   const [sortUS, setSortUS] = useState('name_asc');
@@ -126,7 +128,7 @@ function Watchlist() {
           {t("watchlist.emptyTitle")}
         </h2>
         <p style={{ marginBottom: 18 }}>{t("watchlist.emptyBody")}</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/search')}>
+        <button type="button" className="btn btn-primary" onClick={() => navigate(sessionId ? gamePath(sessionId, 'search') : '/search')}>
           {t("nav.search")}
         </button>
       </div>
@@ -172,6 +174,7 @@ function Watchlist() {
         <TradeModal
           ticker={tradeTicker}
           sessionId={sessionId}
+          tradeDisabledReason={tradeDisabledReason}
           onClose={() => setTradeTicker(null)}
           onWatchlistUpdated={refetchWatchlist}
           onComplete={() => {
