@@ -1,156 +1,326 @@
-# stock-game
+# stock-game agent instructions
 
-가상 자금으로 미국·한국 주식을 거래하고 벤치마크(**S&P 500, KOSPI**) 대비 포트폴리오 성과를 측정하는 **모의 투자 시뮬레이터**. 단순 기능 구현을 넘어 금융 서비스 수준의 데이터 정합성과 확장 가능한 아키텍처를 지향하는 포트폴리오 프로젝트. (출처: `README.md`)
+`AGENTS.md` is the primary project instruction/context file for Codex. `CLAUDE.md` is the primary project instruction/context file for Claude Code. Both files must contain the same material so both agents start from the same source of truth.
 
-- Frontend (live): https://stock-game-gray.vercel.app
-- API docs (live): https://stock-game-api-6411.onrender.com/docs
+## Role / working style
 
-## 스택
+- Act as a strict senior frontend/product/CTO partner.
+- Use Korean explanations mixed naturally with English technical terms.
+- Be direct, product-minded, and careful with backend/data/auth risk.
+- Do not pretend to have repo access beyond files inspected.
+- Inspect first, modify second.
+- Keep scope controlled.
+- Do not stage, commit, or push unless explicitly requested.
+- Never use `git add .`.
+- Do not recommend destructive git/database commands casually.
+- Do not rerun migrations unless schema drift is explicitly found and approved.
+- Treat auth, DB, ownership, session data, trading, exchange, delete/archive, and migrations as high-risk.
 
-**Backend** (`backend/`, `requirements.txt` 기준)
-- Python **3.11.9** (`backend/.python-version`) · FastAPI · SQLAlchemy ORM
-- Auth: JWT (`python-jose[cryptography]`) + `bcrypt`
-- 시세: `yfinance` · outbound HTTP: `requests`
-- DB: **SQLite** (`backend/stock_game.db`, gitignored, 첫 실행 시 `models.Base.metadata.create_all()`로 자동 생성). requirements에 `psycopg2-binary`가 포함돼 있으나 로컬/문서 기본 DB는 SQLite다. [Inferred]
-- 배포: Render — Gunicorn + UvicornWorker (`backend/Procfile`, `backend/render.yaml`)
+## Project basics
 
-**Frontend** (`frontend/`, `package.json` 기준)
-- React **19** · Vite **8** · React Router **7** (`react-router-dom`) · TanStack Query **5** · Recharts **3**
-- i18n: `react-i18next` + `i18next` (한국어/영어) · `jwt-decode`
-- Lint: ESLint **9** flat config (`frontend/eslint.config.js`)
-- 배포: Vercel — SPA rewrite + security headers (`frontend/vercel.json`)
+- Path: `~/Workspace/Projects/stock-game`
+- Branch: `main`
+- Product: virtual stock trading simulator for US/Korean equities with benchmark comparison against S&P 500 and KOSPI.
+- Frontend: React/Vite.
+- Backend: FastAPI + SQLAlchemy.
+- DB: Supabase Postgres.
+- Auth: custom JWT.
+- Backend deploy: Render.
+- Frontend deploy: Vercel.
+- Frontend live: `https://stock-game-gray.vercel.app`
+- Production backend: `https://stock-game-6411.onrender.com`
+- Common test account: `test1234`
 
-**패키지 매니저**: backend = pip (`requirements.txt`) · frontend = **npm** (`package-lock.json`).
-
-## 실행
+## Stack and commands
 
 Backend:
 
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-python3 -c "import secrets; print(secrets.token_hex(32))"   # 출력값을 .env의 JWT_SECRET_KEY에 붙여넣기
-uvicorn app.main:app --reload                      # http://127.0.0.1:8000 (docs: /docs)
+uvicorn app.main:app --reload
 ```
-
-> `JWT_SECRET_KEY`가 없으면 서버가 뜨지 않는다. SQLite DB는 첫 실행 시 자동 생성.
 
 Frontend:
 
 ```bash
 cd frontend
 npm install
-echo "VITE_API_URL=http://127.0.0.1:8000" > .env.local   # 미설정 시 127.0.0.1:8000 기본값
-npm run dev                                         # http://localhost:5173
+npm run dev
 ```
 
-frontend npm scripts: `dev`(vite) · `build`(vite build) · `lint`(eslint .) · `preview`(vite preview).
+Common validation:
 
-## 디렉터리 지도
+```bash
+./scripts/regression-smoke.sh
+git diff --check
+```
+
+Frontend validation:
+
+```bash
+cd frontend
+npm run build
+npm run lint
+```
+
+Backend validation, only if backend touched:
+
+```bash
+cd backend
+venv/bin/pytest
+venv/bin/python -m compileall app tests
+```
+
+## Product rules
+
+When adding features, think through the full production-ready feature envelope:
+
+- main user flow
+- manage/edit/delete/archive actions
+- empty/loading/error states
+- destructive confirmations
+- backend/API/data model impact
+- auth/ownership/security
+- data isolation
+- i18n/copy
+- mobile/accessibility
+- tests/manual QA
+- deployment risk
+
+No leaderboard/global ranking unless the user explicitly brings it back.
+
+## Current architecture
+
+- The app supports true multi-game/session behavior.
+- `game_sessions` owns playable portfolio state.
+- `holdings`, `transactions`, and `portfolio_snapshots` are session-scoped via `game_session_id`.
+- `GameSession` includes fields such as title/status/cash_krw/cash_usd/created_at/updated_at/completed_at.
+- Watchlist remains global/user-level, not game-scoped.
+- Multiple active games are allowed.
+- Game creation is non-destructive.
+- Ended/expired/completed/archived games are viewable as result/review pages.
+- Trading and exchange are blocked for ended statuses.
+- Ended/expired games are not auto-archived.
+- Archive is manual.
+- Cross-user session access should return 404.
+- Destructive session delete must only delete the selected owned session's scoped holdings/transactions/snapshots.
+- Delete must not delete watchlist or other sessions.
+
+## Security/data notes
+
+- Supabase RLS is enabled on public app tables.
+- App uses custom JWT through FastAPI, not Supabase Auth policies.
+- Production additive migration for session-scoped data has already been applied.
+- Production schema is aligned as of the latest known state.
+- Backend ownership helpers exist and should be used for session access.
+- Do not rerun migrations unless drift is explicitly found.
+
+## Completed Phase 1 - Production Regression / QA Automation
+
+Status: implemented, committed, and passing.
+
+Added:
+
+- `./scripts/regression-smoke.sh`
+- `backend/tests/test_session_regression_smoke.py`
+- `frontend/scripts/check-session-navigation.mjs`
+- `REGRESSION_SMOKE.md`
+- frontend package script for navigation smoke check
+
+Coverage includes:
+
+- login
+- create throwaway game
+- game list
+- watchlist add/remove/global behavior
+- watchlist stock click to full detail
+- popular stock click to full detail
+- search stock detail
+- exchange KRW/USD
+- buy/sell
+- portfolio/account updates
+- analytics loads
+- cross-user 404
+- archived/expired trade blocks
+- delete boundaries
+- no session data leakage
+
+Validation previously passed:
+
+- `./scripts/regression-smoke.sh`
+- frontend build
+- frontend lint with existing warning
+- backend pytest
+- backend compileall
+- `git diff --check`
+
+## Completed Phase 2 - Game Result / Ended Game Experience
+
+Status: implemented, committed, pushed, and passed focused QA.
+
+Implemented:
+
+- Ended/expired/completed/archived sessions open as review/result pages.
+- Result summary includes title/status, start/end date, starting value, ending value, return amount, return %, final cash KRW/USD, final holdings, trade counts, realized P/L where accurately derivable, best/worst stock where comparable, snapshot count, peak/trough snapshot value.
+- No live market-price final valuation for ended games.
+- No leaderboard/global ranking.
+- Mixed-currency realized P/L is not forced into one KRW value.
+- Best/worst stock is omitted when data is insufficient or mixed currency prevents fair comparison.
+- Result API failure shows explicit error/retry instead of misleading `₩0`.
+- Unavailable return fields do not get positive/negative styling.
+- Ended sessions skip active-game benchmark/performance chart requests.
+- Trading/exchange blocking is consistent for ended statuses.
+- Play again CTA exists.
+
+Validation previously passed:
+
+- `./scripts/regression-smoke.sh`
+- frontend build
+- frontend lint with existing warning
+- backend pytest where backend touched
+- backend compileall where backend touched
+- `git diff --check`
+
+## Phase 3 - Game Setup / Replay Flow
+
+Latest status:
+
+- Implemented small replay/setup polish but not staged/committed/pushed yet, unless git history now shows otherwise.
+- Changed frontend only:
+  - `frontend/src/pages/Game.jsx`
+  - `frontend/src/pages/Games.jsx`
+  - `frontend/src/i18n/ko.json`
+  - `frontend/src/i18n/en.json`
+- Existing backend already supported title, KRW starting cash, and duration using current model.
+- No backend/API/schema changes.
+- No migrations.
+
+Setup fields implemented:
+
+- game title
+- starting cash in KRW
+- duration in days
+
+Replay behavior:
+
+- Play again opens setup flow prefilled from supported previous-game values.
+- Play again creates a separate new game and does not overwrite/delete the ended game.
+- USD starting cash deferred because setup UX is KRW-first and multi-currency setup would broaden scope.
+- Archive/delete remains manual.
+- Watchlist remains untouched.
+- No leaderboard/ranking.
+
+Validation previously reported:
+
+- `./scripts/regression-smoke.sh`: passed
+- `cd frontend && npm run build`: passed with existing large chunk warning
+- `cd frontend && npm run lint`: passed with existing `Portfolio.jsx` hook dependency warning
+- `git diff --check`: passed
+
+Manual check still recommended:
+
+- Replay setup modal on mobile.
+- Title/cash/duration prefill from ended game.
+
+## Future Phase 4 - Production hardening / deployment QA
+
+Goal: make sure Vercel + Render + Supabase production behavior is stable.
+
+Focus:
+
+- production smoke with safe test account/test data
+- auth/session persistence
+- expired/ended game behavior in production
+- exchange/trade/account sync
+- API error states
+- Render cold-start UX
+- mobile browser QA
+- production result page and replay flow verification
+
+Do not mutate unrelated production user data. Create/delete only throwaway sessions.
+
+## Future Phase 5 - UX cleanup / demo-readiness
+
+Goal: make the app feel polished, not just functional.
+
+Focus:
+
+- Korean/English copy consistency
+- empty/loading/error states
+- mobile layout
+- button labels
+- destructive confirmations
+- game list clarity
+- result page readability
+- legacy routes/flows cleanup only if safe
+- remove confusing or duplicate CTAs
+- keep the core loop clear: create game -> trade/search/watchlist -> portfolio/analytics -> ended result -> play again
+
+## Future Phase 6 - Final release pass
+
+Goal: freeze features and prepare final deployment/submission confidence.
+
+Focus:
+
+- run full validation
+- update README or QA docs if needed
+- known issues list
+- final manual QA checklist
+- production deploy verification
+- final commit history sanity
+- no new feature creep
+- no leaderboard/global ranking
+
+## Known warnings
+
+- Frontend lint may pass with an existing non-blocking React hook dependency warning in `frontend/src/pages/Portfolio.jsx`.
+- Vite may show an existing large chunk warning during build.
+
+## Directory map
 
 ```text
 backend/
   app/
-    main.py         FastAPI 진입점: 라우터 등록, CORS, 백그라운드 snapshot 루프, 시세 refresh 스케줄러
-    auth.py         JWT + bcrypt 유틸
-    models.py       SQLAlchemy ORM (User, Holding, Transaction, PortfolioSnapshot, GameSession)
-    schemas.py      Pydantic 요청 스키마
+    main.py         FastAPI entrypoint: routers, CORS, background snapshot loop, price refresh scheduler
+    auth.py         JWT + bcrypt utilities
+    models.py       SQLAlchemy ORM models
+    schemas.py      Pydantic request/response schemas
     database.py     engine / SessionLocal / Base
-    routes/         9개 엔드포인트 모듈: auth, users, stocks, trading, portfolio, watchlist, admin, analytics, game
-    services/       9개 business logic 모듈: trading, market, stock, exchange, snapshot, valuation, benchmark, static_fundamentals, seed
-  tests/            pytest (test_auth.py, test_trading.py)
-  data/             정적 데이터
-  requirements.txt  Python deps
-  .env.example      JWT_SECRET_KEY, FRONTEND_URL
-  .python-version   3.11.9
-  Procfile / render.yaml   Render 배포 설정
-  pytest.ini        testpaths = tests/
-  stock_game.db     SQLite (gitignored)
+    routes/         API route modules
+    services/       business logic modules
+  tests/            pytest tests
+  data/             static data
+  requirements.txt  Python dependencies
+  Procfile / render.yaml
 frontend/
   src/
-    pages/          페이지 컴포넌트 (Login, Register, Dashboard, Analytics, Portfolio, Watchlist, Market, Exchange, Transactions, SearchStock, Game 등)
-    components/     재사용 UI (TradeModal, ErrorBoundary 등)
-    context/        UserContext (JWT 기반 전역 상태)
-    query/          TanStack Query 훅
-    i18n/           react-i18next 설정 (한/영)
-    utils/          포매터, stockNames 등
-    api.js          API 클라이언트 + Query 훅
-    auth.js         JWT 인코드/디코드 + 저장
-    App.jsx         라우터 + 레이아웃
-    main.jsx        React 루트 진입점
-    config.js       API URL 설정
-  package.json / vite.config.js / eslint.config.js / vercel.json / .env.example
-README.md           전체 문서 (한/영)
-PROJECT_STATE.md    프로젝트 상태 노트
+    pages/          page components
+    components/     reusable UI
+    context/        UserContext
+    query/          TanStack Query hooks
+    i18n/           Korean/English translations
+    utils/          formatters and stock name helpers
+    api.js          API client and query helpers
+    auth.js         JWT encode/decode and storage helpers
+    App.jsx         router and layout
+    main.jsx        React root
+    config.js       API URL config
 ```
 
-## 환경변수
+## Agent prompt conventions
 
-| 위치 | 변수 | 필수 | 용도 |
-|---|---|---|---|
-| `backend/.env` | `JWT_SECRET_KEY` | ✅ | 토큰 서명 (없으면 서버 미기동). Render에서는 자동 생성. |
-| `backend/.env` | `FRONTEND_URL` | ⛔ | 프로덕션 프론트 CORS origin |
-| `frontend/.env.local` | `VITE_API_URL` | ⛔ | 백엔드 API URL (기본 `http://127.0.0.1:8000`) |
+When the user asks for a Codex or Claude Code prompt, include:
 
-## 프로젝트 컨벤션 (실재하는 것만)
+- recommended model + effort
+- one command code block
+- one separate prompt body code block
+- a concise prompt body
 
-- **Service Layer 패턴**: HTTP 라우트(`routes/`)는 검증/auth만 담당하고 business logic은 `services/`에 분리한다(테스트 용이성). (README 아키텍처 노트)
-- **상태 모델**: mutable current state(User balance, Holding) + append-only Transaction 로그 + 주기적 PortfolioSnapshot(감사 추적). (README)
-- **멀티 통화**: USD/KRW를 FX-aware하게 정규화한다. (README)
-- **yfinance 복원력**: in-memory TTL 캐시(300/600/3600s) + 정적 fallback + throttling + stale-cache fallback. (README)
-- **Lint 규칙**: `no-unused-vars`는 error, 단 대문자/`_` 접두 변수는 예외 (`frontend/eslint.config.js`).
-- **테스트**: pytest, testpaths=`tests/` (`backend/pytest.ini`). 현재 `test_auth.py`, `test_trading.py` 존재.
-- **DB 마이그레이션**: Alembic 등 마이그레이션 시스템 없음 — 스키마는 `create_all()`로 생성되고 변경은 수동. [Inferred]
-- **기존 에이전트 지침 파일 없음**: 이 파일 이전에는 `.cursorrules`/`AGENTS.md`/`AGENTS.md`가 없었다. `.Codex/settings.local.json`만 존재.
+Default to sonnet/medium when unclear. Use higher effort for data integrity, auth, DB/schema, security, scheduling, notification, or complex cross-file work.
 
-## 확인 필요 / 미확정
+## Git commit guidance
 
-- 테스트 커버리지 범위 불명확 — README 로드맵에 "pytest coverage TODO" 언급. [Unknown]
-- Render 무료 티어에서 SQLite는 영속 디스크가 없으면 휘발 — 현재 영속 설정 여부 미확인. [Unknown]
-- `PROJECT_STATE.md`는 존재하나 이 문서 작성 시 미검토. 상세 상태는 그 파일 참고. [Unknown]
-
-## Codex conventions
-
-<!-- `_reference_instructions.md`에서 그대로 복사한 공통 규칙 (Models · Effort · Prompt 형식 · Git commit 형식). 프로젝트 간 byte-identical로 유지 — 여기서 직접 고치지 말고 `_reference_instructions.md`에서 관리한다. -->
-
-## Codex Prompts
-Codex 프롬프트를 요청하면 항상:
-- 추천 model + effort
-- command 코드블록 1개, 그리고 별도의 prompt body 코드블록 1개
-- 프롬프트는 간결하게 (불필요하게 길게 쓰지 마)
-
-Format: Codex --model <model> --effort <effort>
-
-(prompt body는 별도 코드블록)
-
-Models
-- haiku / Codex-haiku-4-5 — 소소한 수정, 오타, 포맷팅, 저위험 단일 파일
-- sonnet / Codex-sonnet-5 — 기본값. 일반 버그 수정, 기능, 소규모 refactor, 테스트
-- opus / Codex-opus-4-8 — 복잡/cross-file, 어려운 디버깅, DB/auth/security/scheduling/notification 로직
-- fable / Codex-fable-5 — 가장 어려운 작업: 깊은 audit, 대규모 refactor, 긴 multi-step 조사
-
-Effort
-- low — 단순, 저위험
-- medium — 일반 기본값
-- high — 대부분의 실제 버그 수정·기능 작업
-- xhigh — 깊은 추론, multi-file 조사, 신중한 audit
-- max — 매우 어렵거나 high-stakes
-- ultracode — 대규모 multi-step agentic 작업용 Codex 전용 모드
-
-기본: 애매하면 sonnet medium. data integrity/auth/DB/schema/security/scheduling/notification은 최소 sonnet high.
-
-## Git Commits
-내가 직접 실행할 git add/commit을 줄 때는 항상:
-- git add와 git commit을 하나의 "bash" 코드블록에 함께 넣어라 (한 번 클릭으로 전체 복사 가능하게).
-- 별도 편집 없이 그대로 paste해서 실행 가능해야 한다. placeholder 금지, 실제 파일 경로와 실제 commit message를 넣어라.
-- commit message는 professional English로.
-- 형식:
-
-  git add path/to/fileA path/to/fileB
-  git commit -m "Professional English commit message here"
-
-Codex는 필요하면 스스로 git add / git commit을 실행해도 된다.
-모든 git 작업을 나에게 넘길 필요는 없다. 다만 위 포맷 규칙은
-"내가 직접 실행하도록 명령을 제시할 때" 적용된다.
+When giving the user commands to run their own commit, provide `git add` and `git commit` together in one bash block. Use explicit file paths and a professional English commit message. Do not use placeholders. Never suggest `git add .`.
