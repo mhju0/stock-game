@@ -52,11 +52,15 @@ function Register() {
 
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--prism-blue), var(--prism-violet), var(--prism-pink))',
-          margin: '0 auto 16px', opacity: 0.85,
-          boxShadow: '0 8px 40px rgba(96, 165, 250, 0.2), 0 0 80px rgba(167, 139, 250, 0.1)',
-        }} />
+          width: 56, height: 56, borderRadius: 16,
+          background: 'var(--accent)', color: '#fff',
+          margin: '0 auto 16px', display: 'grid', placeItems: 'center',
+          boxShadow: '0 8px 24px var(--accent-glow)',
+        }}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
+          </svg>
+        </div>
         <h1 style={{
           fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800,
           letterSpacing: -0.5, marginBottom: 6,
