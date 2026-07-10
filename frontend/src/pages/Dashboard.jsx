@@ -37,6 +37,16 @@ function Dashboard() {
   const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId, sessionId)
   const holdingsSafe = useMemo(() => Array.isArray(holdings) ? holdings : [], [holdings])
 
+  // Stock-only total (KRW-converted), used as the single weight% denominator
+  // everywhere so the holdings list always sums to ~100% regardless of cash.
+  const totalHoldingsValueKRW = useMemo(() => {
+    const rate = account?.exchange_rate || 1350
+    return holdingsSafe.reduce(
+      (sum, h) => sum + (h.currency === 'USD' ? h.total_value * rate : h.total_value),
+      0
+    )
+  }, [holdingsSafe, account?.exchange_rate])
+
   const fetchData = () => {
     setError('')
     queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
@@ -247,7 +257,7 @@ function Dashboard() {
             
             // Calculate Portfolio Weight (Allocation %)
             const hValKRW = h.currency === 'USD' ? h.total_value * (account?.exchange_rate || 1350) : h.total_value
-            const allocPct = ((hValKRW / (account.total_value_krw || 1)) * 100).toFixed(1)
+            const allocPct = ((hValKRW / (totalHoldingsValueKRW || 1)) * 100).toFixed(1)
 
             return (
               <button
