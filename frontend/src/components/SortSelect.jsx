@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 function SortSelect({ value, onChange, style }) {
   const { t } = useTranslation()
   return (
-    <select className="input" style={{ width: 'auto', fontSize: 12, padding: '4px 8px', minWidth: 100, ...style }}
+    <select className="input" aria-label={t('sort.ariaLabel')} style={{ width: 'auto', fontSize: 12, padding: '4px 8px', minWidth: 100, ...style }}
       value={value} onChange={onChange}>
       <option value="alloc_desc">{t('sort.allocDesc')}</option>
       <option value="alloc_asc">{t('sort.allocAsc')}</option>

@@ -315,13 +315,13 @@ function Game() {
             <div className="metric-label">{t('game.totalTrades')}</div>
             <div className="metric-value">{summary.total_trades}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              {isKo ? `${t('transactions.buy')} ${summary.total_buys} · ${t('transactions.sell')} ${summary.total_sells}` : `${summary.total_buys} buys · ${summary.total_sells} sells`}
+              {t('game.buysSellsSummary', { buys: summary.total_buys, sells: summary.total_sells })}
             </div>
           </div>
           <div className="metric-card">
             <div className="metric-label">{t('analytics.winRate')}</div>
             <div className="metric-value">{summary.win_rate}%</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{summary.winning_trades}W / {summary.losing_trades}L</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('game.winLossSummary', { wins: summary.winning_trades, losses: summary.losing_trades })}</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">{t('analytics.realizedPnl')}</div>

@@ -384,7 +384,45 @@ function DetailItem({ label, children }) {
   )
 }
 
-function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequestDelete }) {
+function ArchiveGameModal({ session, t, onClose, onArchived }) {
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const archive = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    setError('')
+    const data = await apiPatch(`/game/sessions/${session.id}`, { status: 'archived' }, setError)
+    setSubmitting(false)
+    if (data?.session) onArchived(data.session)
+  }
+
+  return (
+    <ModalShell
+      titleId="archive-game-title"
+      title={t('games.archiveConfirmTitle')}
+      descriptionId="archive-game-description"
+      description={t('games.archiveConfirmBody', { title: session.title || t('games.cardTitle') })}
+      closeLabel={t('common.close')}
+      onClose={submitting ? () => null : onClose}
+      maxWidth={480}
+    >
+      <div className="delete-confirmation">
+        {error && <div className="form-error form-error-block">{error}</div>}
+        <div className="game-modal-actions">
+          <button type="button" className="btn" onClick={onClose} disabled={submitting}>
+            {t('common.cancel')}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={archive} disabled={submitting}>
+            {submitting ? t('common.loading') : t('games.archiveGame')}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  )
+}
+
+function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequestDelete, onRequestArchive }) {
   const [title, setTitle] = useState(session.title || '')
   const [submitting, setSubmitting] = useState('')
   const [error, setError] = useState('')
@@ -463,10 +501,10 @@ function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequest
           <button
             type="button"
             className="btn"
-            onClick={() => updateSession({ status: 'archived' }, 'archive')}
+            onClick={() => onRequestArchive(session)}
             disabled={Boolean(submitting) || session.status === 'archived'}
           >
-            {submitting === 'archive' ? t('common.loading') : t('games.archiveGame')}
+            {t('games.archiveGame')}
           </button>
         </div>
 
@@ -560,6 +598,7 @@ function Games({ startSetup = false }) {
   const [setupDefaults, setSetupDefaults] = useState(() => normalizeSetupDefaults(location.state?.setupDefaults))
   const [managingSession, setManagingSession] = useState(null)
   const [deletingSession, setDeletingSession] = useState(null)
+  const [archivingSession, setArchivingSession] = useState(null)
   const [error, setError] = useState('')
   const [coldStart, setColdStart] = useState(false)
   const coldStartTimerRef = useRef(null)
@@ -735,6 +774,10 @@ function Games({ startSetup = false }) {
             setManagingSession(null)
             setDeletingSession(session)
           }}
+          onRequestArchive={(session) => {
+            setManagingSession(null)
+            setArchivingSession(session)
+          }}
         />
       )}
 
@@ -744,6 +787,18 @@ function Games({ startSetup = false }) {
           t={t}
           onClose={() => setDeletingSession(null)}
           onDeleted={handleDeleted}
+        />
+      )}
+
+      {archivingSession && (
+        <ArchiveGameModal
+          session={archivingSession}
+          t={t}
+          onClose={() => setArchivingSession(null)}
+          onArchived={(updatedSession) => {
+            setArchivingSession(null)
+            handleUpdated(updatedSession)
+          }}
         />
       )}
     </div>

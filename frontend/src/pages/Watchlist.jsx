@@ -33,7 +33,7 @@ function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort
         <div className="card-title" style={{ marginBottom: 0 }}>
           {title} ({items.length})
         </div>
-        <select className="input" style={{ width: 'auto', fontSize: 12, padding: '4px 8px', minWidth: 100 }}
+        <select className="input" aria-label={t('sort.ariaLabel')} style={{ width: 'auto', fontSize: 12, padding: '4px 8px', minWidth: 100 }}
           value={sort} onChange={e => setSort(e.target.value)}>
           <option value="name_asc">{isKR ? '이름 ㄱ→ㅎ' : 'Name A→Z'}</option>
           <option value="name_desc">{isKR ? '이름 ㅎ→ㄱ' : 'Name Z→A'}</option>

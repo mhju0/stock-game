@@ -2,7 +2,7 @@
   "common": {
     "appName": "모의투자",
     "loading": "로딩 중...",
-    "error": "오류가 발생했습니다",
+    "error": "오류가 발생했어요",
     "confirm": "확인",
     "cancel": "취소",
     "retry": "다시 시도",
@@ -26,7 +26,7 @@
     "search": "종목",
     "portfolio": "포트폴리오",
     "watchlist": "관심종목",
-    "exchange": "거래소",
+    "exchange": "환전",
     "transactions": "거래내역",
     "market": "인기 종목",
     "analytics": "분석",
@@ -68,12 +68,14 @@
     "valueDesc": "평가액 ↓",
     "valueAsc": "평가액 ↑",
     "pnlDesc": "손익 ↓",
-    "pnlAsc": "손익 ↑"
+    "pnlAsc": "손익 ↑",
+    "ariaLabel": "정렬 기준"
   },
   "filter": {
     "allMarkets": "전체",
     "usOnly": "미국",
-    "krxOnly": "한국"
+    "krxOnly": "한국",
+    "marketAriaLabel": "시장 필터"
   },
   "holdings": {
     "shares": "주",
@@ -93,7 +95,7 @@
     "totalValue": "평가금액",
     "unrealizedPnl": "평가 손익",
     "realizedPnl": "실현 손익",
-    "notFound": "종목을 찾을 수 없습니다",
+    "notFound": "종목을 찾을 수 없어요",
     "openTrade": "거래하기",
     "viewDetails": "자세히 보기",
     "loadingDetails": "종목 정보를 불러오는 중...",
@@ -143,10 +145,11 @@
     "add": "추가",
     "trade": "거래",
     "remove": "삭제",
-    "delayed": "시세는 15분 지연됩니다"
+    "delayed": "시세는 15분 지연돼요"
   },
   "transactions": {
     "title": "거래내역",
+    "filterAll": "전체",
     "empty": "거래내역이 없습니다",
     "emptyTitle": "아직 거래내역이 없어요",
     "emptyBody": "매수, 매도, 환전을 하면 기록이 여기에 쌓여요.",
@@ -218,7 +221,7 @@
     "registerTitle": "새 계정을 만드세요",
     "noAccount": "계정이 없으신가요?",
     "hasAccount": "이미 계정이 있으신가요?",
-    "fillAllFields": "모든 항목을 입력해주세요",
+    "fillAllFields": "모든 항목을 입력해 주세요",
     "passwordMismatch": "비밀번호가 일치하지 않습니다",
     "passwordTooShort": "비밀번호는 4자 이상이어야 합니다",
     "coldStartHint": "서버를 깨우는 중입니다… 무료 플랜 백엔드는 첫 요청 시 최대 1분 정도 걸릴 수 있습니다.",
@@ -236,7 +239,7 @@
     "done": "종료",
     "gameOver": "종료됨",
     "endedTitle": "종료됨",
-    "endedBody": "기간이 종료된 게임입니다.",
+    "endedBody": "기간이 끝난 게임이에요.",
     "completedSubtitle": "게임이 종료되었습니다. 결과는 기록용으로 확인할 수 있어요.",
     "completedBody": "게임이 종료되었습니다. 결과는 기록용으로 확인할 수 있어요.",
     "gameActive": "게임 진행 중",
@@ -278,7 +281,9 @@
     "day1StepExchange": "미국 주식이라면 먼저 환전하세요",
     "day1StepCompare": "매수 후 여기서 벤치마크와 비교하세요",
     "myPortfolio": "내 포트폴리오",
-    "vsBenchmark": "내 포트폴리오 vs 벤치마크"
+    "vsBenchmark": "내 포트폴리오 vs 벤치마크",
+    "buysSellsSummary": "매수 {{buys}} · 매도 {{sells}}",
+    "winLossSummary": "{{wins}}승 / {{losses}}패"
   },
   "games": {
     "title": "내 게임",
@@ -356,7 +361,9 @@
     "deleteConfirmPlaceholder": "삭제",
     "currentGame": "현재 열린 게임",
     "notFoundTitle": "게임을 찾을 수 없어요",
-    "notFoundBody": "이 게임이 삭제되었거나 접근할 수 없습니다."
+    "notFoundBody": "이 게임이 삭제되었거나 접근할 수 없어요.",
+    "archiveConfirmTitle": "이 게임을 보관할까요?",
+    "archiveConfirmBody": "{{title}} 게임을 지난 게임으로 보관하려고 해요. 보관하면 이 게임에서 매매·환전을 더 이상 할 수 없어요. 관심종목과 다른 게임에는 영향이 없어요."
   },
   "portfolio": {
     "emptyTitle": "아직 보유한 종목이 없어요",

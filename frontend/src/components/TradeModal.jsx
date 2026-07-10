@@ -363,6 +363,7 @@ function TradeModal({
               min="1"
               step="1"
               inputMode="numeric"
+              aria-label={t('stock.quantity')}
               value={quantity}
               onChange={handleQuantityChange}
               disabled={submitting}

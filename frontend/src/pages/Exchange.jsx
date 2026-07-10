@@ -7,7 +7,7 @@ import { isSessionEnded } from '../sessionRoutes'
 
 
 function Exchange() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { sessionId } = useParams()
   const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
@@ -93,7 +93,12 @@ function Exchange() {
   const krwQuick = [10000, 50000, 100000, 500000, 1000000]
   const usdQuick = [100, 500, 1000, 5000]
   const quickAmounts = fromCurrency === 'KRW' ? krwQuick : usdQuick
-  const fmtQuick = (v) => fromCurrency === 'KRW' ? `${(v / 10000).toLocaleString()}만원` : `$${v.toLocaleString()}`
+  const fmtQuick = (v) => {
+    if (fromCurrency === 'KRW') {
+      return i18n.language === 'ko' ? `${(v / 10000).toLocaleString()}만원` : `₩${v.toLocaleString()}`
+    }
+    return `$${v.toLocaleString()}`
+  }
 
   return (
     <div>
@@ -143,7 +148,7 @@ function Exchange() {
           </button>
         </div>
 
-        <input className="input" type="number" placeholder={t('exchange.amount')} value={amount}
+        <input className="input" type="number" placeholder={t('exchange.amount')} aria-label={t('exchange.amount')} value={amount}
           onChange={e => setAmount(e.target.value)} style={{ marginBottom: 12, fontSize: 16, textAlign: 'center' }} />
 
         {hasAmount && !invalidAmount && (

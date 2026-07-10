@@ -129,6 +129,7 @@ function SearchStock() {
         <input
           className="input"
           placeholder="Apple, 삼성전자, TSLA..."
+          aria-label={t('common.search')}
           value={query}
           onChange={e => setQuery(e.target.value)}
           style={{ fontSize: 16 }}

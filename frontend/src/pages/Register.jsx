@@ -71,22 +71,22 @@ function Register() {
       <div className="card" style={{ padding: 28 }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
+            <label htmlFor="register-username" style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
               {t('auth.username')}
             </label>
-            <input className="input" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('auth.username')} autoFocus style={{ width: '100%', boxSizing: 'border-box' }} />
+            <input id="register-username" className="input" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('auth.username')} autoFocus style={{ width: '100%', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
+            <label htmlFor="register-password" style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
               {t('auth.password')}
             </label>
-            <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('auth.password')} style={{ width: '100%', boxSizing: 'border-box' }} />
+            <input id="register-password" className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('auth.password')} style={{ width: '100%', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
+            <label htmlFor="register-confirm-password" style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
               {t('auth.confirmPassword')}
             </label>
-            <input className="input" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t('auth.confirmPassword')} style={{ width: '100%', boxSizing: 'border-box' }} />
+            <input id="register-confirm-password" className="input" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t('auth.confirmPassword')} style={{ width: '100%', boxSizing: 'border-box' }} />
           </div>
 
           {error && <p style={{ color: 'var(--negative)', fontSize: 13, fontFamily: 'var(--font-display)', margin: 0 }}>{error}</p>}

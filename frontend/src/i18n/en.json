@@ -26,7 +26,7 @@
     "search": "Stocks",
     "portfolio": "Portfolio",
     "watchlist": "Watchlist",
-    "exchange": "Exchange",
+    "exchange": "FX Exchange",
     "transactions": "Transactions",
     "market": "Market",
     "analytics": "Analysis",
@@ -68,12 +68,14 @@
     "valueDesc": "Value ↓",
     "valueAsc": "Value ↑",
     "pnlDesc": "P&L ↓",
-    "pnlAsc": "P&L ↑"
+    "pnlAsc": "P&L ↑",
+    "ariaLabel": "Sort by"
   },
   "filter": {
     "allMarkets": "All",
     "usOnly": "US",
-    "krxOnly": "KRX"
+    "krxOnly": "KRX",
+    "marketAriaLabel": "Market filter"
   },
   "holdings": {
     "shares": "shares",
@@ -147,6 +149,7 @@
   },
   "transactions": {
     "title": "Transactions",
+    "filterAll": "All",
     "empty": "No transactions yet",
     "emptyTitle": "No transactions yet",
     "emptyBody": "Your buys, sells, and exchanges will appear here.",
@@ -278,7 +281,9 @@
     "day1StepExchange": "Exchange KRW to USD for US stocks",
     "day1StepCompare": "Buy stocks and compare against benchmarks here",
     "myPortfolio": "My Portfolio",
-    "vsBenchmark": "My Portfolio vs Benchmark"
+    "vsBenchmark": "My Portfolio vs Benchmark",
+    "buysSellsSummary": "{{buys}} buys · {{sells}} sells",
+    "winLossSummary": "{{wins}}W / {{losses}}L"
   },
   "games": {
     "title": "My Games",
@@ -356,7 +361,9 @@
     "deleteConfirmPlaceholder": "DELETE",
     "currentGame": "Current game",
     "notFoundTitle": "Game not found",
-    "notFoundBody": "This game was removed or is not available to your account."
+    "notFoundBody": "This game was removed or is not available to your account.",
+    "archiveConfirmTitle": "Archive this game?",
+    "archiveConfirmBody": "You are about to archive {{title}} into your past games. Trading and exchange will no longer be available for this game. Your watchlist and other games are unaffected."
   },
   "portfolio": {
     "emptyTitle": "No holdings yet",

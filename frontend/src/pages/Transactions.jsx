@@ -34,7 +34,7 @@ function Transactions() {
     : transactions.filter(tx => tx.transaction_type === filter)
 
   const filters = [
-    { key: 'ALL', label: t('transactions.title') },
+    { key: 'ALL', label: t('transactions.filterAll') },
     { key: 'BUY', label: t('transactions.buy') },
     { key: 'SELL', label: t('transactions.sell') },
     { key: 'EXCHANGE', label: t('exchange.title') },
