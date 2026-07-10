@@ -115,28 +115,34 @@ function Portfolio() {
 
   return (
     <div>
-      <div className="metric-grid">
-        {(() => {
-          const rate = account?.exchange_rate || 1350
-          const krxData = totalByMarket['KRX'] || { value: 0, pnl: 0 }
-          const usData = totalByMarket['US'] || { value: 0, pnl: 0 }
-          // Cash total (KRW-converted). Stocks total is krxData.value + usData.value * rate
-          // (both already KRW-native/USD-native respectively) — same figures the two
-          // secondary cards below show, so the sub-line always agrees with them.
-          const cashTotalKRW = (account.balance_krw || 0) + (account.balance_usd || 0) * rate
+      {(() => {
+        const rate = account?.exchange_rate || 1350
+        const krxData = totalByMarket['KRX'] || { value: 0, pnl: 0 }
+        const usData = totalByMarket['US'] || { value: 0, pnl: 0 }
+        // Cash total (KRW-converted). Stocks total is krxData.value + usData.value * rate
+        // (both already KRW-native/USD-native respectively) — same figures the two
+        // secondary cards below show, so the sub-line always agrees with them.
+        const cashTotalKRW = (account.balance_krw || 0) + (account.balance_usd || 0) * rate
 
-          // account.total_value_krw is the backend's total-assets figure (cash + stocks),
-          // the same definition Analytics' header total already uses (dashboard.totalValue).
-          const fmtCurrency = (valueKRW) => displayCurrency === 'KRW'
-            ? `₩${Math.round(valueKRW).toLocaleString()}`
-            : `$${(valueKRW / rate).toFixed(2)}`
+        // account.total_value_krw is the backend's total-assets figure (cash + stocks),
+        // the same definition Analytics' header total already uses (dashboard.totalValue).
+        // Converts KRW -> display currency, then delegates to the shared formatMoney
+        // helper (same one the holdings rows below use) for consistent symbol/grouping.
+        const fmtCurrency = (valueKRW) => displayCurrency === 'KRW'
+          ? formatMoney(valueKRW, 'KRW')
+          : formatMoney(valueKRW / rate, 'USD')
 
-          const fmtVal = fmtCurrency(account.total_value_krw)
-          const fmtStocks = fmtCurrency(krxData.value + usData.value * rate)
-          const fmtCash = fmtCurrency(cashTotalKRW)
+        const fmtVal = fmtCurrency(account.total_value_krw)
+        const fmtStocks = fmtCurrency(krxData.value + usData.value * rate)
+        const fmtCash = fmtCurrency(cashTotalKRW)
 
-          return (
-            <>
+        return (
+          <>
+            {/* Primary total-assets card gets its own metric-grid so this single
+                item's auto-fit column count isn't shared with the secondary-cards
+                grid below — mixing both in one grid left 3 of 5 desktop columns
+                empty under the two secondary cards. */}
+            <div className="metric-grid">
               <div className="metric-card" style={{ gridColumn: '1 / -1' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                   <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
@@ -154,7 +160,9 @@ function Portfolio() {
                   {t('portfolio.stocksAndCash', { stocks: fmtStocks, cash: fmtCash })}
                 </div>
               </div>
+            </div>
 
+            <div className="metric-grid">
               <div className="metric-card">
                 <div className="metric-label">{t('portfolio.koreanStocks')}</div>
                 <div className="metric-value" style={{ fontSize: 20 }}>{fmtCurrency(krxData.value)}</div>
@@ -170,10 +178,10 @@ function Portfolio() {
                   {usData.pnl >= 0 ? '+' : '-'}{fmtCurrency(Math.abs(usData.pnl) * rate)}
                 </div>
               </div>
-            </>
-          )
-        })()}
-      </div>
+            </div>
+          </>
+        )
+      })()}
 
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-title">{t('stock.sector')}</div>
