@@ -56,6 +56,9 @@ lerna-debug.log*
 .claude/
 .serena/
 
+# Internal audit reports — never committed
+FINAL_AUDIT.md
+
 # Supabase local-only files
 supabase/.branches/
 supabase/.temp/

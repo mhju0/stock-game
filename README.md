@@ -28,11 +28,17 @@
 
 HTTP `routes`는 요청 검증과 응답 포맷팅, 인증(`Depends(get_current_user)`)만 담당합니다. 핵심 비즈니스 로직(매매, 환전, 평가, 스냅샷)은 별도의 `services` 레이어에 격리하여, transport 계층과 무관하게 테스트 및 재사용이 가능한 구조를 구축했습니다.
 
-### 상태 모델: 가변 잔고 + 감사 로그 + 시계열 스냅샷
+### 상태 모델: 세션 스코프 잔고 + 감사 로그 + 시계열 스냅샷
 
-- **현재 상태**(현금 잔고 `User.balance_*`, 보유 종목 `Holding`)는 직접 저장·갱신되어 조회 시 연산 비용이 없습니다.
+- **`GameSession`이 플레이 가능한 포트폴리오 상태를 소유**합니다 — `cash_krw`/`cash_usd`, `title`, `status`(active/completed/expired/archived) 등을 가진 게임 세션 단위로 자금이 관리되며, 한 사용자가 여러 게임을 동시에 독립적으로 진행할 수 있습니다.
+- `Holding`, `Transaction`, `PortfolioSnapshot`은 모두 `game_session_id`로 스코프되어 게임 간 데이터가 섞이지 않습니다. **Watchlist만 예외적으로 사용자 단위**(session-agnostic)로 유지되어, 게임을 넘나들며 관심 종목을 재사용할 수 있습니다.
 - 모든 매수·매도·환전은 append-only `Transaction` 로그로 기록되어 완전한 **audit trail**과 실현 손익(realized P&L) 계산의 근거가 됩니다.
-- 주기적인 `PortfolioSnapshot`(시간별 + 매 거래 시점)으로 자산 가치의 **시계열**을 남겨, 수익률 곡선과 벤치마크 비교를 지원합니다.
+- 주기적인 `PortfolioSnapshot`(시간별 + 매 거래 시점)으로 세션별 자산 가치의 **시계열**을 남겨, 수익률 곡선과 벤치마크 비교, 종료된 게임의 결과 재구성을 지원합니다.
+- 게임 생성은 **비파괴적**이며, 종료·만료·완료·보관된 게임은 결과 리뷰 페이지로 전환됩니다. 매매/환전은 종료 상태에서 서버 사이드로 차단됩니다. 세션 삭제는 해당 세션에 스코프된 holdings/transactions/snapshots만 제거하며, watchlist와 다른 게임에는 영향을 주지 않습니다.
+
+### Custom JWT vs Supabase Auth
+
+DB는 Supabase Postgres를 쓰지만, 인증은 Supabase Auth 대신 자체 **JWT**(`python-jose` + `bcrypt`)로 구현했습니다. Supabase RLS(Row Level Security)는 활성화되어 있지만 앱은 서비스 role 하나로 접속하므로, RLS는 최후의 방어선일 뿐 1차 격리 수단은 아닙니다 — 실제 사용자 단위 격리는 FastAPI 레이어의 ownership helper(모든 세션 스코프 라우트가 공유하는 `get_owned_session` 등)가 담당하며, cross-user 접근은 404로 응답해 리소스 존재 여부까지 숨깁니다. 이 트레이드오프를 선택한 이유는, 커스텀 JWT 쪽이 게임(세션) 단위의 세밀한 인가 로직 — 종료된 게임 매매 차단, 다중 활성 게임 지원 등 — 을 애플리케이션 코드로 명시적으로 제어하기에 더 적합했기 때문입니다.
 
 ### Currency-aware Data Modeling
 
@@ -95,7 +101,10 @@ npm run dev
 |---|---|---|---|
 | backend | `JWT_SECRET_KEY` | ✅ | 토큰 서명 키 (미설정 시 서버 부팅 실패) |
 | backend | `FRONTEND_URL` | ⛔ | 프로덕션 프론트엔드 오리진 (CORS 허용 목록에 추가) |
+| backend | `DATABASE_URL` | ⛔ | Supabase Postgres 연결 문자열 (미설정 시 로컬 SQLite로 자동 폴백) |
+| backend | `ENABLE_DEV_TOOLS` | ⛔ | 개발용 잔액 조정 엔드포인트 활성화 (프로덕션에서는 `false`/미설정 유지) |
 | frontend | `VITE_API_URL` | ⛔ | 백엔드 API 주소 (기본값 `http://127.0.0.1:8000`) |
+| frontend | `VITE_ENABLE_DEV_TOOLS` | ⛔ | 프론트엔드 개발자 도구 UI 노출 (프로덕션에서는 `false`/미설정 유지) |
 
 ---
 
@@ -126,6 +135,14 @@ stock-game/
 
 ---
 
+## 테스트 / QA
+
+- **Backend pytest** — `backend/tests/`에서 119개 테스트가 통과합니다. 매매·환전(`test_trading.py`), 게임 세션 라이프사이클(`test_game.py`, `test_game_session_service.py`), 포트폴리오/분석(`test_portfolio.py`, `test_analytics.py`), 스냅샷(`test_snapshot_service.py`, `test_snapshot_batch.py`), 인증(`test_auth.py`), 가격/환율 이상값 가드(`test_price_guards.py`), legacy 거래 경로 격리(`test_legacy_trade_isolation.py`) 등을 실제 잔액·DB row·응답 body 값으로 검증합니다.
+- **회귀 스모크** — `./scripts/regression-smoke.sh`(`REGRESSION_SMOKE.md` 참고)가 in-memory DB와 mocked market data로 로그인 → 게임 생성 → 매매/환전 → cross-user 404 → 세션 격리 → delete 경계까지 한 번에 확인하는 pre-commit 게이트입니다. Production credential이나 Supabase 접근이 필요 없습니다.
+- **Frontend navigation 체크** — `npm run smoke:navigation`(`frontend/scripts/check-session-navigation.mjs`)이 Watchlist/Market에서 종목 상세로의 라우팅 패턴이 소스 레벨에서 유지되는지 확인합니다. 브라우저 E2E는 아니며, 리팩터링 중 회귀를 잡아내는 tripwire 역할입니다.
+
+---
+
 ## 알려진 제약 (Known Limitations)
 
 - **로컬 SQLite fallback** — Production은 Supabase Postgres를 사용합니다. 로컬 SQLite DB(`backend/stock_game.db`)는 개발용이며 재생성될 수 있습니다.
@@ -137,6 +154,5 @@ stock-game/
 ## Roadmap
 
 - **운영 DB hardening** — Supabase Postgres 운영 스키마와 백업/복구 절차 점검
-- **테스트 커버리지** — service 레이어 대상 pytest 도입 (평균 단가 · 실현 손익 · 환전 · 스냅샷 로직)
 - **WebSocket 스트리밍** — polling 방식을 실시간 시세 피드로 전환
 - **Redis 캐싱** — yfinance rate limit 대응 및 인메모리 캐시의 워커 간 공유
