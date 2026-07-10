@@ -17,19 +17,24 @@ logger = logging.getLogger(__name__)
 
 
 def _load_user(db: Session, user_id: int) -> User:
-    user = db.query(User).filter(User.id == user_id).first()
+    # Lock the user row for the duration of the trade so the legacy check-and-
+    # debit on User.balance_* cannot race with a concurrent trade. No-op on
+    # SQLite (dev/tests); a real row lock on Postgres.
+    user = db.query(User).filter(User.id == user_id).with_for_update().first()
     if not user:
         raise ValueError("User not found")
     return user
 
 
 def _resolve_trade_session(db: Session, user: User, game_session_id: int | None):
+    # for_update=True locks the GameSession row so session cash check-and-debit
+    # is atomic under concurrent trades.
     if game_session_id is not None:
-        return get_tradeable_session(db, user, game_session_id)
+        return get_tradeable_session(db, user, game_session_id, for_update=True)
     current_session = get_current_session(db, user)
     if current_session is None:
         return None
-    return get_tradeable_session(db, user, current_session.id)
+    return get_tradeable_session(db, user, current_session.id, for_update=True)
 
 
 def _transaction_response(transaction_type, ticker, name, quantity, price, amount_key, amount, currency, realized_pnl=None):
@@ -78,7 +83,11 @@ def _buy_legacy(db: Session, user: User, ticker: str, quantity: int, stock_info:
 
     holding = (
         db.query(Holding)
-        .filter(Holding.user_id == user.id, Holding.ticker == ticker)
+        .filter(
+            Holding.user_id == user.id,
+            Holding.ticker == ticker,
+            Holding.game_session_id.is_(None),
+        )
         .first()
     )
     if holding:
@@ -223,7 +232,15 @@ def buy_stock(
 
 
 def _sell_legacy(db: Session, user: User, ticker: str, quantity: int) -> dict:
-    holding = db.query(Holding).filter(Holding.user_id == user.id, Holding.ticker == ticker).first()
+    holding = (
+        db.query(Holding)
+        .filter(
+            Holding.user_id == user.id,
+            Holding.ticker == ticker,
+            Holding.game_session_id.is_(None),
+        )
+        .first()
+    )
     if not holding:
         info = get_stock_info(ticker)
         name = info["name"] if info else ticker

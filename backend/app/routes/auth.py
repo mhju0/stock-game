@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -10,8 +10,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
+    # max_length 72 on password also keeps bcrypt (which truncates/raises past
+    # 72 bytes) from turning a long password into a 500.
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=4, max_length=72)
 
 
 class LoginRequest(BaseModel):

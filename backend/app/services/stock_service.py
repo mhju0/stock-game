@@ -269,7 +269,14 @@ def get_stock_price(ticker: str) -> float | None:
         data = stock.history(period="1d")
         if data.empty:
             return None
-        price = round(float(data["Close"].iloc[-1]), 2)
+        closes = data["Close"].dropna()
+        if closes.empty:
+            return None
+        price = round(float(closes.iloc[-1]), 2)
+        # Reject NaN / non-positive closes: they sail through downstream
+        # `is None` checks and can NaN-out a balance or hand out free shares.
+        if price != price or price <= 0:
+            return None
         _price_cache[ticker] = {"value": price, "ts": now}
         return price
     except Exception:

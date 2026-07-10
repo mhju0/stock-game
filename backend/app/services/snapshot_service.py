@@ -1,3 +1,6 @@
+import logging
+
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.models import User, Holding, PortfolioSnapshot, GameSession
 from app.services.exchange_service import get_exchange_rate
@@ -5,6 +8,8 @@ from app.services.game_session_service import (
     ensure_session_cash_initialized,
     get_current_session,
 )
+
+logger = logging.getLogger(__name__)
 from app.services.stock_service import get_stock_price
 from app.services.valuation_service import (
     compute_holdings_value_krw,
@@ -131,3 +136,37 @@ def take_snapshot(db: Session, user_id: int) -> PortfolioSnapshot:
         return take_session_snapshot(db, user_id=user_id, game_session_id=session.id)
 
     return _take_legacy_user_snapshot(db, user)
+
+
+def run_snapshot_batch(db: Session) -> int:
+    """Snapshot every user's portfolio for the hourly loop.
+
+    Snapshots ALL of a user's active sessions (multi-active-game is supported),
+    falling back to the legacy user-level snapshot when a user has no active
+    session. Each user is isolated in its own try/except so one failure never
+    aborts snapshots for the rest of the batch. Returns the number of users
+    snapshotted successfully.
+    """
+    users = db.query(User).all()
+    ok = 0
+    for user in users:
+        try:
+            sessions = (
+                db.query(GameSession)
+                .filter(
+                    GameSession.user_id == user.id,
+                    or_(GameSession.is_active.is_(True), GameSession.status == "active"),
+                )
+                .all()
+            )
+            if sessions:
+                for session in sessions:
+                    take_session_snapshot(db, user_id=user.id, game_session_id=session.id)
+            else:
+                take_snapshot(db, user_id=user.id)
+            ok += 1
+        except Exception:
+            db.rollback()
+            logger.warning("Snapshot failed for user %s", user.id, exc_info=True)
+    logger.info("Portfolio snapshots saved for %d/%d users", ok, len(users))
+    return ok

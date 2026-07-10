@@ -1,7 +1,7 @@
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, GameSession, PortfolioSnapshot
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 class FundsRequest(BaseModel):
     currency: str
-    amount: float
+    amount: float = Field(gt=0, allow_inf_nan=False)
 
 def require_dev_tools_enabled():
     if os.environ.get("ENABLE_DEV_TOOLS", "").lower() != "true":

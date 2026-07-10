@@ -18,7 +18,16 @@ def get_exchange_rate() -> float:
         if data.empty:
             return cached_rate["value"] or 1350.0
 
-        rate = round(data["Close"].iloc[-1], 2)
+        closes = data["Close"].dropna()
+        if closes.empty:
+            return cached_rate["value"] or 1350.0
+
+        rate = round(float(closes.iloc[-1]), 2)
+        # Never cache a NaN/invalid rate: a truthy NaN in the cache would poison
+        # every conversion for the rest of the process lifetime.
+        if rate != rate or rate <= 0:
+            return cached_rate["value"] or 1350.0
+
         cached_rate["value"] = rate
         cached_rate["timestamp"] = now
         return rate

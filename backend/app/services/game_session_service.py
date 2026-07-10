@@ -31,13 +31,21 @@ def get_owned_session(
     db: Session,
     current_user: User,
     session_id: int,
+    *,
+    for_update: bool = False,
 ) -> GameSession:
-    """Load a session owned by current_user, hiding missing/cross-user sessions as 404."""
-    session = (
-        db.query(GameSession)
-        .filter(GameSession.id == session_id, GameSession.user_id == current_user.id)
-        .first()
+    """Load a session owned by current_user, hiding missing/cross-user sessions as 404.
+
+    Pass for_update=True on trade paths to lock the row (SELECT ... FOR UPDATE)
+    so the session cash check-and-debit is atomic. Read paths leave it False so
+    they never take a lock.
+    """
+    query = db.query(GameSession).filter(
+        GameSession.id == session_id, GameSession.user_id == current_user.id
     )
+    if for_update:
+        query = query.with_for_update()
+    session = query.first()
     if not session:
         raise HTTPException(status_code=404, detail="Game session not found")
     return session
@@ -66,9 +74,11 @@ def get_tradeable_session(
     db: Session,
     current_user: User,
     session_id: int,
+    *,
+    for_update: bool = False,
 ) -> GameSession:
     """Load an owned session and reject sessions that should not accept trades."""
-    session = get_owned_session(db, current_user, session_id)
+    session = get_owned_session(db, current_user, session_id, for_update=for_update)
     status = (session.status or "").lower()
     if status in NON_TRADEABLE_STATUSES:
         raise HTTPException(status_code=400, detail="Game session is not tradeable")

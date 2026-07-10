@@ -31,9 +31,16 @@ class TestRegisterAndLogin:
         assert resp.status_code == 401
 
     def test_duplicate_username_rejected(self, client):
-        client.post("/auth/register", json={"username": "dave", "password": "pw"})
-        resp = client.post("/auth/register", json={"username": "dave", "password": "other"})
+        client.post("/auth/register", json={"username": "dave", "password": "pw1234"})
+        resp = client.post("/auth/register", json={"username": "dave", "password": "other1"})
         assert resp.status_code == 409
+
+    def test_register_rejects_short_credentials(self, client):
+        # Empty/too-short username or password must be rejected (422), never
+        # silently create a passwordless or trivially weak account.
+        assert client.post("/auth/register", json={"username": "", "password": ""}).status_code == 422
+        assert client.post("/auth/register", json={"username": "ab", "password": "pw1234"}).status_code == 422
+        assert client.post("/auth/register", json={"username": "eve", "password": "pw"}).status_code == 422
 
 
 class TestProtectedRoutes:
