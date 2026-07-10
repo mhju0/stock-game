@@ -106,7 +106,7 @@ function Market() {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ textAlign: "right" }}>
                     <div className="numeric" style={{ fontSize: 15, fontWeight: 600 }}>
                       {s.currency === "KRW"
@@ -121,9 +121,9 @@ function Market() {
                       {s.change_pct}%
                     </div>
                   </div>
-                  <span className="market-detail-pill">
-                    {t('stock.viewDetails')}
-                  </span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} aria-hidden="true">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
                 </div>
               </button>
             );

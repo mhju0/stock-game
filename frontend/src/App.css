@@ -868,17 +868,6 @@ body {
   background: var(--glass-hover);
 }
 
-.market-detail-pill {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 10px;
-  white-space: nowrap;
-}
-
 /* Shared secondary/meta text line for list rows and cards (Portfolio holdings,
    Transactions): forces a single line with ellipsis so EN/KO text-length
    differences can't change row height. The nearest flex-item ancestor also
@@ -1929,7 +1918,6 @@ body {
   .hero-value { font-size: 28px; }
   .change-grid { gap: 12px; }
   .price-hero-value { font-size: 28px; }
-  .market-detail-pill { display: none; }
   .game-status-bar { flex-direction: column; gap: 12px; align-items: flex-start; }
   .games-page-header { align-items: flex-start; }
   .games-create-btn { width: 100%; }
