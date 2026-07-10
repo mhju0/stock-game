@@ -14,7 +14,9 @@ import { UserContext } from '../context/userContext'
 import { useAnalyticsPerformanceQuery, useAccountQuery } from '../query/queries'
 import { gamePath, isSessionEnded } from '../sessionRoutes'
 
-const COLORS = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5ac8fa', '#ff2d55', '#ffcc00']
+// Cohesive categorical palette (cobalt-led, muted) for the allocation pie —
+// distinct hues without the iOS-rainbow look, avoiding pnl green/red.
+const COLORS = ['#2d5fe3', '#e0873a', '#3fa090', '#8a6fd1', '#5b86f5', '#b0a03f', '#6b7d8f', '#cf6f7e']
 
 function Analytics() {
   const { t, i18n } = useTranslation()
@@ -322,7 +324,7 @@ function Analytics() {
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>{t('analytics.allocationOverTimeHint')}</div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 16, height: 2, background: '#34c759', borderRadius: 1 }} />
+            <div style={{ width: 16, height: 2, background: '#2d5fe3', borderRadius: 1 }} />
             <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.stocksShare')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -347,7 +349,7 @@ function Analytics() {
                 labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
               />
-              <Line type="monotone" dataKey="stocks_pct" stroke="#34c759" strokeWidth={2} dot={false} name="stocks_pct" />
+              <Line type="monotone" dataKey="stocks_pct" stroke="#2d5fe3" strokeWidth={2} dot={false} name="stocks_pct" />
               <Line type="monotone" dataKey="cash_pct" stroke="#8e8e93" strokeWidth={1.5} dot={false}
                 strokeDasharray="4 4" name="cash_pct" />
             </LineChart>

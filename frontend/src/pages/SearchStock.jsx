@@ -226,7 +226,7 @@ function SearchStock() {
                     formatter={(value) => [stock.currency === 'KRW' ? `₩${Math.round(value).toLocaleString()}` : `$${value.toFixed(2)}`, '']}
                     contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'var(--font-body)', background: 'var(--card-bg)' }}
                   />
-                  <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? '#34c759' : '#ff3b30'}
+                  <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? '#12855a' : '#d1463c'}
                     strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
