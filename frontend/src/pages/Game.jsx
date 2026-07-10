@@ -456,7 +456,21 @@ function Game() {
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('game.chartInsufficientTitle')}</div>
-            <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{t('game.chartInsufficientBody')}</div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('game.chartInsufficientBody')}</div>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, textAlign: 'left', fontSize: 14 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 18 }}>1️⃣</span>
+                <span>{t('game.day1StepSearch')}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 18 }}>2️⃣</span>
+                <span>{t('game.day1StepExchange')}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 18 }}>3️⃣</span>
+                <span>{t('game.day1StepCompare')}</span>
+              </div>
+            </div>
           </div>
         ) : (
           <>
