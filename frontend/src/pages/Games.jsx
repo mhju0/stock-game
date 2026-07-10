@@ -561,8 +561,23 @@ function Games({ startSetup = false }) {
   const [managingSession, setManagingSession] = useState(null)
   const [deletingSession, setDeletingSession] = useState(null)
   const [error, setError] = useState('')
+  const [coldStart, setColdStart] = useState(false)
+  const coldStartTimerRef = useRef(null)
 
   const locale = i18n.language === 'ko' ? 'ko-KR' : 'en-US'
+
+  // Render free tier spins down; a returning visitor's first request here can
+  // take tens of seconds. After a short delay show the same hint Login uses
+  // so this (the app's real entry point) doesn't look broken either.
+  useEffect(() => {
+    if (loading) {
+      coldStartTimerRef.current = setTimeout(() => setColdStart(true), 4000)
+    } else {
+      clearTimeout(coldStartTimerRef.current)
+      setColdStart(false)
+    }
+    return () => clearTimeout(coldStartTimerRef.current)
+  }, [loading])
 
   useEffect(() => {
     if (startSetup) {
@@ -616,7 +631,7 @@ function Games({ startSetup = false }) {
   }
 
   if (loading) {
-    return <PageState title={t('games.loading')} />
+    return <PageState title={t('games.loading')} body={coldStart ? t('auth.coldStartHint') : ''} />
   }
 
   if (error) {

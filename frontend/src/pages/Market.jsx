@@ -1,5 +1,5 @@
 import { apiFetch } from '../api'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { getStockName } from "../utils/stockNames";
@@ -13,16 +13,20 @@ function Market() {
   const [market, setMarket] = useState("US");
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchStocks = useCallback(() => {
+    setLoading(true);
+    setError("");
+    apiFetch(`/market/top30/${market}`, {}, setError).then((data) => {
+      if (data) setStocks(data);
+      setLoading(false);
+    });
+  }, [market]);
 
   useEffect(() => {
-    setLoading(true);
-    apiFetch(`/market/top30/${market}`)
-      .then((data) => {
-        if (data) setStocks(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [market]);
+    fetchStocks();
+  }, [fetchStocks]);
 
   const openStockDetails = (ticker) => {
     const query = `?ticker=${encodeURIComponent(ticker)}`;
@@ -48,9 +52,14 @@ function Market() {
 
       {loading ? (
         <div className="empty-state">{t("common.loading")}</div>
+      ) : error ? (
+        <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+          <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+          <button className="btn btn-primary" onClick={fetchStocks}>{t('common.retry')}</button>
+        </div>
       ) : stocks.length === 0 ? (
         <div className="empty-state">
-          {t('market.loadingData')}
+          {t('market.empty')}
         </div>
       ) : (
         <div className="card">

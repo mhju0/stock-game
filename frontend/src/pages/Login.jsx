@@ -46,7 +46,11 @@ function Login() {
   return (
     <div style={{ maxWidth: 400, margin: '0 auto', padding: '0 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
       <div style={{ position: 'fixed', top: 24, right: 24 }}>
-        <button className="lang-toggle" onClick={() => i18n.changeLanguage(isKo ? 'en' : 'ko')}>
+        <button className="lang-toggle" onClick={() => {
+          const next = isKo ? 'en' : 'ko'
+          localStorage.setItem('lang', next)
+          i18n.changeLanguage(next)
+        }}>
           {isKo ? 'EN' : '한국어'}
         </button>
       </div>

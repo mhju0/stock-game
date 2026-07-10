@@ -154,7 +154,9 @@ function AppLayout() {
       ];
 
   const toggleLanguage = () => {
-    i18n.changeLanguage(i18n.language === "ko" ? "en" : "ko");
+    const next = i18n.language === "ko" ? "en" : "ko";
+    localStorage.setItem("lang", next);
+    i18n.changeLanguage(next);
   };
 
   return (

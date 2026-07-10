@@ -104,7 +104,7 @@ function Watchlist() {
   const [tradeTicker, setTradeTicker] = useState(null);
   const [sortUS, setSortUS] = useState('name_asc');
   const [sortKR, setSortKR] = useState('name_asc');
-  const { data: watchlist = [], isLoading: loading, refetch: refetchWatchlist } = useWatchlistQuery(currentUserId)
+  const { data: watchlist = [], isLoading: loading, isError, refetch: refetchWatchlist } = useWatchlistQuery(currentUserId)
 
   const remove = async (ticker) => {
     await apiDelete(`/watchlist/remove/${ticker}?user_id=${currentUserId}`);
@@ -120,6 +120,15 @@ function Watchlist() {
   const krStocks = useMemo(() => watchlist.filter(w => w.market !== 'US'), [watchlist])
 
   if (loading) return <p>{t("common.loading")}</p>;
+
+  if (isError) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+        <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+        <button className="btn btn-primary" onClick={() => refetchWatchlist()}>{t('common.retry')}</button>
+      </div>
+    );
+  }
 
   if (watchlist.length === 0) {
     return (
