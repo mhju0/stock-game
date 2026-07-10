@@ -208,7 +208,7 @@ function Dashboard() {
       )}
 
       {enableDevTools && showDevTools && (
-        <div className="card" style={{ marginBottom: 16, border: '1px dashed #007aff' }}>
+        <div className="card" style={{ marginBottom: 16, border: '1px dashed var(--accent)' }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <select className="input" style={{ width: 100 }} value={devCurrency} onChange={e => setDevCurrency(e.target.value)}>
               <option value="KRW">KRW</option>

@@ -311,7 +311,7 @@ function Analytics() {
                 labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
               />
-              <Line type="linear" dataKey="total_pct" stroke="#007aff" strokeWidth={2} dot={false} name="total_pct" />
+              <Line type="linear" dataKey="total_pct" stroke="#2d5fe3" strokeWidth={2} dot={false} name="total_pct" />
             </LineChart>
           </ResponsiveContainer>
         )}
