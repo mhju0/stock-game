@@ -117,69 +117,38 @@ function Portfolio() {
     <div>
       {(() => {
         const rate = account?.exchange_rate || 1350
-        const krxData = totalByMarket['KRX'] || { value: 0, pnl: 0 }
-        const usData = totalByMarket['US'] || { value: 0, pnl: 0 }
-        // Cash total (KRW-converted). Stocks total is krxData.value + usData.value * rate
-        // (both already KRW-native/USD-native respectively) — same figures the two
-        // secondary cards below show, so the sub-line always agrees with them.
-        const cashTotalKRW = (account.balance_krw || 0) + (account.balance_usd || 0) * rate
-
-        // account.total_value_krw is the backend's total-assets figure (cash + stocks),
-        // the same definition Analytics' header total already uses (dashboard.totalValue).
-        // Converts KRW -> display currency, then delegates to the shared formatMoney
-        // helper (same one the holdings rows below use) for consistent symbol/grouping.
-        const fmtCurrency = (valueKRW) => displayCurrency === 'KRW'
+        const krxData = totalByMarket['KRX'] || { value: 0 }
+        const usData = totalByMarket['US'] || { value: 0 }
+        // KRW -> display currency, delegating to the shared formatMoney helper for
+        // consistent symbol/grouping. Same asset-hero + 4-way breakdown as Dashboard.
+        const fmtDual = (valueKRW) => displayCurrency === 'KRW'
           ? formatMoney(valueKRW, 'KRW')
           : formatMoney(valueKRW / rate, 'USD')
-
-        const fmtVal = fmtCurrency(account.total_value_krw)
-        const fmtStocks = fmtCurrency(krxData.value + usData.value * rate)
-        const fmtCash = fmtCurrency(cashTotalKRW)
+        const dayUp = account.daily_change_pct >= 0
 
         return (
-          <>
-            {/* Primary total-assets card gets its own metric-grid so this single
-                item's auto-fit column count isn't shared with the secondary-cards
-                grid below — mixing both in one grid left 3 of 5 desktop columns
-                empty under the two secondary cards. */}
-            <div className="metric-grid">
-              <div className="metric-card" style={{ gridColumn: '1 / -1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
-                  <div style={{ display: 'flex', gap: 2 }}>
-                    {['KRW', 'USD'].map(c => (
-                      <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
-                        fontSize: 11, padding: '2px 8px', borderRadius: 6,
-                        lineHeight: '16px',
-                      }}>{c === 'KRW' ? '₩' : '$'}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="metric-value" style={{ fontSize: 32 }}>{fmtVal}</div>
-                <div className="row-meta" style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>
-                  {t('portfolio.stocksAndCash', { stocks: fmtStocks, cash: fmtCash })}
-                </div>
+          <section className="asset-hero">
+            <div className="asset-hero-top">
+              <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
+              <div style={{ display: 'flex', gap: 2 }}>
+                {['KRW', 'USD'].map(c => (
+                  <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
+                    fontSize: 11, padding: '2px 8px', borderRadius: 6, lineHeight: '16px',
+                  }}>{c === 'KRW' ? '₩' : '$'}</button>
+                ))}
               </div>
             </div>
-
-            <div className="metric-grid">
-              <div className="metric-card">
-                <div className="metric-label">{t('portfolio.koreanStocks')}</div>
-                <div className="metric-value" style={{ fontSize: 20 }}>{fmtCurrency(krxData.value)}</div>
-                <div className={krxData.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 13, marginTop: 4 }}>
-                  {krxData.pnl >= 0 ? '+' : '-'}{fmtCurrency(Math.abs(krxData.pnl))}
-                </div>
-              </div>
-
-              <div className="metric-card">
-                <div className="metric-label">{t('portfolio.usStocks')}</div>
-                <div className="metric-value" style={{ fontSize: 20 }}>{fmtCurrency(usData.value * rate)}</div>
-                <div className={usData.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 13, marginTop: 4 }}>
-                  {usData.pnl >= 0 ? '+' : '-'}{fmtCurrency(Math.abs(usData.pnl) * rate)}
-                </div>
-              </div>
+            <div className="asset-total">{fmtDual(account.total_value_krw)}</div>
+            <div className={`asset-chip ${dayUp ? 'up' : 'down'}`}>
+              {dayUp ? '+' : '-'}{fmtDual(Math.abs(account.daily_change_krw ?? 0))} · {dayUp ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}
             </div>
-          </>
+            <div className="asset-break">
+              <div><div className="k">{t('dashboard.koreanStocks')}</div><div className="v">{fmtDual(krxData.value)}</div></div>
+              <div><div className="k">{t('dashboard.usStocks')}</div><div className="v">{fmtDual(usData.value * rate)}</div></div>
+              <div><div className="k">{t('dashboard.cashKRW')}</div><div className="v">{fmtDual(account.balance_krw)}</div></div>
+              <div><div className="k">{t('dashboard.cashUSD')}</div><div className="v">{fmtDual((account.balance_usd ?? 0) * rate)}</div></div>
+            </div>
+          </section>
         )
       })()}
 
@@ -194,7 +163,7 @@ function Portfolio() {
               style={{
               background: 'var(--bg-secondary)', borderRadius: 10, padding: '8px 14px',
               fontSize: 13, cursor: 'pointer',
-              border: filterSector === sector ? '2px solid #007aff' : '2px solid transparent',
+              border: filterSector === sector ? '2px solid var(--accent)' : '2px solid transparent',
             }}
               onClick={() => setFilterSector(filterSector === sector ? 'ALL' : sector)}
             >

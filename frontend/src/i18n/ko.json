@@ -373,9 +373,6 @@
     "emptyTitle": "아직 보유한 종목이 없어요",
     "emptyBody": "관심 있는 종목을 찾아 첫 매수를 연습해 보세요.",
     "emptyAction": "종목 찾기",
-    "stocksCount": "{{count}}개 종목",
-    "stocksAndCash": "주식 {{stocks}} · 현금 {{cash}}",
-    "koreanStocks": "국내 주식",
-    "usStocks": "미국 주식"
+    "stocksCount": "{{count}}개 종목"
   }
 }
