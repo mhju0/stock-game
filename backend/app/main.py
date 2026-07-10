@@ -5,9 +5,12 @@ from contextlib import asynccontextmanager
 import asyncio
 import fcntl
 import threading
-from fastapi import FastAPI
+import time
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, SessionLocal, Base
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from app.database import engine, SessionLocal, Base, get_db
 from app import models
 from app.routes.auth import router as auth_router
 from app.routes.trading import router as trading_router
@@ -19,15 +22,36 @@ from app.routes.game import router as game_router
 from app.routes.users import router as users_router
 from app.routes.stocks import router as stocks_router
 from app.services.market_service import schedule_refresh
-from app.services.snapshot_service import take_snapshot
+from app.services.snapshot_service import run_snapshot_batch
 from app.services.seed_service import seed_demo
 
 import logging
 import os
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
-models.Base.metadata.create_all(bind=engine)
+
+def _init_db_with_retry(attempts: int = 3, delay: float = 5.0) -> None:
+    """Create tables at startup, retrying briefly so a momentarily unreachable
+    DB (paused Supabase, transient SSL blip) doesn't crash-loop the worker at
+    boot. Production tables already exist, so this is a no-op there."""
+    last_err = None
+    for attempt in range(1, attempts + 1):
+        try:
+            models.Base.metadata.create_all(bind=engine)
+            return
+        except Exception as e:  # pragma: no cover - exercised only on DB outage
+            last_err = e
+            logger.warning("DB init attempt %d/%d failed: %s", attempt, attempts, e)
+            if attempt < attempts:
+                time.sleep(delay)
+    logger.critical("Database unreachable after %d attempts: %s", attempts, last_err)
+    raise last_err
+
 
 # CORS: allow localhost for dev, plus any production frontend URL
 ALLOWED_ORIGINS = [
@@ -46,12 +70,7 @@ async def snapshot_loop():
         def _take_all_snapshots():
             db = SessionLocal()
             try:
-                users = db.query(models.User).all()
-                for user in users:
-                    take_snapshot(db, user_id=user.id)
-                print(f"Portfolio snapshots saved for {len(users)} users")
-            except Exception as e:
-                print(f"Snapshot error: {e}")
+                run_snapshot_batch(db)
             finally:
                 db.close()
 
@@ -67,6 +86,10 @@ async def market_refresh_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Create tables at startup (with retry) instead of at import time, so a
+    # brief DB outage doesn't crash the worker before it can even boot.
+    _init_db_with_retry()
+
     # Ensure a usable demo state exists even on a fresh/ephemeral DB.
     # Wrapped so a seed failure can never block startup.
     db = SessionLocal()
@@ -133,3 +156,15 @@ app.include_router(game_router)
 @app.get("/")
 def root():
     return {"message": "Stock Game API is running"}
+
+
+@app.get("/health/db")
+def health_db(db: Session = Depends(get_db)):
+    """Readiness + keep-alive probe: runs a real query so an external cron can
+    wake Render and keep Supabase from pausing in one call."""
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception as e:
+        logger.warning("DB health check failed: %s", e)
+        raise HTTPException(status_code=503, detail="database unavailable")

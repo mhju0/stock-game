@@ -1,8 +1,12 @@
+import logging
+
 try:
     import yfinance as yf
 except Exception:  # yfinance import must never abort app startup
     yf = None
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 
 def get_benchmark_data(index: str, days: int = 90) -> list:
@@ -35,5 +39,5 @@ def get_benchmark_data(index: str, days: int = 90) -> list:
             })
         return results
     except Exception as e:
-        print(f"Benchmark error for {index}: {e}")
+        logger.warning("Benchmark error for %s: %s", index, e)
         return []

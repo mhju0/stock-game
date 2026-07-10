@@ -9,3 +9,8 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         sync: false
+      # Must be set in the Render dashboard (Supabase Postgres URL). Declared
+      # here so re-provisioning from this blueprint fails loudly instead of
+      # silently falling back to an ephemeral SQLite file.
+      - key: DATABASE_URL
+        sync: false

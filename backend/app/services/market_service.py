@@ -2,9 +2,12 @@ try:
     import yfinance as yf
 except Exception:  # yfinance import must never abort app startup
     yf = None
+import logging
 import time
 import threading
 from datetime import datetime, time as dt_time
+
+logger = logging.getLogger(__name__)
 
 _yf_semaphore = threading.Semaphore(4)
 from zoneinfo import ZoneInfo
@@ -109,7 +112,7 @@ def fetch_top_30(market: str) -> list:
                 threads=4, progress=False,
             )
     except Exception as e:
-        print(f"Batch download failed for {market}: {e}")
+        logger.warning("Batch download failed for %s: %s", market, e)
         return []
 
     if data.empty:
@@ -144,7 +147,7 @@ def fetch_top_30(market: str) -> list:
                 "currency": "KRW" if market == "KR" else "USD",
             })
         except Exception as e:
-            print(f"Warning: skipping ticker {ticker}: {e}")
+            logger.warning("Skipping ticker %s: %s", ticker, e)
             continue
 
     # Already in rank order from the static list, just take top 30
@@ -159,9 +162,9 @@ def refresh_cache(market: str):
             cache[market]["data"] = data
             cache[market]["timestamp"] = time.time()
             cache[market]["session_date"] = _session_date_if_open(market)
-            print(f"Top 30 {market} cache refreshed: {len(data)} stocks")
+            logger.info("Top 30 %s cache refreshed: %d stocks", market, len(data))
     except Exception as e:
-        print(f"Cache refresh error for {market}: {e}")
+        logger.warning("Cache refresh error for %s: %s", market, e)
 
 
 def get_top_30(market: str) -> list:
