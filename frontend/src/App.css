@@ -45,22 +45,17 @@
   --negative-bg: rgba(229, 105, 93, 0.11);
   --accent-bg: rgba(91, 134, 245, 0.12);
 
-  /* Decorative (repointed to the cobalt family) */
-  --prism-blue: #5b86f5;
-  --prism-violet: #3a5bd0;
-  --prism-pink: #5b86f5;
-  --prism-cyan: #6ea0ff;
-  --prism-amber: #d9a94a;
 
   /* Typography */
   --font-display: 'Outfit', sans-serif;
   --font-body: 'DM Sans', sans-serif;
 
-  /* Glass blur */
-  --blur-sm: blur(12px);
-  --blur-md: blur(20px);
-  --blur-lg: blur(40px);
-  --blur-xl: blur(60px);
+  /* Glass blur retired — solid surfaces only. Tokens kept as no-ops so the
+     remaining backdrop-filter declarations resolve to none. */
+  --blur-sm: none;
+  --blur-md: none;
+  --blur-lg: none;
+  --blur-xl: none;
 
   /* Smooth curves */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -133,47 +128,6 @@ body {
   position: relative;
 }
 
-/* ── AMBIENT GRADIENT MESH BACKGROUND ── */
-.app::before {
-  content: '';
-  position: fixed;
-  top: -30%;
-  left: -20%;
-  width: 70%;
-  height: 70%;
-  background: radial-gradient(ellipse, var(--prism-blue) 0%, transparent 70%);
-  display: none;
-  opacity: 0.07;
-  pointer-events: none;
-  z-index: 0;
-  animation: ambient-drift-1 25s ease-in-out infinite alternate;
-}
-
-.app::after {
-  content: '';
-  position: fixed;
-  bottom: -30%;
-  right: -20%;
-  width: 60%;
-  height: 60%;
-  background: radial-gradient(ellipse, var(--prism-violet) 0%, transparent 70%);
-  display: none;
-  opacity: 0.06;
-  pointer-events: none;
-  z-index: 0;
-  animation: ambient-drift-2 30s ease-in-out infinite alternate;
-}
-
-@keyframes ambient-drift-1 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(15%, 10%) scale(1.15); }
-}
-
-@keyframes ambient-drift-2 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-10%, -15%) scale(1.1); }
-}
-
 /* ═══════════════════════════════════════════════
    NAVIGATION — SOLID READABLE BAR
    ═══════════════════════════════════════════════ */
@@ -185,14 +139,10 @@ body {
   padding: 0 24px;
   min-height: 58px;
   background: var(--surface-solid);
-  backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 200;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
 
 .nav-scroll {
@@ -217,11 +167,6 @@ body {
   flex-shrink: 0;
 }
 
-.nav-group-secondary {
-  padding-left: 12px;
-  border-left: 1px solid var(--glass-border);
-}
-
 .nav-actions {
   display: flex;
   gap: 8px;
@@ -230,16 +175,26 @@ body {
 }
 
 .nav-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
   text-decoration: none;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 19px;
-  white-space: nowrap;
-  background: linear-gradient(135deg, var(--prism-blue), var(--prism-violet));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.3px;
+  transition: background 0.15s;
+}
+
+.nav-logo:hover {
+  background: var(--control-selected-bg);
+}
+
+.nav-logo svg {
+  width: 17px;
+  height: 17px;
 }
 
 .nav-link {
@@ -250,10 +205,9 @@ body {
   font-weight: 500;
   min-height: 36px;
   padding: 8px 12px;
-  border-radius: 10px;
-  transition: all 0.3s var(--ease-out-expo);
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s;
   white-space: nowrap;
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -265,30 +219,74 @@ body {
 }
 
 .nav-link.active {
-  color: var(--text-primary);
-  background: var(--surface-panel-strong);
-  box-shadow:
-    0 0 0 1px var(--border),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
 }
 
-/* Subtle glow under active link */
-.nav-link.active::after {
-  content: '';
+/* ── "More" dropdown ── */
+.nav-more {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.nav-more-btn {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+
+.nav-more-btn:hover,
+.nav-more-btn[aria-expanded="true"] {
+  color: var(--text-primary);
+  background: var(--glass-hover);
+}
+
+.nav-more-btn svg {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.15s;
+}
+
+.nav-more-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+.nav-more-menu {
   position: absolute;
-  bottom: -1px;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  border-radius: 1px;
-  opacity: 0.6;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border-hover);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 300;
+  animation: glass-scale-in 0.15s var(--ease-out-expo);
+}
+
+.nav-more-menu .nav-link {
+  justify-content: flex-start;
+  border-radius: 9px;
+  width: 100%;
 }
 
 .lang-toggle {
   background: var(--surface-panel);
-  backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
   border: 1px solid var(--border);
   padding: 6px 16px;
   border-radius: 20px;
@@ -404,30 +402,8 @@ body {
   overflow: hidden;
 }
 
-/* Top specular highlight */
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.12) 30%,
-    rgba(255, 255, 255, 0.12) 70%,
-    transparent 100%
-  );
-  pointer-events: none;
-}
-
 .card:hover {
   border-color: var(--glass-border-hover);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    0 0 0 1px var(--glass-border-hover);
-  transform: translateY(-1px);
 }
 
 .card-title {
@@ -461,29 +437,8 @@ body {
   overflow: hidden;
 }
 
-/* Specular highlight on metric cards */
-.metric-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 40%,
-    rgba(255, 255, 255, 0.1) 60%,
-    transparent 100%
-  );
-  pointer-events: none;
-}
-
 .metric-card:hover {
   border-color: var(--glass-border-hover);
-  background: var(--glass-hover);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
 }
 
 .metric-label {
@@ -648,15 +603,13 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--prism-blue), var(--prism-violet));
-  color: white;
+  background: var(--control-selected-bg);
+  color: var(--control-selected-fg);
   border: none;
-  box-shadow: 0 4px 20px rgba(96, 165, 250, 0.2);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 6px 30px rgba(96, 165, 250, 0.3);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 16px var(--accent-glow);
 }
 
 /* ═══════════════════════════════════════════════
@@ -970,33 +923,6 @@ body {
   margin-bottom: 20px;
   position: relative;
   overflow: hidden;
-}
-
-/* Prismatic light shimmer on price hero */
-.price-hero::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(96, 165, 250, 0.03) 60deg,
-    transparent 120deg,
-    rgba(167, 139, 250, 0.03) 180deg,
-    transparent 240deg,
-    rgba(244, 114, 182, 0.03) 300deg,
-    transparent 360deg
-  );
-  animation: prism-rotate 12s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes prism-rotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 .price-hero-label {
@@ -1473,8 +1399,6 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: var(--modal-backdrop);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1489,8 +1413,6 @@ body {
 
 .modal-content {
   background: var(--surface-solid);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--glass-border-hover);
   border-radius: 24px;
   padding: 28px;
@@ -1765,24 +1687,6 @@ body {
   text-align: right;
 }
 
-/* Glass specular on modal */
-.modal-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.15) 20%,
-    rgba(255, 255, 255, 0.15) 80%,
-    transparent 100%
-  );
-  pointer-events: none;
-}
-
 @keyframes modal-in {
   from {
     opacity: 0;
@@ -1827,9 +1731,7 @@ body {
    RECHARTS OVERRIDE
    ═══════════════════════════════════════════════ */
 .recharts-default-tooltip {
-  background: var(--glass-elevated) !important;
-  backdrop-filter: var(--blur-lg) !important;
-  -webkit-backdrop-filter: var(--blur-lg) !important;
+  background: var(--surface-solid) !important;
   border: 1px solid var(--glass-border-hover) !important;
   border-radius: 14px !important;
   font-family: var(--font-display) !important;
@@ -1842,26 +1744,22 @@ body {
 @keyframes glass-enter {
   from {
     opacity: 0;
-    transform: translateY(16px);
-    filter: blur(4px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
 @keyframes glass-scale-in {
   from {
     opacity: 0;
-    transform: scale(0.95);
-    filter: blur(4px);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
     transform: scale(1);
-    filter: blur(0);
   }
 }
 
@@ -1901,7 +1799,6 @@ body {
     padding-bottom: 2px;
   }
   .nav-group { gap: 6px; }
-  .nav-group-secondary { padding-left: 8px; }
   .nav-link {
     min-height: 40px;
     font-size: 12px;

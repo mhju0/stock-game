@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "모의투자",
+    "appName": "주식게임",
     "loading": "로딩 중...",
     "error": "오류가 발생했어요",
     "confirm": "확인",
@@ -31,7 +31,8 @@
     "market": "인기 종목",
     "analytics": "분석",
     "game": "게임 현황",
-    "myGames": "내 게임"
+    "myGames": "내 게임",
+    "more": "더보기"
   },
   "dashboard": {
     "title": "전체 요약",

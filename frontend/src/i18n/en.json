@@ -31,7 +31,8 @@
     "market": "Market",
     "analytics": "Analysis",
     "game": "Game Status",
-    "myGames": "My Games"
+    "myGames": "My Games",
+    "more": "More"
   },
   "dashboard": {
     "title": "Overview",
