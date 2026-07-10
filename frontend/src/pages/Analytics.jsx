@@ -105,13 +105,22 @@ function Analytics() {
     }
   }), [byStock, stockSort, i18n.language])
 
+  // Stock-only total (KRW), used as the single weight% denominator everywhere
+  // a per-stock share is shown, so it always agrees with Portfolio and always
+  // sums to ~100% across byStock. NOT used for total assets (performance.current_value
+  // includes cash and stays as-is for the header total and cash-share metric).
+  const totalStockValueKRW = useMemo(
+    () => byStock.reduce((sum, s) => sum + s.total_value_krw, 0),
+    [byStock]
+  )
+
   const topStock = byStock.reduce((top, stockItem) => {
     if (!top || stockItem.total_value_krw > top.total_value_krw) return stockItem
     return top
   }, null)
   const topStockName = topStock ? getStockName(topStock.ticker, topStock.name, i18n.language) : ''
-  const topAllocationPct = performance?.current_value
-    ? ((topStock?.total_value_krw || 0) / performance.current_value) * 100
+  const topAllocationPct = totalStockValueKRW
+    ? ((topStock?.total_value_krw || 0) / totalStockValueKRW) * 100
     : 0
   const latestAllocation = chartDataAllocation[chartDataAllocation.length - 1]
   const cashPct = latestAllocation ? latestAllocation.cash_pct : (byStock.length === 0 ? 100 : 0)
@@ -372,8 +381,8 @@ function Analytics() {
                 const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : `$${(Number(v) || 0).toFixed(2)}`
                 const isPositive = s.unrealized_pnl >= 0
                 const name = getStockName(s.ticker, s.name, i18n.language)
-                const allocPct = ((s.total_value_krw / (performance.current_value || 1)) * 100).toFixed(1)
-                
+                const allocPct = ((s.total_value_krw / (totalStockValueKRW || 1)) * 100).toFixed(1)
+
                 return (
                   <button
                     key={s.ticker}
@@ -424,7 +433,7 @@ function Analytics() {
                 const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : `$${(Number(v) || 0).toFixed(2)}`
                 const isPositive = s.unrealized_pnl >= 0
                 const name = getStockName(s.ticker, s.name, i18n.language)
-                const allocPct = ((s.total_value_krw / (performance.current_value || 1)) * 100).toFixed(1)
+                const allocPct = ((s.total_value_krw / (totalStockValueKRW || 1)) * 100).toFixed(1)
 
                 return (
                   <button

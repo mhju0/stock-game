@@ -370,6 +370,9 @@
     "emptyTitle": "No holdings yet",
     "emptyBody": "Find a stock you are interested in and practice your first buy.",
     "emptyAction": "Find Stocks",
-    "stocksCount": "{{count}} stocks"
+    "stocksCount": "{{count}} stocks",
+    "stocksAndCash": "Stocks {{stocks}} · Cash {{cash}}",
+    "koreanStocks": "Korean Stocks",
+    "usStocks": "US Stocks"
   }
 }

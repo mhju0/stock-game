@@ -74,12 +74,20 @@ function Portfolio() {
     return acc
   }, {}), [holdings])
 
+  // Stock-only total (KRW-converted), used as the single weight% denominator
+  // everywhere so the holdings list always sums to ~100% regardless of cash.
+  const totalHoldingsValueKRW = useMemo(() => {
+    const rate = account?.exchange_rate || 1350
+    return holdings.reduce(
+      (sum, h) => sum + (h.currency === 'USD' ? h.total_value * rate : h.total_value),
+      0
+    )
+  }, [holdings, account?.exchange_rate])
+
   const totalBySector = useMemo(() => holdings.reduce((acc, h) => {
     const sectorKey = h.sector
     if (!sectorKey) return acc
-    if (!acc[sectorKey]) acc[sectorKey] = { value: 0, pnl: 0, count: 0 }
-    acc[sectorKey].value += h.total_value
-    acc[sectorKey].pnl += h.unrealized_pnl
+    if (!acc[sectorKey]) acc[sectorKey] = { count: 0 }
     acc[sectorKey].count++
     return acc
   }, {}), [holdings])
@@ -112,24 +120,26 @@ function Portfolio() {
           const rate = account?.exchange_rate || 1350
           const krxData = totalByMarket['KRX'] || { value: 0, pnl: 0 }
           const usData = totalByMarket['US'] || { value: 0, pnl: 0 }
-          const totalVal = displayCurrency === 'KRW'
-            ? krxData.value + (usData.value * rate)
-            : (krxData.value / rate) + usData.value
-          const totalPnl = displayCurrency === 'KRW'
-            ? krxData.pnl + (usData.pnl * rate)
-            : (krxData.pnl / rate) + usData.pnl
-          const fmtVal = displayCurrency === 'KRW'
-            ? `₩${Math.round(totalVal).toLocaleString()}`
-            : `$${totalVal.toFixed(2)}`
-          const fmtPnl = displayCurrency === 'KRW'
-            ? `₩${Math.round(Math.abs(totalPnl)).toLocaleString()}`
-            : `$${Math.abs(totalPnl).toFixed(2)}`
+          // Cash total (KRW-converted). Stocks total is krxData.value + usData.value * rate
+          // (both already KRW-native/USD-native respectively) — same figures the two
+          // secondary cards below show, so the sub-line always agrees with them.
+          const cashTotalKRW = (account.balance_krw || 0) + (account.balance_usd || 0) * rate
+
+          // account.total_value_krw is the backend's total-assets figure (cash + stocks),
+          // the same definition Analytics' header total already uses (dashboard.totalValue).
+          const fmtCurrency = (valueKRW) => displayCurrency === 'KRW'
+            ? `₩${Math.round(valueKRW).toLocaleString()}`
+            : `$${(valueKRW / rate).toFixed(2)}`
+
+          const fmtVal = fmtCurrency(account.total_value_krw)
+          const fmtStocks = fmtCurrency(krxData.value + usData.value * rate)
+          const fmtCash = fmtCurrency(cashTotalKRW)
 
           return (
             <>
-              <div className="metric-card">
+              <div className="metric-card" style={{ gridColumn: '1 / -1' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div className="metric-label" style={{ marginBottom: 0 }}>{t('stock.totalValue')}</div>
+                  <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
                   <div style={{ display: 'flex', gap: 2 }}>
                     {['KRW', 'USD'].map(c => (
                       <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
@@ -139,34 +149,27 @@ function Portfolio() {
                     ))}
                   </div>
                 </div>
-                <div className="metric-value">{fmtVal}</div>
-                <div className={totalPnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
-                  {totalPnl >= 0 ? '+' : '-'}{fmtPnl}
+                <div className="metric-value" style={{ fontSize: 32 }}>{fmtVal}</div>
+                <div className="row-meta" style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>
+                  {t('portfolio.stocksAndCash', { stocks: fmtStocks, cash: fmtCash })}
                 </div>
               </div>
-              {Object.entries(totalByMarket).map(([market, data]) => {
-                const val = displayCurrency === 'KRW'
-                  ? (market === 'KRX' ? data.value : data.value * rate)
-                  : (market === 'KRX' ? data.value / rate : data.value)
-                const pnl = displayCurrency === 'KRW'
-                  ? (market === 'KRX' ? data.pnl : data.pnl * rate)
-                  : (market === 'KRX' ? data.pnl / rate : data.pnl)
-                const fmtV = displayCurrency === 'KRW'
-                  ? `₩${Math.round(val).toLocaleString()}`
-                  : `$${val.toFixed(2)}`
-                const fmtP = displayCurrency === 'KRW'
-                  ? `₩${Math.round(Math.abs(pnl)).toLocaleString()}`
-                  : `$${Math.abs(pnl).toFixed(2)}`
-                return (
-                  <div className="metric-card" key={market}>
-                    <div className="metric-label">{market}</div>
-                    <div className="metric-value">{fmtV}</div>
-                    <div className={pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
-                      {pnl >= 0 ? '+' : '-'}{fmtP}
-                    </div>
-                  </div>
-                )
-              })}
+
+              <div className="metric-card">
+                <div className="metric-label">{t('portfolio.koreanStocks')}</div>
+                <div className="metric-value" style={{ fontSize: 20 }}>{fmtCurrency(krxData.value)}</div>
+                <div className={krxData.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 13, marginTop: 4 }}>
+                  {krxData.pnl >= 0 ? '+' : '-'}{fmtCurrency(Math.abs(krxData.pnl))}
+                </div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-label">{t('portfolio.usStocks')}</div>
+                <div className="metric-value" style={{ fontSize: 20 }}>{fmtCurrency(usData.value * rate)}</div>
+                <div className={usData.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 13, marginTop: 4 }}>
+                  {usData.pnl >= 0 ? '+' : '-'}{fmtCurrency(Math.abs(usData.pnl) * rate)}
+                </div>
+              </div>
             </>
           )
         })()}
@@ -189,9 +192,6 @@ function Portfolio() {
             >
               <div style={{ fontWeight: 600 }}>{sector}</div>
               <div style={{ color: 'var(--text-secondary)' }}>{t('portfolio.stocksCount', { count: data.count })}</div>
-              <div className={data.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 12 }}>
-                {data.pnl >= 0 ? '+' : ''}{data.pnl.toFixed(2)}
-              </div>
             </button>
           ))}
         </div>
@@ -209,9 +209,10 @@ function Portfolio() {
           const name = getStockName(h.ticker, h.name, i18n.language)
           const isPositive = h.unrealized_pnl >= 0
 
-          // Calculate Portfolio Weight (Allocation %)
+          // Calculate Portfolio Weight (Allocation %) against stock-only total
+          // (never cash) so the holdings list always sums to ~100%.
           const hValKRW = h.currency === 'USD' ? h.total_value * (account?.exchange_rate || 1350) : h.total_value
-          const allocPct = ((hValKRW / (account.total_value_krw || 1)) * 100).toFixed(1)
+          const allocPct = ((hValKRW / (totalHoldingsValueKRW || 1)) * 100).toFixed(1)
 
           return (
             <button
