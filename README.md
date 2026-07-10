@@ -4,6 +4,18 @@
 
 **[Live App](https://stock-game-gray.vercel.app)** · **[API Docs](https://stock-game-6411.onrender.com/docs)**
 
+무료 호스팅 특성상 첫 접속 시 서버 wake-up에 30–60초가 걸릴 수 있습니다.
+
+<!-- TODO: 프로덕션 데모 계정 시딩/검증 완료 후 주석 해제
+데모 계정: `demo` / `demo1234` (회원가입 없이 바로 체험)
+-->
+
+---
+
+## 스크린샷
+
+<!-- screenshots: added after tomorrow's capture -->
+
 ---
 
 ## 주요 기능
@@ -120,17 +132,20 @@ stock-game/
 │   │   ├── schemas.py       # Pydantic 요청 스키마
 │   │   ├── routes/          # auth · users · stocks · trade · portfolio · watchlist · admin · analytics · game
 │   │   └── services/        # trading · market · stock · exchange · snapshot · valuation · benchmark · static_fundamentals
+│   ├── tests/               # pytest suite (119개 테스트)
 │   ├── render.yaml          # Render 배포 설정
 │   └── Procfile             # gunicorn + UvicornWorker 시작 명령
-└── frontend/
-    ├── src/
-    │   ├── pages/           # Login · Register · Dashboard · Analytics · Portfolio · Watchlist · Market · Exchange · Transactions · SearchStock · Game
-    │   ├── components/      # TradeModal · ErrorBoundary · MarketFilter · SortSelect
-    │   ├── context/         # UserContext (JWT 기반 전역 상태)
-    │   ├── query/           # TanStack Query 훅
-    │   ├── i18n/            # 다국어 지원 (ko / en)
-    │   └── utils/           # formatters · stockNames
-    └── vercel.json          # SPA rewrite + 보안 헤더
+├── frontend/
+│   ├── src/
+│   │   ├── pages/           # Login · Register · Dashboard · Analytics · Portfolio · Watchlist · Market · Exchange · Transactions · SearchStock · Game
+│   │   ├── components/      # TradeModal · ErrorBoundary · MarketFilter · SortSelect
+│   │   ├── context/         # UserContext (JWT 기반 전역 상태)
+│   │   ├── query/           # TanStack Query 훅
+│   │   ├── i18n/            # 다국어 지원 (ko / en)
+│   │   └── utils/           # formatters · stockNames
+│   └── vercel.json          # SPA rewrite + 보안 헤더
+└── scripts/
+    └── regression-smoke.sh  # 회귀 스모크 (REGRESSION_SMOKE.md 참고)
 ```
 
 ---
@@ -155,4 +170,4 @@ stock-game/
 
 - **운영 DB hardening** — Supabase Postgres 운영 스키마와 백업/복구 절차 점검
 - **WebSocket 스트리밍** — polling 방식을 실시간 시세 피드로 전환
-- **Redis 캐싱** — yfinance rate limit 대응 및 인메모리 캐시의 워커 간 공유
+- **Redis 캐싱** — yfinance rate limit 대응 및 재배포/재시작 시에도 유지되는 캐시

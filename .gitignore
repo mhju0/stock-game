@@ -27,6 +27,9 @@ venv/
 # Local SQLite databases
 backend/stock_game.db
 backend/app/stock_game.db
+*.db-journal
+*.db-shm
+*.db-wal
 
 # Python test and coverage output
 .pytest_cache/
