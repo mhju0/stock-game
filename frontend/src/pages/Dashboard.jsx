@@ -37,14 +37,18 @@ function Dashboard() {
   const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId, sessionId)
   const holdingsSafe = useMemo(() => Array.isArray(holdings) ? holdings : [], [holdings])
 
-  // Stock-only total (KRW-converted), used as the single weight% denominator
-  // everywhere so the holdings list always sums to ~100% regardless of cash.
-  const totalHoldingsValueKRW = useMemo(() => {
+  // Stock values split by market (KRW-converted). `total` is the single weight%
+  // denominator so the holdings list sums to ~100% regardless of cash; kr/us feed
+  // the asset breakdown.
+  const stockValues = useMemo(() => {
     const rate = account?.exchange_rate || 1350
-    return holdingsSafe.reduce(
-      (sum, h) => sum + (h.currency === 'USD' ? h.total_value * rate : h.total_value),
-      0
-    )
+    let kr = 0, us = 0
+    for (const h of holdingsSafe) {
+      const v = h.currency === 'USD' ? h.total_value * rate : h.total_value
+      if (h.currency === 'USD') us += v
+      else kr += v
+    }
+    return { kr, us, total: kr + us }
   }, [holdingsSafe, account?.exchange_rate])
 
   const fetchData = () => {
@@ -126,6 +130,12 @@ function Dashboard() {
     </div>
   )
 
+  const rate = account.exchange_rate || 1350
+  const fmtDual = (krw) => displayCurrency === 'KRW'
+    ? formatMoney(krw, 'KRW')
+    : `$${(krw / rate).toFixed(2)}`
+  const dayUp = account.daily_change_pct >= 0
+
   return (
     <div>
       <div className="page-header">
@@ -143,45 +153,28 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="metric-grid">
-        <div className="metric-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
-            <div style={{ display: 'flex', gap: 2 }}>
-              {['KRW', 'USD'].map(c => (
-                <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
-                  fontSize: 11, padding: '2px 8px', borderRadius: 6,
-                  lineHeight: '16px',
-                }}>{c === 'KRW' ? '₩' : '$'}</button>
-              ))}
-            </div>
-          </div>
-          <div className="metric-value">
-            {displayCurrency === 'KRW'
-              ? formatMoney(account.total_value_krw, 'KRW')
-              : `$${(account.total_value_krw / (account.exchange_rate || 1350)).toFixed(2)}`}
-          </div>
-          <div className={account.daily_change_pct >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
-            {account.daily_change_pct >= 0 ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}
+      <section className="asset-hero">
+        <div className="asset-hero-top">
+          <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {['KRW', 'USD'].map(c => (
+              <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
+                fontSize: 11, padding: '2px 8px', borderRadius: 6, lineHeight: '16px',
+              }}>{c === 'KRW' ? '₩' : '$'}</button>
+            ))}
           </div>
         </div>
-        <div className="metric-card">
-          <div className="metric-label">{t('dashboard.holdingsValue')}</div>
-          <div className="metric-value">
-            {displayCurrency === 'KRW'
-              ? formatMoney(account.holdings_value_total_krw, 'KRW')
-              : `$${(account.holdings_value_total_krw / (account.exchange_rate || 1350)).toFixed(2)}`}
-          </div>
+        <div className="asset-total">{fmtDual(account.total_value_krw)}</div>
+        <div className={`asset-chip ${dayUp ? 'up' : 'down'}`}>
+          {dayUp ? '+' : '-'}{fmtDual(Math.abs(account.daily_change_krw ?? 0))} · {dayUp ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}
         </div>
-        <div className="metric-card">
-          <div className="metric-label">{t('dashboard.cashKRW')}</div>
-          <div className="metric-value">{formatMoney(account.balance_krw, 'KRW')}</div>
+        <div className="asset-break">
+          <div><div className="k">{t('dashboard.koreanStocks')}</div><div className="v">{fmtDual(stockValues.kr)}</div></div>
+          <div><div className="k">{t('dashboard.usStocks')}</div><div className="v">{fmtDual(stockValues.us)}</div></div>
+          <div><div className="k">{t('dashboard.cashKRW')}</div><div className="v">{fmtDual(account.balance_krw)}</div></div>
+          <div><div className="k">{t('dashboard.cashUSD')}</div><div className="v">{fmtDual((account.balance_usd ?? 0) * rate)}</div></div>
         </div>
-        <div className="metric-card">
-          <div className="metric-label">{t('dashboard.cashUSD')}</div>
-          <div className="metric-value">${(account.balance_usd ?? 0).toFixed(2)}</div>
-        </div>
-      </div>
+      </section>
 
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div>
@@ -257,7 +250,7 @@ function Dashboard() {
             
             // Calculate Portfolio Weight (Allocation %)
             const hValKRW = h.currency === 'USD' ? h.total_value * (account?.exchange_rate || 1350) : h.total_value
-            const allocPct = ((hValKRW / (totalHoldingsValueKRW || 1)) * 100).toFixed(1)
+            const allocPct = ((hValKRW / (stockValues.total || 1)) * 100).toFixed(1)
 
             return (
               <button
