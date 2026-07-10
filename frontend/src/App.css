@@ -810,6 +810,18 @@ body {
   font-size: 12px;
   font-weight: 600;
   padding: 5px 10px;
+  white-space: nowrap;
+}
+
+/* Shared secondary/meta text line for list rows and cards (Portfolio holdings,
+   Transactions): forces a single line with ellipsis so EN/KO text-length
+   differences can't change row height. The nearest flex-item ancestor also
+   needs min-width: 0 for the ellipsis to take effect. */
+.row-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.5;
 }
 
 .watchlist-row {
@@ -1098,12 +1110,20 @@ body {
   font-weight: 700;
   line-height: 1.25;
   overflow-wrap: anywhere;
+  /* Reserve exactly two lines so cards line up identically whether a
+     user-generated title wraps (long EN) or fits on one line (short KO). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(1.25em * 2);
 }
 
 .game-card-date,
 .game-card-muted {
   color: var(--text-secondary);
   font-size: 12px;
+  line-height: 1.4;
   margin-top: 4px;
 }
 

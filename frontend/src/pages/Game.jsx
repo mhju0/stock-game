@@ -254,7 +254,7 @@ function Game() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 15, fontWeight: 600 }}>
-                      {holding.quantity} {t('holdings.shares')}
+                      {t('holdings.shares', { count: holding.quantity })}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                       {t('holdings.avgPrice')} {formatMoney(holding.avg_price, holding.currency)}

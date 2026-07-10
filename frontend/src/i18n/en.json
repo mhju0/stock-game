@@ -78,7 +78,8 @@
     "marketAriaLabel": "Market filter"
   },
   "holdings": {
-    "shares": "shares",
+    "shares_one": "{{count}} share",
+    "shares_other": "{{count}} shares",
     "avgPrice": "avg",
     "ofPortfolio": "of portfolio",
     "cap": "Cap"

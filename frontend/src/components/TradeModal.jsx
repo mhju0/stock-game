@@ -211,9 +211,9 @@ function TradeModal({
     (confirmAction === 'BUY' && exceedsCash) ||
     (confirmAction === 'SELL' && exceedsHolding);
   const quickQuantities = [
-    { key: 'one', label: `1${t('holdings.shares')}`, value: 1 },
-    { key: 'five', label: `5${t('holdings.shares')}`, value: 5 },
-    { key: 'ten', label: `10${t('holdings.shares')}`, value: 10 },
+    { key: 'one', label: t('holdings.shares', { count: 1 }), value: 1 },
+    { key: 'five', label: t('holdings.shares', { count: 5 }), value: 5 },
+    { key: 'ten', label: t('holdings.shares', { count: 10 }), value: 10 },
     { key: 'max', label: t('trade.maxBuy'), value: maxBuyQuantity, disabled: maxBuyQuantity <= 0 },
     { key: 'all', label: t('trade.sellAll'), value: safeWholeHolding, disabled: safeWholeHolding <= 0 },
   ];
@@ -333,7 +333,7 @@ function TradeModal({
               <div className="trade-context-item">
                 <div className="trade-context-label">{t("trade.ownedQuantity")}</div>
                 <div className="trade-context-value">
-                  {safeWholeHolding} {t('holdings.shares')}
+                  {t('holdings.shares', { count: safeWholeHolding })}
                 </div>
               </div>
             </div>

@@ -265,7 +265,7 @@ function Dashboard() {
                 </div>
                 
                 <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
+                    <div style={{ fontSize: 13 }}>{t('holdings.shares', { count: h.quantity })}</div>
                     {h.sector && <div className="holding-sub">{h.sector}</div>}
                 </div>
 

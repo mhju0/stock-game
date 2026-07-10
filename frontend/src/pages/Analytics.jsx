@@ -402,7 +402,7 @@ function Analytics() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
-                      <span>{s.quantity} {t('holdings.shares')}</span>
+                      <span>{t('holdings.shares', { count: s.quantity })}</span>
                       <span>{fmt(s.current_price)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
@@ -447,7 +447,7 @@ function Analytics() {
                         <strong style={{ fontSize: 14 }}>{name}</strong>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 14 }}>
-                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {s.ticker}{s.sector && <> · {s.sector}</>} · {s.quantity} {t('holdings.shares')}
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {s.ticker}{s.sector && <> · {s.sector}</>} · {t('holdings.shares', { count: s.quantity })}
                       </div>
                     </div>
                     

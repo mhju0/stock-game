@@ -102,11 +102,11 @@ function Transactions() {
                 <span style={{
                   padding: '4px 10px', borderRadius: 6, fontSize: 12,
                   fontWeight: 600, background: typeBg, color: typeColor,
-                  minWidth: 40, textAlign: 'center',
+                  minWidth: 40, textAlign: 'center', whiteSpace: 'nowrap', flexShrink: 0,
                 }}>
                   {typeLabel}
                 </span>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   {tx.transaction_type === 'EXCHANGE' ? (() => {
                     const fromCur = tx.currency
                     const toCur = tx.ticker.split('/')[1] || (fromCur === 'KRW' ? 'USD' : 'KRW')
@@ -122,7 +122,7 @@ function Transactions() {
                     return (
                       <>
                         <strong style={{ fontSize: 15 }}>{fromAmt} → {toAmt}</strong>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <div className="row-meta" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                           ₩{Number(tx.price).toLocaleString()} / $1
                         </div>
                       </>
@@ -130,7 +130,7 @@ function Transactions() {
                   })() : (
                     <>
                       <strong style={{ fontSize: 15 }}>{stockName}</strong>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      <div className="row-meta" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                         {tx.quantity} × {fmt(tx.price)}
                       </div>
                     </>

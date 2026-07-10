@@ -226,24 +226,24 @@ function Portfolio() {
               transition: 'background 0.1s',
             }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                <div className="row-meta" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {h.ticker}{h.sector && <> · {h.sector}</>}
                 </div>
               </div>
 
-              <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13 }}>{h.quantity} {t('holdings.shares')}</div>
-                  {h.sector && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{h.sector}</div>}
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div className="row-meta" style={{ fontSize: 13, width: '100%' }}>{t('holdings.shares', { count: h.quantity })}</div>
+                  {h.sector && <div className="row-meta" style={{ fontSize: 12, color: 'var(--text-secondary)', width: '100%' }}>{h.sector}</div>}
               </div>
 
-              <div style={{ flex: 1, textAlign: 'right' }}>
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{fmt(h.current_price)}</div>
-                <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 13 }}>
+                <div className={`row-meta ${isPositive ? 'positive' : 'negative'}`} style={{ fontSize: 13 }}>
                   {isPositive ? '+' : ''}{fmt(h.unrealized_pnl)} ({pnlPct}%)
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t('holdings.avgPrice')} {fmt(h.avg_price)}</div>
+                <div className="row-meta" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t('holdings.avgPrice')} {fmt(h.avg_price)}</div>
               </div>
             </button>
           )

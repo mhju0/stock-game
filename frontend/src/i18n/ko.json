@@ -78,7 +78,8 @@
     "marketAriaLabel": "시장 필터"
   },
   "holdings": {
-    "shares": "주",
+    "shares_one": "{{count}}주",
+    "shares_other": "{{count}}주",
     "avgPrice": "평균",
     "ofPortfolio": "비중",
     "cap": "시총"
