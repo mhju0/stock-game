@@ -44,7 +44,9 @@ function Game() {
   useEffect(() => {
     if (!status) return
     if (!status.active || status.is_expired) return
-    const days = status.duration_days
+    // Benchmark window = the game's elapsed days (not full duration), so the
+    // 0% baseline of both lines is the game start date.
+    const days = Math.max(2, Math.ceil(status.days_elapsed ?? status.duration_days))
 
     apiFetch(`/game/sessions/${sessionId}/analytics/performance`)
       .then(data => {

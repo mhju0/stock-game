@@ -21,8 +21,11 @@ def get_benchmark_data(index: str, days: int = 90) -> list:
 
     try:
         ticker = yf.Ticker(symbol)
-        period = "1mo" if days <= 30 else "3mo" if days <= 90 else "1y"
-        data = ticker.history(period=period)
+        # Anchor the window to `days` ago (the caller passes the game's
+        # elapsed days) so the 0% baseline lines up with the game start
+        # instead of a fixed lookback period.
+        start = datetime.now() - timedelta(days=max(int(days), 2))
+        data = ticker.history(start=start.strftime("%Y-%m-%d"))
 
         if data.empty:
             return []
