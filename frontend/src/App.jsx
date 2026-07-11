@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { UserContext } from "./context/userContext";
 import { isAuthenticated } from "./auth";
 import { apiFetch } from "./api";
@@ -121,22 +121,6 @@ function AppLayout() {
   const location = useLocation();
   const sessionId = getSessionIdFromPath(location.pathname);
   const selectedGameBase = sessionId ? `/games/${sessionId}` : null;
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef(null);
-
-  // Close the "more" menu on navigation, outside click, or Escape.
-  useEffect(() => { setMoreOpen(false); }, [location.pathname]);
-  useEffect(() => {
-    if (!moreOpen) return;
-    const onDown = (e) => { if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false); };
-    const onKey = (e) => { if (e.key === "Escape") setMoreOpen(false); };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [moreOpen]);
 
   const primaryNav = selectedGameBase
     ? [
@@ -186,36 +170,12 @@ function AppLayout() {
 
         <div className="nav-scroll" aria-label={t("common.appSections")}>
           <div className="nav-group">
-            {primaryNav.map((item) => (
+            {[...primaryNav, ...secondaryNav].map((item) => (
               <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
                 {item.label}
               </NavLink>
             ))}
           </div>
-        </div>
-
-        <div className="nav-more" ref={moreRef}>
-          <button
-            type="button"
-            className="nav-more-btn"
-            aria-expanded={moreOpen}
-            aria-haspopup="true"
-            onClick={() => setMoreOpen((v) => !v)}
-          >
-            {t("nav.more")}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
-          {moreOpen && (
-            <div className="nav-more-menu">
-              {secondaryNav.map((item) => (
-                <NavLink key={item.to} to={item.to} className="nav-link">
-                  {item.label}
-                </NavLink>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="nav-actions">

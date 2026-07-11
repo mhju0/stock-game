@@ -224,67 +224,6 @@ body {
   font-weight: 600;
 }
 
-/* ── "More" dropdown ── */
-.nav-more {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.nav-more-btn {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: transparent;
-  border: 0;
-  min-height: 36px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-  transition: color 0.15s, background 0.15s;
-}
-
-.nav-more-btn:hover,
-.nav-more-btn[aria-expanded="true"] {
-  color: var(--text-primary);
-  background: var(--glass-hover);
-}
-
-.nav-more-btn svg {
-  width: 13px;
-  height: 13px;
-  transition: transform 0.15s;
-}
-
-.nav-more-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
-
-.nav-more-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 160px;
-  background: var(--surface-solid);
-  border: 1px solid var(--glass-border-hover);
-  border-radius: 14px;
-  padding: 6px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 300;
-  animation: glass-scale-in 0.15s var(--ease-out-expo);
-}
-
-.nav-more-menu .nav-link {
-  justify-content: flex-start;
-  border-radius: 9px;
-  width: 100%;
-}
-
 .lang-toggle {
   background: var(--surface-panel);
   border: 1px solid var(--border);
