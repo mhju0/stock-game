@@ -39,21 +39,27 @@ SEED_RATE = 1350.0          # fixed FX rate for deterministic cash math
 # Timeline of demo trades. day = offset from game start.
 # ("EXCHANGE", day, amount_krw) — KRW -> USD at SEED_RATE
 # ("BUY"/"SELL", day, ticker, market, currency, quantity, price)
+#
+# Cost bases are anchored to live closes as of 2026-07-11 (within a few
+# percent), so the live-priced header, the snapshot-driven charts, and the
+# daily-change chip all tell one consistent story: a modest, mixed-P/L
+# portfolio. If the demo ages badly as markets move, re-anchor these prices.
 _TIMELINE = [
-    ("EXCHANGE", 0, 3_500_000.0),
-    ("BUY", 0, "005930.KS", "KRX", "KRW", 40, 69_000.0),   # Samsung — Technology
-    ("BUY", 0, "051910.KS", "KRX", "KRW", 4, 380_000.0),   # LG Chem — Basic Materials
+    ("EXCHANGE", 0, 3_800_000.0),
+    ("BUY", 0, "005930.KS", "KRX", "KRW", 8, 272_000.0),   # Samsung — Technology
+    ("BUY", 0, "051910.KS", "KRX", "KRW", 5, 272_000.0),   # LG Chem — Basic Materials
     ("BUY", 1, "090430.KS", "KRX", "KRW", 10, 120_000.0),  # Amorepacific — Consumer Defensive
-    ("BUY", 1, "JPM", "US", "USD", 4, 245.0),              # JPMorgan — Financial Services
-    ("BUY", 2, "JNJ", "US", "USD", 4, 155.0),              # J&J — Healthcare
-    ("BUY", 2, "XOM", "US", "USD", 5, 115.0),              # Exxon — Energy
-    ("SELL", 6, "005930.KS", "KRX", "KRW", 10, 74_500.0),  # partial take-profit
+    ("BUY", 1, "JPM", "US", "USD", 3, 328.0),              # JPMorgan — Financial Services
+    ("BUY", 2, "JNJ", "US", "USD", 3, 262.0),              # J&J — Healthcare
+    ("BUY", 2, "XOM", "US", "USD", 4, 134.5),              # Exxon — Energy
+    ("SELL", 6, "005930.KS", "KRX", "KRW", 3, 283_000.0),  # partial take-profit
 ]
 
 # Daily drift applied to holdings' cost basis for the synthetic snapshot
-# series (index = day). Slightly net-positive with wobble so the charts show
-# a believable, mixed curve. <!-- mock data, not historical prices -->
-_DRIFT = [0.0, -0.004, 0.002, 0.008, 0.005, 0.012, 0.009, 0.015, 0.011, 0.018, 0.022, 0.019, 0.025]
+# series (index = day). Ends near the live-priced valuation (+~1.3% over
+# basis at anchor time) so the chart curve meets the live header instead of
+# jumping. <!-- mock data, not historical prices -->
+_DRIFT = [0.0, -0.003, 0.002, 0.005, 0.003, 0.007, 0.006, 0.009, 0.008, 0.011, 0.013, 0.012, 0.013]
 
 # User-level watchlist starters (survive across games by design).
 _WATCHLIST = [("035720.KS", "KRX"), ("MSFT", "US")]
