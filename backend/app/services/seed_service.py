@@ -34,7 +34,9 @@ DEMO_PASSWORD = "demo1234"
 STARTING_BALANCE_KRW = 10_000_000.0
 DURATION_DAYS = 90
 BACKDATE_DAYS = 12          # game shows ~12 elapsed days at seed time
-SEED_RATE = 1350.0          # fixed FX rate for deterministic cash math
+SEED_RATE = 1500.0          # fixed FX rate, anchored to the live USD/KRW
+                            # (~1498.7 on 2026-07-11) so snapshot valuations
+                            # match the live-rate header
 
 # Timeline of demo trades. day = offset from game start.
 # ("EXCHANGE", day, amount_krw) — KRW -> USD at SEED_RATE
@@ -45,7 +47,7 @@ SEED_RATE = 1350.0          # fixed FX rate for deterministic cash math
 # daily-change chip all tell one consistent story: a modest, mixed-P/L
 # portfolio. If the demo ages badly as markets move, re-anchor these prices.
 _TIMELINE = [
-    ("EXCHANGE", 0, 3_800_000.0),
+    ("EXCHANGE", 0, 4_000_000.0),
     ("BUY", 0, "005930.KS", "KRX", "KRW", 8, 272_000.0),   # Samsung — Technology
     ("BUY", 0, "051910.KS", "KRX", "KRW", 5, 272_000.0),   # LG Chem — Basic Materials
     ("BUY", 1, "090430.KS", "KRX", "KRW", 10, 120_000.0),  # Amorepacific — Consumer Defensive
