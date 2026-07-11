@@ -428,16 +428,25 @@ body {
 .asset-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
   margin-top: 10px;
   font-size: 14px;
   font-weight: 600;
-  padding: 5px 11px;
+  padding: 5px 12px;
   border-radius: 999px;
   font-variant-numeric: tabular-nums;
 }
 .asset-chip.up { background: var(--positive-bg); color: var(--positive); }
 .asset-chip.down { background: var(--negative-bg); color: var(--negative); }
+/* Thin vertical rule between the amount and the percent so they read as two
+   distinct values instead of one cramped run. Inherits the up/down color. */
+.asset-chip-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 0;
+  background: currentColor;
+  opacity: 0.3;
+}
 .asset-break {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

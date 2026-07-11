@@ -140,7 +140,9 @@ function Portfolio() {
             </div>
             <div className="asset-total">{fmtDual(account.total_value_krw)}</div>
             <div className={`asset-chip ${dayUp ? 'up' : 'down'}`}>
-              {dayUp ? '+' : '-'}{fmtDual(Math.abs(account.daily_change_krw ?? 0))} · {dayUp ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}
+              <span>{dayUp ? '+' : '-'}{fmtDual(Math.abs(account.daily_change_krw ?? 0))}</span>
+              <span className="asset-chip-sep" aria-hidden="true" />
+              <span>{dayUp ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}</span>
             </div>
             <div className="asset-break">
               <div><div className="k">{t('dashboard.koreanStocks')}</div><div className="v">{fmtDual(krxData.value)}</div></div>
