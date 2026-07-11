@@ -1,12 +1,15 @@
-"""Idempotent demo seed.
+"""Idempotent demo seed / reset.
 
-On an empty database (e.g. a fresh Render container with an ephemeral disk),
-this creates a known demo account with a baseline portfolio so a reviewer
-always lands on a working app. It is safe to run on every boot: if any user
-already exists it is a no-op, so it never duplicates data.
+The `demo` account is a public showcase for reviewers, so on every boot it is
+reset to a known-good baseline: a session-scoped 90-day game with a
+sector-diversified KR/US portfolio, one FX exchange, one realized-P/L sell,
+and a synthetic daily snapshot series so the performance/benchmark charts
+render from day one.
 
-Seed data is built entirely from the in-process static dictionaries — it makes
-no live market calls — so seeding works even when yfinance is unavailable.
+All deletes are strictly scoped to the demo user's id — other users' data is
+never touched. Seed data is built entirely from in-process static
+dictionaries (no live market calls), so seeding works even when yfinance is
+unavailable, and the numbers below are deterministic.
 """
 
 import logging
@@ -14,14 +17,13 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app.models import User, Holding, Transaction, GameSession, PortfolioSnapshot
+from app.models import User, Holding, Transaction, GameSession, PortfolioSnapshot, Watchlist
 from app.auth import hash_password
 from app.services.stock_service import (
     KR_STOCK_NAMES_EN,
     US_STOCK_NAMES_EN,
 )
 from app.services.static_fundamentals import STATIC_FUNDAMENTALS
-from app.services.exchange_service import get_exchange_rate
 
 logger = logging.getLogger(__name__)
 
@@ -31,84 +33,191 @@ DEMO_PASSWORD = "demo1234"
 
 STARTING_BALANCE_KRW = 10_000_000.0
 DURATION_DAYS = 90
+BACKDATE_DAYS = 12          # game shows ~12 elapsed days at seed time
+SEED_RATE = 1350.0          # fixed FX rate for deterministic cash math
 
-# Baseline holdings. avg_price is a fixed cost basis (no live lookup needed).
-# (ticker, market, currency, quantity, avg_price)
-_SEED_HOLDINGS = [
-    ("005930.KS", "KRX", "KRW", 15, 70_000.0),
-    ("AAPL", "US", "USD", 6, 180.0),
-    ("NVDA", "US", "USD", 4, 120.0),
+# Timeline of demo trades. day = offset from game start.
+# ("EXCHANGE", day, amount_krw) — KRW -> USD at SEED_RATE
+# ("BUY"/"SELL", day, ticker, market, currency, quantity, price)
+_TIMELINE = [
+    ("EXCHANGE", 0, 3_500_000.0),
+    ("BUY", 0, "005930.KS", "KRX", "KRW", 40, 69_000.0),   # Samsung — Technology
+    ("BUY", 0, "051910.KS", "KRX", "KRW", 4, 380_000.0),   # LG Chem — Basic Materials
+    ("BUY", 1, "090430.KS", "KRX", "KRW", 10, 120_000.0),  # Amorepacific — Consumer Defensive
+    ("BUY", 1, "JPM", "US", "USD", 4, 245.0),              # JPMorgan — Financial Services
+    ("BUY", 2, "JNJ", "US", "USD", 4, 155.0),              # J&J — Healthcare
+    ("BUY", 2, "XOM", "US", "USD", 5, 115.0),              # Exxon — Energy
+    ("SELL", 6, "005930.KS", "KRX", "KRW", 10, 74_500.0),  # partial take-profit
 ]
 
-# Cash left after the baseline buys (roughly balances to ~10M KRW at ~1350 FX).
-DEMO_BALANCE_KRW = 4_144_000.0
-DEMO_BALANCE_USD = 2_000.0
+# Daily drift applied to holdings' cost basis for the synthetic snapshot
+# series (index = day). Slightly net-positive with wobble so the charts show
+# a believable, mixed curve. <!-- mock data, not historical prices -->
+_DRIFT = [0.0, -0.004, 0.002, 0.008, 0.005, 0.012, 0.009, 0.015, 0.011, 0.018, 0.022, 0.019, 0.025]
+
+# User-level watchlist starters (survive across games by design).
+_WATCHLIST = [("035720.KS", "KRX"), ("MSFT", "US")]
 
 
 def _name_for(ticker: str) -> str:
     return KR_STOCK_NAMES_EN.get(ticker) or US_STOCK_NAMES_EN.get(ticker) or ticker
 
 
+def _reset_demo_rows(db: Session, user_id: int) -> None:
+    """Delete all demo-owned rows. Scoped to user_id only — never touches
+    other users."""
+    for model in (PortfolioSnapshot, Transaction, Holding, Watchlist):
+        db.query(model).filter(model.user_id == user_id).delete(synchronize_session=False)
+    db.query(GameSession).filter(GameSession.user_id == user_id).delete(synchronize_session=False)
+
+
 def seed_demo(db: Session) -> bool:
-    """Create the demo account if the DB has no users yet. Returns True if seeded."""
-    if db.query(User).count() > 0:
-        return False
-
+    """Create or reset the public demo account to its baseline. Runs on every
+    boot; returns True when the demo state was (re)built."""
     now = datetime.now(timezone.utc)
-    start = now - timedelta(days=10)  # backdated so the game shows elapsed time
+    start = now - timedelta(days=BACKDATE_DAYS)
 
-    user = User(
-        username=DEMO_USERNAME,
-        hashed_password=hash_password(DEMO_PASSWORD),
-        balance_krw=DEMO_BALANCE_KRW,
-        balance_usd=DEMO_BALANCE_USD,
-        created_at=start,
-    )
-    db.add(user)
-    db.flush()  # assign user.id
+    user = db.query(User).filter(User.username == DEMO_USERNAME).first()
+    if user is None:
+        user = User(
+            username=DEMO_USERNAME,
+            hashed_password=hash_password(DEMO_PASSWORD),
+            created_at=start,
+        )
+        db.add(user)
+        db.flush()  # assign user.id
+    else:
+        _reset_demo_rows(db, user.id)
 
-    for ticker, market, currency, quantity, avg_price in _SEED_HOLDINGS:
-        sector, industry = STATIC_FUNDAMENTALS.get(ticker, (None, None))
-        name = _name_for(ticker)
-        total = avg_price * quantity
-
-        db.add(Holding(
-            user_id=user.id, ticker=ticker, name=name, market=market,
-            sector=sector, industry=industry, quantity=quantity,
-            avg_price=avg_price, currency=currency,
-        ))
-        db.add(Transaction(
-            user_id=user.id, ticker=ticker, name=name, market=market,
-            transaction_type="BUY", quantity=quantity, price=avg_price,
-            currency=currency, sector=sector, industry=industry,
-            total_amount=total, realized_pnl=0.0, created_at=start,
-        ))
-
-    db.add(GameSession(
+    session = GameSession(
         user_id=user.id,
+        title="Demo Portfolio",
+        status="active",
         starting_balance_krw=STARTING_BALANCE_KRW,
         starting_balance_usd=0.0,
+        cash_krw=STARTING_BALANCE_KRW,
+        cash_usd=0.0,
         duration_days=DURATION_DAYS,
         start_date=start,
         end_date=start + timedelta(days=DURATION_DAYS),
         is_active=True,
-    ))
-
-    # Initial snapshot using cash only (no per-holding price fetch at boot to
-    # keep cold start fast). get_exchange_rate() is bounded and falls back to a
-    # constant when the live source is unavailable. The hourly snapshot loop
-    # backfills full valuations later.
-    rate = get_exchange_rate()
-    db.add(PortfolioSnapshot(
-        user_id=user.id,
-        total_value_krw=round(DEMO_BALANCE_KRW + DEMO_BALANCE_USD * rate, 2),
-        total_holdings_value_krw=0.0,
-        cash_krw=DEMO_BALANCE_KRW,
-        cash_usd=DEMO_BALANCE_USD,
-        exchange_rate=rate,
         created_at=start,
-    ))
+    )
+    db.add(session)
+    db.flush()  # assign session.id
+
+    # Replay the timeline: mutate session cash, build holdings + transactions.
+    holdings: dict[str, Holding] = {}
+    for event in _TIMELINE:
+        kind, day = event[0], event[1]
+        stamp = start + timedelta(days=day, hours=5)
+        if kind == "EXCHANGE":
+            amount_krw = event[2]
+            converted = round(amount_krw / SEED_RATE, 2)
+            session.cash_krw -= amount_krw
+            session.cash_usd += converted
+            db.add(Transaction(
+                user_id=user.id, game_session_id=session.id,
+                ticker="KRW/USD", name="Currency Exchange", market="FX",
+                transaction_type="EXCHANGE", quantity=1, price=SEED_RATE,
+                currency="KRW", sector="Currency", industry="Foreign Exchange",
+                total_amount=amount_krw, realized_pnl=0.0, created_at=stamp,
+            ))
+            continue
+
+        _, _, ticker, market, currency, quantity, price = event
+        sector, industry = STATIC_FUNDAMENTALS.get(ticker, (None, None))
+        name = _name_for(ticker)
+        total = round(price * quantity, 2)
+
+        if kind == "BUY":
+            if currency == "KRW":
+                session.cash_krw -= total
+            else:
+                session.cash_usd -= total
+            h = holdings.get(ticker)
+            if h is None:
+                h = Holding(
+                    user_id=user.id, game_session_id=session.id,
+                    ticker=ticker, name=name, market=market, sector=sector,
+                    industry=industry, quantity=quantity, avg_price=price,
+                    currency=currency,
+                )
+                holdings[ticker] = h
+                db.add(h)
+            else:
+                new_qty = h.quantity + quantity
+                h.avg_price = (h.avg_price * h.quantity + total) / new_qty
+                h.quantity = new_qty
+            realized = 0.0
+        else:  # SELL
+            h = holdings[ticker]
+            realized = round((price - h.avg_price) * quantity, 2)
+            h.quantity -= quantity
+            if currency == "KRW":
+                session.cash_krw += total
+            else:
+                session.cash_usd += total
+
+        db.add(Transaction(
+            user_id=user.id, game_session_id=session.id,
+            ticker=ticker, name=name, market=market,
+            transaction_type=kind, quantity=quantity, price=price,
+            currency=currency, sector=sector, industry=industry,
+            total_amount=total, realized_pnl=realized, created_at=stamp,
+        ))
+
+    session.cash_krw = round(session.cash_krw, 2)
+    session.cash_usd = round(session.cash_usd, 2)
+
+    # Legacy mirror for old routes that still read User.balance_*.
+    user.balance_krw = session.cash_krw
+    user.balance_usd = session.cash_usd
+
+    # Synthetic daily snapshots: replay cash state per day, value holdings at
+    # cost basis times a fixed drift so the charts have a believable series.
+    for day in range(BACKDATE_DAYS + 1):
+        cash_krw, cash_usd = STARTING_BALANCE_KRW, 0.0
+        basis_krw = 0.0
+        positions: dict[str, list[float]] = {}  # ticker -> [qty, avg, krw?]
+        for event in _TIMELINE:
+            if event[1] > day:
+                continue
+            if event[0] == "EXCHANGE":
+                cash_krw -= event[2]
+                cash_usd += round(event[2] / SEED_RATE, 2)
+                continue
+            kind, _, ticker, _, currency, quantity, price = event
+            fx = 1.0 if currency == "KRW" else SEED_RATE
+            if kind == "BUY":
+                if currency == "KRW":
+                    cash_krw -= price * quantity
+                else:
+                    cash_usd -= price * quantity
+                pos = positions.setdefault(ticker, [0.0, 0.0, fx])
+                pos[1] = (pos[1] * pos[0] + price * quantity) / (pos[0] + quantity)
+                pos[0] += quantity
+            else:
+                pos = positions[ticker]
+                pos[0] -= quantity
+                if currency == "KRW":
+                    cash_krw += price * quantity
+                else:
+                    cash_usd += price * quantity
+        basis_krw = sum(qty * avg * fx for qty, avg, fx in positions.values())
+        holdings_value = round(basis_krw * (1 + _DRIFT[min(day, len(_DRIFT) - 1)]), 2)
+        db.add(PortfolioSnapshot(
+            user_id=user.id, game_session_id=session.id,
+            total_value_krw=round(cash_krw + cash_usd * SEED_RATE + holdings_value, 2),
+            total_holdings_value_krw=holdings_value,
+            cash_krw=round(cash_krw, 2), cash_usd=round(cash_usd, 2),
+            exchange_rate=SEED_RATE,
+            created_at=start + timedelta(days=day, hours=8),
+        ))
+
+    for ticker, market in _WATCHLIST:
+        db.add(Watchlist(user_id=user.id, ticker=ticker, name=_name_for(ticker), market=market))
 
     db.commit()
-    logger.info("Seeded demo account '%s'", DEMO_USERNAME)
+    logger.info("Demo account '%s' reset to baseline", DEMO_USERNAME)
     return True

@@ -90,8 +90,9 @@ async def lifespan(app: FastAPI):
     # brief DB outage doesn't crash the worker before it can even boot.
     _init_db_with_retry()
 
-    # Ensure a usable demo state exists even on a fresh/ephemeral DB.
-    # Wrapped so a seed failure can never block startup.
+    # Create-or-reset the public demo account to its baseline on every boot,
+    # so reviewers always land on a pristine portfolio regardless of what a
+    # previous visitor did. Wrapped so a seed failure can never block startup.
     db = SessionLocal()
     try:
         seed_demo(db)
