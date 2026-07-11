@@ -79,17 +79,32 @@ function Analytics() {
 
   const formatKRW = (v) => formatMoney(v, 'KRW')
   const fmtDisplay = (v) => displayCurrency === 'KRW' ? formatMoney(v, 'KRW') : `$${(v / exchangeRate).toFixed(2)}`
+  // Dynamic Y range: always keep the 0% break-even line on the axis, then fit
+  // the data around it so the axis grows with actual gains/losses instead of
+  // pinning the line flat. A 2%p floor keeps tiny intraday moves visually calm.
   const returnDomain = useMemo(() => {
-    const returnValues = chartDataReturn.map(p => p.total_pct)
-    const returnMin = returnValues.length ? Math.min(...returnValues) : 0
-    const returnMax = returnValues.length ? Math.max(...returnValues) : 0
-    // Ensure minimum ±10% range so small changes don't look extreme
-    const domainMin = Math.min(returnMin, -10)
-    const domainMax = Math.max(returnMax, 10)
-    const span = Math.abs(domainMax - domainMin)
-    const padding = Math.max(1, span * 0.1)
-    return [domainMin - padding, domainMax + padding]
+    const values = chartDataReturn.map(p => p.total_pct)
+    const dataMin = values.length ? Math.min(...values) : 0
+    const dataMax = values.length ? Math.max(...values) : 0
+    let lo = Math.min(0, dataMin)
+    let hi = Math.max(0, dataMax)
+    const MIN_SPAN = 2
+    if (hi - lo < MIN_SPAN) {
+      if (lo < 0 && hi > 0) {
+        const grow = (MIN_SPAN - (hi - lo)) / 2
+        lo -= grow
+        hi += grow
+      } else if (lo === 0) {
+        hi = MIN_SPAN
+      } else {
+        lo = -MIN_SPAN
+      }
+    }
+    const pad = (hi - lo) * 0.08
+    return [lo - (lo < 0 ? pad : pad * 0.4), hi + (hi > 0 ? pad : pad * 0.4)]
   }, [chartDataReturn])
+  // Small ranges read better with one decimal; wide ranges with whole percents.
+  const returnTickDecimals = returnDomain[1] - returnDomain[0] <= 6 ? 1 : 0
 
   const sortedStocks = useMemo(() => [...byStock].sort((a, b) => {
     switch (stockSort) {
@@ -296,7 +311,7 @@ function Analytics() {
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
                 domain={returnDomain}
-                tickFormatter={v => `${v.toFixed(1)}%`} />
+                tickFormatter={v => `${v.toFixed(returnTickDecimals)}%`} />
               <Tooltip
                 formatter={(value, _name, item) => {
                   const payload = item?.payload || {}
