@@ -2,6 +2,7 @@ try:
     import yfinance as yf
 except Exception:  # yfinance import must never abort app startup
     yf = None
+import gc
 import logging
 import time
 import threading
@@ -189,3 +190,6 @@ def schedule_refresh():
     refresh_cache("US")
     time.sleep(2)
     refresh_cache("KR")
+    # Sweep the pandas frames the batch downloads left behind. Background-only
+    # (never on the request path) so it costs no request latency.
+    gc.collect()

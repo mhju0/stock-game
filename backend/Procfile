@@ -1,1 +1,3 @@
-web: gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker --max-requests 500 --max-requests-jitter 50 --bind 0.0.0.0:$PORT
+# MALLOC_ARENA_MAX caps glibc's per-thread malloc arenas so background threads
+# don't fragment RSS across the container's memory limit (Render OOM fix).
+web: MALLOC_ARENA_MAX=2 gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker --max-requests 500 --max-requests-jitter 50 --bind 0.0.0.0:$PORT

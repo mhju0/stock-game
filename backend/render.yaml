@@ -3,7 +3,10 @@ services:
     name: stock-game-api
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker --max-requests 500 --max-requests-jitter 50 --bind 0.0.0.0:$PORT
+    # MALLOC_ARENA_MAX caps glibc's per-thread malloc arenas so background
+    # threads don't fragment RSS across the memory limit (Render OOM fix).
+    # Kept in sync with backend/Procfile.
+    startCommand: MALLOC_ARENA_MAX=2 gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker --max-requests 500 --max-requests-jitter 50 --bind 0.0.0.0:$PORT
     envVars:
       - key: JWT_SECRET_KEY
         generateValue: true
