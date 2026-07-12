@@ -1,47 +1,47 @@
 # Stock Game — Frontend
 
-[Stock Game](../README.md)의 React 19 + Vite 클라이언트입니다. 모의 투자 시뮬레이터의 UI 전반(인증, 거래, 포트폴리오, Analytics, 게임 세션)을 담당합니다.
+The React 19 + Vite client for [Stock Game](../README.md). It covers the entire UI of the paper-trading simulator: auth, trading, portfolio, analytics, and game sessions.
 
-## 기술 스택
+## Tech stack
 
 - **React 19** + **Vite 8** (HMR, `@vitejs/plugin-react`)
-- **React Router 7** — 인증 가드(`RequireAuth`) 기반 라우팅
-- **TanStack Query (React Query)** — 서버 상태 캐싱 / 무효화
-- **Recharts** — 수익률·자산 배분·시세 차트
-- **react-i18next** — 한국어 / 영어 다국어 (`src/i18n/`, 기본값 `ko`)
-- **jwt-decode** — localStorage JWT에서 사용자 식별
+- **React Router 7** — routing with an auth guard (`RequireAuth`)
+- **TanStack Query (React Query)** — server-state caching / invalidation
+- **Recharts** — return, allocation, and price charts
+- **react-i18next** — Korean / English localization (`src/i18n/`, defaults to `ko`)
+- **jwt-decode** — identifies the user from the JWT in localStorage
 
-## 개발
+## Development
 
 ```bash
 npm install
-echo "VITE_API_URL=http://127.0.0.1:8000" > .env.local   # 미설정 시 127.0.0.1:8000 기본값
+echo "VITE_API_URL=http://127.0.0.1:8000" > .env.local   # defaults to 127.0.0.1:8000 if unset
 npm run dev      # http://localhost:5173
 ```
 
-| 스크립트 | 설명 |
+| Script | Description |
 |---|---|
-| `npm run dev` | 개발 서버 (HMR) |
-| `npm run build` | 프로덕션 빌드 (`dist/`) |
-| `npm run preview` | 빌드 결과 로컬 미리보기 |
+| `npm run dev` | Dev server (HMR) |
+| `npm run build` | Production build (`dist/`) |
+| `npm run preview` | Preview the build locally |
 | `npm run lint` | ESLint |
 
-## 구조
+## Structure
 
 ```
 src/
 ├── pages/        # Login · Register · Dashboard · Analytics · Portfolio
 │                 # Watchlist · Market · Exchange · Transactions · SearchStock · Game
 ├── components/   # TradeModal · ErrorBoundary · MarketFilter · SortSelect
-├── context/      # UserContext — JWT 기반 전역 사용자 상태
-├── query/        # TanStack Query 훅 (account · holdings · watchlist · analytics)
-├── i18n/         # ko.json · en.json (key 완전 동기화)
+├── context/      # UserContext — JWT-based global user state
+├── query/        # TanStack Query hooks (account · holdings · watchlist · analytics)
+├── i18n/         # ko.json · en.json (fully key-synced)
 ├── utils/        # formatters · stockNames
-├── api.js        # fetch 래퍼 (Bearer 토큰 주입, 401 자동 로그아웃)
-├── auth.js       # 토큰 저장/조회/디코딩
-└── config.js     # API 베이스 URL (VITE_API_URL)
+├── api.js        # fetch wrapper (injects the Bearer token, auto-logout on 401)
+├── auth.js       # token storage / retrieval / decoding
+└── config.js     # API base URL (VITE_API_URL)
 ```
 
-## 배포
+## Deployment
 
-Vercel에 정적 호스팅됩니다. `vercel.json`이 SPA rewrite(모든 경로 → `index.html`)와 보안 헤더(`X-Content-Type-Options`, `X-Frame-Options`)를 설정합니다. 백엔드 주소는 `VITE_API_URL` 환경 변수로 주입합니다.
+Hosted as a static site on Vercel. `vercel.json` configures the SPA rewrite (all routes → `index.html`) and security headers (`X-Content-Type-Options`, `X-Frame-Options`). The backend address is injected via the `VITE_API_URL` environment variable.
