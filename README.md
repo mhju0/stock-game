@@ -6,15 +6,14 @@
 
 무료 호스팅 특성상 첫 접속 시 서버 wake-up에 30–60초가 걸릴 수 있습니다.
 
-<!-- TODO: 프로덕션 데모 계정 시딩/검증 완료 후 주석 해제
-데모 계정: `demo` / `demo1234` (회원가입 없이 바로 체험)
--->
+데모 계정: `demo` / `demo1234` — 회원가입 없이 바로 체험할 수 있습니다. 매 배포 시 미리 매매·환전이 완료된 포트폴리오로 초기화됩니다.
 
 ---
 
 ## 스크린샷
 
-<!-- screenshots: added after tomorrow's capture -->
+<!-- 스크린샷은 라이브 배포(demo/demo1234)에서 캡처해 docs/screenshots/ 에 추가 예정 -->
+> 라이브 앱에서 바로 확인하실 수 있습니다 → **[stock-game-gray.vercel.app](https://stock-game-gray.vercel.app)** (`demo` / `demo1234`)
 
 ---
 
@@ -131,8 +130,8 @@ stock-game/
 │   │   ├── models.py        # SQLAlchemy 모델 (User, Holding, Transaction, Snapshot, GameSession)
 │   │   ├── schemas.py       # Pydantic 요청 스키마
 │   │   ├── routes/          # auth · users · stocks · trade · portfolio · watchlist · admin · analytics · game
-│   │   └── services/        # trading · market · stock · exchange · snapshot · valuation · benchmark · static_fundamentals
-│   ├── tests/               # pytest suite (119개 테스트)
+│   │   └── services/        # trading · market · stock · exchange · snapshot · valuation · benchmark · game_session · seed · static_fundamentals
+│   ├── tests/               # pytest suite (122개 테스트)
 │   ├── render.yaml          # Render 배포 설정
 │   └── Procfile             # gunicorn + UvicornWorker 시작 명령
 ├── frontend/
@@ -152,7 +151,7 @@ stock-game/
 
 ## 테스트 / QA
 
-- **Backend pytest** — `backend/tests/`에서 119개 테스트가 통과합니다. 매매·환전(`test_trading.py`), 게임 세션 라이프사이클(`test_game.py`, `test_game_session_service.py`), 포트폴리오/분석(`test_portfolio.py`, `test_analytics.py`), 스냅샷(`test_snapshot_service.py`, `test_snapshot_batch.py`), 인증(`test_auth.py`), 가격/환율 이상값 가드(`test_price_guards.py`), legacy 거래 경로 격리(`test_legacy_trade_isolation.py`) 등을 실제 잔액·DB row·응답 body 값으로 검증합니다.
+- **Backend pytest** — `backend/tests/`에서 122개 테스트가 통과합니다. 매매·환전(`test_trading.py`), 게임 세션 라이프사이클(`test_game.py`, `test_game_session_service.py`), 포트폴리오/분석(`test_portfolio.py`, `test_analytics.py`), 스냅샷(`test_snapshot_service.py`, `test_snapshot_batch.py`), 인증(`test_auth.py`), 가격/환율 이상값 가드(`test_price_guards.py`), legacy 거래 경로 격리(`test_legacy_trade_isolation.py`) 등을 실제 잔액·DB row·응답 body 값으로 검증합니다.
 - **회귀 스모크** — `./scripts/regression-smoke.sh`(`REGRESSION_SMOKE.md` 참고)가 in-memory DB와 mocked market data로 로그인 → 게임 생성 → 매매/환전 → cross-user 404 → 세션 격리 → delete 경계까지 한 번에 확인하는 pre-commit 게이트입니다. Production credential이나 Supabase 접근이 필요 없습니다.
 - **Frontend navigation 체크** — `npm run smoke:navigation`(`frontend/scripts/check-session-navigation.mjs`)이 Watchlist/Market에서 종목 상세로의 라우팅 패턴이 소스 레벨에서 유지되는지 확인합니다. 브라우저 E2E는 아니며, 리팩터링 중 회귀를 잡아내는 tripwire 역할입니다.
 
@@ -163,6 +162,9 @@ stock-game/
 - **로컬 SQLite fallback** — Production은 Supabase Postgres를 사용합니다. 로컬 SQLite DB(`backend/stock_game.db`)는 개발용이며 재생성될 수 있습니다.
 - **yfinance 안정성** — 비공식 데이터 소스로, 일시적 장애 시 일부 시세가 비어 보일 수 있습니다 (캐시로 완화).
 - **콜드 스타트** — Render 무료 티어 백엔드는 첫 요청 시 약 30–60초의 wake-up 지연이 있습니다.
+- **무료 티어 메모리** — pandas/yfinance 베이스라인이 512MB 인스턴스에 비해 크므로, `MALLOC_ARENA_MAX`로 glibc malloc arena를 제한해 OOM 재시작을 완화했습니다.
+- **인증 rate limiting 부재** — `/auth/login`·`/register`에 rate limiting이 없어 원론적으로 무차별 대입에 노출됩니다. 실제 자금·개인정보가 없는 데모 특성상 감수한 트레이드오프이며, 운영 전환 시 `slowapi` 등으로 추가할 지점입니다.
+- **약한 비밀번호 정책** — 최소 4자만 요구합니다(가상 자금 데모 기준). 실서비스라면 복잡도·길이 요건을 강화해야 합니다.
 
 ---
 

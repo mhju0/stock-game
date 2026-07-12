@@ -269,7 +269,7 @@ Focus:
 
 Goal: freeze features and prepare final deployment/submission confidence.
 
-Status: release validation in progress. Do not add feature scope during this phase.
+Status: finalization pass complete (security review, UX polish, docs). Feature-frozen. Do not add feature scope during this phase.
 
 Focus:
 
@@ -281,6 +281,15 @@ Focus:
 - final commit history sanity
 - no new feature creep
 - no leaderboard/global ranking
+
+### Finalization pass record (release freeze)
+
+- Security review — no critical issues. Verified: prod secrets not in repo (`.env` gitignored, none in history), JWT (HS256, `exp`, secret required at boot, no alg-confusion), cross-user session access returns 404, `/admin/*` gated by `ENABLE_DEV_TOOLS` + auth and self-scoped, ORM-only (no SQL injection), trade path enforces insufficient-funds + oversell guards. Documented (not fixed — acceptable for a no-real-money demo): no auth rate limiting, weak password floor (min 4).
+- UX polish (feature-freeze safe) — chart series/axes now read CSS tokens (`var(--accent/--positive/--negative/--text-secondary)`) so they render on-brand in the default dark theme instead of pinned light hexes; `SearchStock` distinguishes a fetch failure from an empty result (error + retry); removed a hardcoded bilingual string in `TradeModal`, a redundant sector row in `Portfolio`, and the stale "모의 투자" default card title; retired the stale "liquid glass / prism" CSS banner comment.
+- README — uncommented demo account (`demo`/`demo1234`), test count 119 → 122, added `game_session`/`seed` services and the security known-limitations.
+- Deferred (documented, not built during freeze) — USD-first-buy inline FX link in `TradeModal`; `Watchlist` sort → `SortSelect`/i18n refactor.
+- Deploy config to confirm in Render — `ENABLE_DEV_TOOLS` unset, `JWT_SECRET_KEY` set.
+- Pending manual step — capture live screenshots (`demo`/`demo1234`) → `docs/screenshots/`, embed in README (blocked on live backend availability during the OOM recovery).
 
 ## Known warnings
 
@@ -333,3 +342,17 @@ Default to sonnet/medium when unclear. Use higher effort for data integrity, aut
 ## Git commit guidance
 
 When giving the user commands to run their own commit, provide `git add` and `git commit` together in one bash block. Use explicit file paths and a professional English commit message. Do not use placeholders. Never suggest `git add .`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live as GitHub issues in `mhju0/stock-game` (use the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
