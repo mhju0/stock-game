@@ -328,7 +328,7 @@ function Analytics() {
                 labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
               />
-              <Line type="linear" dataKey="total_pct" stroke="#2d5fe3" strokeWidth={2} dot={false} name="total_pct" />
+              <Line type="linear" dataKey="total_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="total_pct" />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -339,11 +339,11 @@ function Analytics() {
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>{t('analytics.allocationOverTimeHint')}</div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 16, height: 2, background: '#2d5fe3', borderRadius: 1 }} />
+            <div style={{ width: 16, height: 2, background: 'var(--accent)', borderRadius: 1 }} />
             <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.stocksShare')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 16, height: 2, background: '#8e8e93', borderRadius: 1, borderTop: '1px dashed #8e8e93' }} />
+            <div style={{ width: 16, height: 2, background: 'var(--text-secondary)', borderRadius: 1, borderTop: '1px dashed var(--text-secondary)' }} />
             <span style={{ color: 'var(--text-secondary)' }}>{t('analytics.cashShare')}</span>
           </div>
         </div>
@@ -364,8 +364,8 @@ function Analytics() {
                 labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
               />
-              <Line type="monotone" dataKey="stocks_pct" stroke="#2d5fe3" strokeWidth={2} dot={false} name="stocks_pct" />
-              <Line type="monotone" dataKey="cash_pct" stroke="#8e8e93" strokeWidth={1.5} dot={false}
+              <Line type="monotone" dataKey="stocks_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="stocks_pct" />
+              <Line type="monotone" dataKey="cash_pct" stroke="var(--text-secondary)" strokeWidth={1.5} dot={false}
                 strokeDasharray="4 4" name="cash_pct" />
             </LineChart>
           </ResponsiveContainer>

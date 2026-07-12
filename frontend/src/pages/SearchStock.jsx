@@ -25,6 +25,8 @@ function SearchStock() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [searching, setSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const [retryNonce, setRetryNonce] = useState(0)
   const [tradeTicker, setTradeTicker] = useState(null)
   const [message, setMessage] = useState('')
   const [stockLoadError, setStockLoadError] = useState('')
@@ -38,17 +40,25 @@ function SearchStock() {
     if (normalizedQuery.length < 1) {
       setResults([])
       setHasSearched(false)
+      setSearchError('')
       return
     }
     const timer = setTimeout(async () => {
       setSearching(true)
-      const data = await apiFetch(`/stock/search/${encodeURIComponent(normalizedQuery)}`)
+      setSearchError('')
+      // apiFetch returns null on failure; the onError callback lets us tell a
+      // real request failure apart from a legitimately empty result set.
+      const data = await apiFetch(
+        `/stock/search/${encodeURIComponent(normalizedQuery)}`,
+        {},
+        msg => setSearchError(msg),
+      )
       setResults(Array.isArray(data) ? data : [])
       setHasSearched(true)
       setSearching(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query])
+  }, [query, retryNonce])
 
   useEffect(() => {
     if (!selectedTicker) return
@@ -158,7 +168,16 @@ function SearchStock() {
           </div>
         )}
 
-        {hasSearched && !searching && query.trim().length > 0 && results.length === 0 && (
+        {searchError && !searching && (
+          <div className="search-empty-state">
+            <div style={{ marginBottom: 12 }}>{searchError}</div>
+            <button type="button" className="btn btn-primary" onClick={() => setRetryNonce(n => n + 1)}>
+              {t('common.retry')}
+            </button>
+          </div>
+        )}
+
+        {hasSearched && !searching && !searchError && query.trim().length > 0 && results.length === 0 && (
           <div className="search-empty-state">
             {t('stock.noSearchResults')}
           </div>
@@ -226,7 +245,7 @@ function SearchStock() {
                     formatter={(value) => [stock.currency === 'KRW' ? `₩${Math.round(value).toLocaleString()}` : `$${value.toFixed(2)}`, '']}
                     contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'var(--font-body)', background: 'var(--card-bg)' }}
                   />
-                  <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? '#12855a' : '#d1463c'}
+                  <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? 'var(--positive)' : 'var(--negative)'}
                     strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>

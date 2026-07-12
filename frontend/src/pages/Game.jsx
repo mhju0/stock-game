@@ -479,17 +479,17 @@ function Game() {
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('game.chartCaption')}</div>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={mergedChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false}
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
                   tickFormatter={v => `${new Date(v).getMonth() + 1}/${new Date(v).getDate()}`} />
-                <YAxis tick={{ fontSize: 11, fill: '#86868b' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
                 <Tooltip formatter={(value, name) => [`${value?.toFixed(2)}%`, name]}
                   labelStyle={{ fontSize: 12 }} contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13 }} />
                 <Legend />
-                <Line type="monotone" dataKey="portfolio" stroke="#2d5fe3" strokeWidth={2}
-                  dot={mergedChartData.length <= 2 ? { r: 5, fill: '#2d5fe3', stroke: '#fff', strokeWidth: 2 } : false}
+                <Line type="monotone" dataKey="portfolio" stroke="var(--accent)" strokeWidth={2}
+                  dot={mergedChartData.length <= 2 ? { r: 5, fill: 'var(--accent)', stroke: '#fff', strokeWidth: 2 } : false}
                   name={t('game.myPortfolio')} connectNulls />
-                <Line type="monotone" dataKey="benchmark" stroke="#86868b" strokeWidth={1.5}
-                  dot={mergedChartData.length <= 2 ? { r: 4, fill: '#86868b', stroke: '#fff', strokeWidth: 2 } : false}
+                <Line type="monotone" dataKey="benchmark" stroke="var(--text-secondary)" strokeWidth={1.5}
+                  dot={mergedChartData.length <= 2 ? { r: 4, fill: 'var(--text-secondary)', stroke: '#fff', strokeWidth: 2 } : false}
                   strokeDasharray="4 4"
                   name={benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'} connectNulls />
               </LineChart>

@@ -253,7 +253,7 @@ function TradeModal({
                   {ticker} · {stock.market}
                 </div>
                 <div style={{ fontSize: 13, marginTop: 4, color: myHolding > 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                  {i18n.language === 'ko' ? `보유: ${safeWholeHolding}주` : `Holdings: ${safeWholeHolding} shares`}
+                  {t('dashboard.holdings')}: {t('holdings.shares', { count: safeWholeHolding })}
                 </div>
               </>
             )}

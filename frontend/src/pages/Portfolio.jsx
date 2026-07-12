@@ -215,7 +215,6 @@ function Portfolio() {
 
               <div style={{ flex: 1, minWidth: 0, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div className="row-meta" style={{ fontSize: 13, width: '100%' }}>{t('holdings.shares', { count: h.quantity })}</div>
-                  {h.sector && <div className="row-meta" style={{ fontSize: 12, color: 'var(--text-secondary)', width: '100%' }}>{h.sector}</div>}
               </div>
 
               <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
