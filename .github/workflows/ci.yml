@@ -13,8 +13,6 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    env:
-      JWT_SECRET_KEY: ci-verification-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
