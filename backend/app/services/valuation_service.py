@@ -56,11 +56,6 @@ def compute_holdings_value_krw(
     return holdings_value_krw
 
 
-def compute_user_total_value_krw(user, holdings, rate: float, prices: dict[str, float | None] | None = None) -> float:
-    holdings_value_krw = compute_holdings_value_krw(holdings, rate, prices)
-    return user.balance_krw + (user.balance_usd * rate) + holdings_value_krw
-
-
 def compute_session_total_value_krw(
     session,
     holdings,
