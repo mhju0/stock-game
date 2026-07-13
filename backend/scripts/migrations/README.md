@@ -1,26 +1,7 @@
-# Manual migrations
+# Historical session-scope migration
 
-This project does not use Alembic. The FastAPI app calls
-`Base.metadata.create_all()` on startup, which creates missing tables only; it
-does not alter existing production or local tables.
+`001_session_scope.py` is the one-time additive migration that introduced session-scoped portfolios. It has already been applied to production.
 
-Run production migrations manually after taking a database backup. For the
-session-scoped portfolio migration, Phase 1 is additive only:
+Do not run this script against an existing database as part of normal development or deployment. FastAPI's startup path creates missing tables for a new local database, but it does not alter an existing schema.
 
-```bash
-cd backend
-python scripts/migrations/001_session_scope.py
-python scripts/migrations/001_session_scope.py --dry-run
-python scripts/migrations/001_session_scope.py --apply
-```
-
-The script detects Postgres vs SQLite from the database URL. It defaults to
-`DATABASE_URL` when set, otherwise local `backend/stock_game.db`.
-
-Phase 1 does not:
-- make `game_session_id` non-null
-- create the final holdings unique index
-- consolidate duplicate holdings
-- change route/runtime behavior
-- touch user-level watchlist rows
-
+If a future schema-drift investigation proves this migration is required for a specific database, take a backup first and review the script with that database's state in mind. The script remains in the repository as the historical record of that production change.
