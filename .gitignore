@@ -59,11 +59,14 @@ lerna-debug.log*
 .claude/
 .codex/
 .cursor/
+.continue/
+.cline/
+.roo/
 .serena/
 .aider*
 .copilot/
+.windsurf/
 AGENTS.md
-CLAUDE.md
 GEMINI.md
 .github/copilot-instructions.md
 docs/agents/

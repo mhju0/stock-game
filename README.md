@@ -42,7 +42,7 @@ flowchart LR
 
 ## Run locally
 
-Prerequisites: Python 3.11 and Node.js 18+.
+Prerequisites: Python 3.11 and Node.js 20.19+ (or 22.12+).
 
 ### Backend
 
