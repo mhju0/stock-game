@@ -4,13 +4,22 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from "../components/TradeModal";
+import SortSelect from "../components/SortSelect";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/userContext";
 import { useWatchlistQuery, queryKeys } from '../query/queries'
 import { gamePath, isSessionEnded } from "../sessionRoutes";
 
 
-function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort, setSort, i18n, t, isKR }) {
+const WATCHLIST_SORT_OPTIONS = [
+  ['name_asc', 'sort.nameAsc'],
+  ['name_desc', 'sort.nameDesc'],
+  ['price_desc', 'sort.priceDesc'],
+  ['price_asc', 'sort.priceAsc'],
+]
+
+
+function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort, setSort, i18n, t }) {
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
       const nameA = getStockName(a.ticker, a.name, i18n.language)
@@ -33,13 +42,11 @@ function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort
         <div className="card-title" style={{ marginBottom: 0 }}>
           {title} ({items.length})
         </div>
-        <select className="input" aria-label={t('sort.ariaLabel')} style={{ width: 'auto', fontSize: 12, padding: '4px 8px', minWidth: 100 }}
-          value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="name_asc">{isKR ? '이름 ㄱ→ㅎ' : 'Name A→Z'}</option>
-          <option value="name_desc">{isKR ? '이름 ㅎ→ㄱ' : 'Name Z→A'}</option>
-          <option value="price_desc">{isKR ? '가격 ↓' : 'Price ↓'}</option>
-          <option value="price_asc">{isKR ? '가격 ↑' : 'Price ↑'}</option>
-        </select>
+        <SortSelect
+          value={sort}
+          onChange={e => setSort(e.target.value)}
+          options={WATCHLIST_SORT_OPTIONS}
+        />
       </div>
       {sorted.map((item) => {
         const name = getStockName(item.ticker, item.name, i18n.language);
@@ -154,7 +161,7 @@ function Watchlist() {
       </div>
 
       <WatchlistSection
-        title={i18n.language === 'ko' ? '🇰🇷 한국' : '🇰🇷 Korea'}
+        title={t('watchlist.koreaSection')}
         items={krStocks}
         onOpenDetails={openStockDetails}
         onTrade={setTradeTicker}
@@ -163,11 +170,10 @@ function Watchlist() {
         setSort={setSortKR}
         i18n={i18n}
         t={t}
-        isKR={true}
       />
 
       <WatchlistSection
-        title={i18n.language === 'ko' ? '🇺🇸 미국' : '🇺🇸 US'}
+        title={t('watchlist.usSection')}
         items={usStocks}
         onOpenDetails={openStockDetails}
         onTrade={setTradeTicker}
@@ -176,7 +182,6 @@ function Watchlist() {
         setSort={setSortUS}
         i18n={i18n}
         t={t}
-        isKR={false}
       />
 
       {tradeTicker && (

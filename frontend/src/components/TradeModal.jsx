@@ -1,6 +1,7 @@
 import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/userContext";
 import {
@@ -10,6 +11,7 @@ import {
   useWatchlistContainsQuery,
   useWatchlistToggleMutation,
 } from '../query/queries'
+import { gamePath } from '../sessionRoutes'
 
 
 function TradeModal({
@@ -21,6 +23,7 @@ function TradeModal({
   tradeDisabledReason = "",
 }) {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { currentUserId } = useContext(UserContext);
 
   const [stock, setStock] = useState(null);
@@ -191,6 +194,7 @@ function TradeModal({
   const showHoldingWarning = !invalidQuantity && exceedsHolding && confirmAction === 'SELL';
   const tradeUnavailableMessage = tradeDisabledReason || sessionDataError?.message || '';
   const tradeBlocked = Boolean(tradeUnavailableMessage);
+  const showUsdExchangeLink = showCashWarning && stock?.currency === 'USD' && !tradeBlocked;
   const confirmDisabled = submitting ||
     tradeBlocked ||
     invalidQuantity ||
@@ -213,6 +217,10 @@ function TradeModal({
       setQuantity(nextValue);
       setConfirmAction(null);
     }
+  };
+  const openExchange = () => {
+    onClose();
+    navigate(sessionId ? gamePath(sessionId, 'exchange') : '/exchange');
   };
 
   if (loading && !showDelayedLoading) return null;
@@ -377,7 +385,16 @@ function TradeModal({
                 ) : (
                   invalidQuantity && <div>{t("trade.quantityInvalid")}</div>
                 )}
-                {showCashWarning && <div>{t("trade.exceedsCash")}</div>}
+                {showCashWarning && (
+                  <div>
+                    <div>{t("trade.exceedsCash")}</div>
+                    {showUsdExchangeLink && (
+                      <button type="button" className="trade-fx-link" onClick={openExchange}>
+                        {t('trade.exchangeForUsd')}
+                      </button>
+                    )}
+                  </div>
+                )}
                 {showHoldingWarning && <div>{t("trade.exceedsHolding")}</div>}
               </div>
             )}

@@ -12,8 +12,16 @@ from fastapi.testclient import TestClient
 
 from app.database import Base, get_db
 from app.main import app
+from app.services.auth_rate_limit import auth_rate_limiter
 
 SQLALCHEMY_TEST_URL = "sqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def reset_auth_rate_limiter():
+    auth_rate_limiter.reset()
+    yield
+    auth_rate_limiter.reset()
 
 
 @pytest.fixture(scope="function")

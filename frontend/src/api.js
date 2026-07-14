@@ -37,6 +37,9 @@ function getResponseErrorMessage(data, status, path) {
   if (status === 409 && path === '/auth/register' && detail === 'Username already taken') {
     return i18n.t('auth.usernameTaken')
   }
+  if (status === 429 && (path === '/auth/login' || path === '/auth/register')) {
+    return i18n.t('auth.rateLimited')
+  }
 
   if (detail) {
     const needMatch = detail.match(INSUFFICIENT_BALANCE_NEED_RE)

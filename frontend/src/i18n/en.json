@@ -67,6 +67,8 @@
     "mcapAsc": "Market Cap ↑",
     "nameAsc": "Name A→Z",
     "nameDesc": "Name Z→A",
+    "priceDesc": "Price ↓",
+    "priceAsc": "Price ↑",
     "valueDesc": "Value ↓",
     "valueAsc": "Value ↑",
     "pnlDesc": "P&L ↓",
@@ -123,6 +125,7 @@
     "quantityWholeNumber": "Enter a whole number of shares.",
     "exceedsCash": "This is above your available cash for buying.",
     "exceedsHolding": "This is above the quantity you can sell.",
+    "exchangeForUsd": "Exchange KRW to USD",
     "insufficientBalanceNeed": "Insufficient {{currency}} balance. Need {{need}}, have {{have}}",
     "insufficientBalanceHave": "Insufficient {{currency}}. Have {{have}}"
   },
@@ -148,7 +151,9 @@
     "add": "Add",
     "trade": "Trade",
     "remove": "Remove",
-    "delayed": "Prices are 15-min delayed"
+    "delayed": "Prices are 15-min delayed",
+    "koreaSection": "🇰🇷 Korea",
+    "usSection": "🇺🇸 US"
   },
   "transactions": {
     "title": "Transactions",
@@ -226,7 +231,8 @@
     "hasAccount": "Already have an account?",
     "fillAllFields": "Please fill in all fields",
     "passwordMismatch": "Passwords do not match",
-    "passwordTooShort": "Password must be at least 4 characters",
+    "passwordRequirements": "Use at least 8 characters with a letter and a number.",
+    "rateLimited": "Too many attempts. Please wait a moment and try again.",
     "coldStartHint": "Waking up the server… the free-tier backend can take up to a minute on the first request.",
     "demoHint": "Demo account — username: demo · password: demo1234",
     "invalidCredentials": "Invalid username or password",

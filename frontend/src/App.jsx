@@ -1,24 +1,30 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useContext } from "react";
+import { lazy, Suspense, useContext } from "react";
 import { UserContext } from "./context/userContext";
 import { isAuthenticated } from "./auth";
 import { useSessionDetailQuery, useSessionListQuery } from "./query/queries";
 import { gamePath, getSessionIdFromPath, sessionStatusLabelKey } from "./sessionRoutes";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import SearchStock from "./pages/SearchStock";
-import Portfolio from "./pages/Portfolio";
-import Transactions from "./pages/Transactions";
-import Exchange from "./pages/Exchange";
-import Watchlist from "./pages/Watchlist";
-import Market from "./pages/Market";
-import Analytics from "./pages/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary";
-import Game from "./pages/Game";
-import Games from "./pages/Games";
 import "./App.css";
+
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const SearchStock = lazy(() => import("./pages/SearchStock"));
+const Portfolio = lazy(() => import("./pages/Portfolio"));
+const Transactions = lazy(() => import("./pages/Transactions"));
+const Exchange = lazy(() => import("./pages/Exchange"));
+const Watchlist = lazy(() => import("./pages/Watchlist"));
+const Market = lazy(() => import("./pages/Market"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Game = lazy(() => import("./pages/Game"));
+const Games = lazy(() => import("./pages/Games"));
+
+function RouteLoading() {
+  const { t } = useTranslation();
+  return <p>{t("common.loading")}</p>;
+}
 
 function RequireAuth({ children }) {
   const location = useLocation();
@@ -180,31 +186,33 @@ function AppLayout() {
       </nav>
       <main className="main">
         <ErrorBoundary>
-          <Routes>
-            <Route path="/watchlist" element={<ResolveGameRedirect section="watchlist" />} />
-            <Route path="/market" element={<Market />} />
-            <Route path="/games" element={<Games />} />
-            <Route path="/games/new" element={<Games startSetup />} />
-            <Route path="/games/:sessionId" element={<SessionGuard />}>
-              <Route index element={<Game />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="portfolio" element={<Portfolio />} />
-              <Route path="search" element={<SearchStock />} />
-              <Route path="exchange" element={<Exchange />} />
-              <Route path="watchlist" element={<Watchlist />} />
-              <Route path="market" element={<Market />} />
-              <Route path="transactions" element={<Transactions />} />
-              <Route path="analytics" element={<Analytics />} />
-            </Route>
-            <Route path="/dashboard" element={<ResolveGameRedirect section="dashboard" />} />
-            <Route path="/analytics" element={<ResolveGameRedirect section="analytics" />} />
-            <Route path="/search" element={<ResolveGameRedirect section="search" />} />
-            <Route path="/portfolio" element={<ResolveGameRedirect section="portfolio" />} />
-            <Route path="/exchange" element={<ResolveGameRedirect section="exchange" />} />
-            <Route path="/transactions" element={<ResolveGameRedirect section="transactions" />} />
-            <Route path="/" element={<ResolveGameRedirect section="status" />} />
-            <Route path="*" element={<Navigate to="/games" replace />} />
-          </Routes>
+          <Suspense fallback={<RouteLoading />}>
+            <Routes>
+              <Route path="/watchlist" element={<ResolveGameRedirect section="watchlist" />} />
+              <Route path="/market" element={<Market />} />
+              <Route path="/games" element={<Games />} />
+              <Route path="/games/new" element={<Games startSetup />} />
+              <Route path="/games/:sessionId" element={<SessionGuard />}>
+                <Route index element={<Game />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="portfolio" element={<Portfolio />} />
+                <Route path="search" element={<SearchStock />} />
+                <Route path="exchange" element={<Exchange />} />
+                <Route path="watchlist" element={<Watchlist />} />
+                <Route path="market" element={<Market />} />
+                <Route path="transactions" element={<Transactions />} />
+                <Route path="analytics" element={<Analytics />} />
+              </Route>
+              <Route path="/dashboard" element={<ResolveGameRedirect section="dashboard" />} />
+              <Route path="/analytics" element={<ResolveGameRedirect section="analytics" />} />
+              <Route path="/search" element={<ResolveGameRedirect section="search" />} />
+              <Route path="/portfolio" element={<ResolveGameRedirect section="portfolio" />} />
+              <Route path="/exchange" element={<ResolveGameRedirect section="exchange" />} />
+              <Route path="/transactions" element={<ResolveGameRedirect section="transactions" />} />
+              <Route path="/" element={<ResolveGameRedirect section="status" />} />
+              <Route path="*" element={<Navigate to="/games" replace />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </main>
     </>
@@ -215,15 +223,17 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/*" element={
-            <RequireAuth>
-              <AppLayout />
-            </RequireAuth>
-          } />
-        </Routes>
+        <Suspense fallback={<RouteLoading />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/*" element={
+              <RequireAuth>
+                <AppLayout />
+              </RequireAuth>
+            } />
+          </Routes>
+        </Suspense>
       </div>
     </BrowserRouter>
   );

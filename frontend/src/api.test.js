@@ -49,4 +49,26 @@ describe('throwing API requests', () => {
       retryable: false,
     })
   })
+
+  it('localizes authentication throttling and marks it retryable', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn().mockReturnValue(null),
+      removeItem: vi.fn(),
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: vi.fn().mockResolvedValue({
+        detail: 'Too many authentication attempts. Try again later.',
+      }),
+    }))
+    const onError = vi.fn()
+
+    await expect(apiFetch('/auth/login', {}, onError)).resolves.toBeNull()
+
+    expect(onError).toHaveBeenCalledWith('auth.rateLimited', {
+      status: 429,
+      retryable: true,
+    })
+  })
 })

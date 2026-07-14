@@ -1543,6 +1543,25 @@ body {
   text-align: center;
 }
 
+.trade-fx-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  margin-top: 5px;
+  padding: 2px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.trade-fx-link:hover,
+.trade-fx-link:focus-visible {
+  color: var(--text-primary);
+}
+
 .trade-order-summary {
   margin-bottom: 12px;
 }

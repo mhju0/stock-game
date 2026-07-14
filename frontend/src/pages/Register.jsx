@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { apiPost } from '../api'
 import { setToken } from '../auth'
+import { isStrongPassword } from '../utils/passwordPolicy'
 
 function Register() {
   const { t, i18n } = useTranslation()
@@ -23,8 +24,8 @@ function Register() {
       setError(t('auth.passwordMismatch'))
       return
     }
-    if (password.length < 4) {
-      setError(t('auth.passwordTooShort'))
+    if (!isStrongPassword(password)) {
+      setError(t('auth.passwordRequirements'))
       return
     }
     setLoading(true)
@@ -84,13 +85,16 @@ function Register() {
             <label htmlFor="register-password" style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
               {t('auth.password')}
             </label>
-            <input id="register-password" className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('auth.password')} style={{ width: '100%', boxSizing: 'border-box' }} />
+            <input id="register-password" className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('auth.password')} autoComplete="new-password" style={{ width: '100%', boxSizing: 'border-box' }} />
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.45, margin: '6px 0 0' }}>
+              {t('auth.passwordRequirements')}
+            </p>
           </div>
           <div>
             <label htmlFor="register-confirm-password" style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>
               {t('auth.confirmPassword')}
             </label>
-            <input id="register-confirm-password" className="input" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t('auth.confirmPassword')} style={{ width: '100%', boxSizing: 'border-box' }} />
+            <input id="register-confirm-password" className="input" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t('auth.confirmPassword')} autoComplete="new-password" style={{ width: '100%', boxSizing: 'border-box' }} />
           </div>
 
           {error && <p style={{ color: 'var(--negative)', fontSize: 13, fontFamily: 'var(--font-display)', margin: 0 }}>{error}</p>}

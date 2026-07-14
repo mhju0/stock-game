@@ -67,6 +67,8 @@
     "mcapAsc": "시가총액 ↑",
     "nameAsc": "이름 ㄱ→ㅎ",
     "nameDesc": "이름 ㅎ→ㄱ",
+    "priceDesc": "가격 ↓",
+    "priceAsc": "가격 ↑",
     "valueDesc": "평가액 ↓",
     "valueAsc": "평가액 ↑",
     "pnlDesc": "손익 ↓",
@@ -123,6 +125,7 @@
     "quantityWholeNumber": "주식 수량은 정수로 입력해 주세요.",
     "exceedsCash": "매수 가능 금액을 초과했어요.",
     "exceedsHolding": "매도하려는 수량이 보유 수량보다 많아요.",
+    "exchangeForUsd": "KRW를 USD로 환전하기",
     "insufficientBalanceNeed": "{{currency}} 잔고가 부족해요. 필요 금액 {{need}}, 보유 금액 {{have}}",
     "insufficientBalanceHave": "{{currency}} 잔고가 부족해요. 보유 금액 {{have}}"
   },
@@ -148,7 +151,9 @@
     "add": "추가",
     "trade": "거래",
     "remove": "삭제",
-    "delayed": "시세는 15분 지연돼요"
+    "delayed": "시세는 15분 지연돼요",
+    "koreaSection": "🇰🇷 한국",
+    "usSection": "🇺🇸 미국"
   },
   "transactions": {
     "title": "거래내역",
@@ -226,7 +231,8 @@
     "hasAccount": "이미 계정이 있으신가요?",
     "fillAllFields": "모든 항목을 입력해 주세요",
     "passwordMismatch": "비밀번호가 일치하지 않습니다",
-    "passwordTooShort": "비밀번호는 4자 이상이어야 합니다",
+    "passwordRequirements": "문자와 숫자를 포함해 8자 이상 입력해 주세요.",
+    "rateLimited": "시도 횟수가 너무 많아요. 잠시 후 다시 시도해 주세요.",
     "coldStartHint": "서버를 깨우는 중입니다… 무료 플랜 백엔드는 첫 요청 시 최대 1분 정도 걸릴 수 있습니다.",
     "demoHint": "데모 계정 — 아이디: demo · 비밀번호: demo1234",
     "invalidCredentials": "아이디 또는 비밀번호가 올바르지 않아요",

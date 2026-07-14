@@ -8,6 +8,24 @@ Stock Game is a full-stack paper-trading simulator for US and Korean equities. I
 
 Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Render API uses free hosting, so the first request can take 30–60 seconds while the service starts.
 
+## Screenshots
+
+### Game overview
+
+![Demo game overview](docs/screenshots/games-overview.jpg)
+
+### Active game and benchmark
+
+![Active game status with benchmark comparison](docs/screenshots/game-status.jpg)
+
+### Portfolio
+
+![Demo portfolio holdings and allocation](docs/screenshots/portfolio.jpg)
+
+### Mobile replay setup
+
+![Replay setup prefilled from an ended game on mobile](docs/screenshots/mobile-replay.jpg)
+
 ## Highlights
 
 - Session-scoped games with configurable capital and duration; completed games remain available as read-only results.
@@ -51,6 +69,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env
 # Set JWT_SECRET_KEY in .env, then:
 uvicorn app.main:app --reload
@@ -94,7 +113,7 @@ The regression smoke covers authentication, games, trading, FX, analytics, owner
 
 - Market data comes from yfinance, an unofficial source; the app uses caching and static fundamentals as fallbacks, but quotes can still be unavailable during an outage.
 - The free Render service can cold-start slowly.
-- This is a virtual-money demo. Login/register endpoints do not have rate limiting, and the password minimum is intentionally lightweight.
+- Authentication throttling is process-local and resets whenever the worker restarts, including deploys and routine recycling; a multi-worker production deployment should move the counters to a shared store such as Redis.
 
 ## License
 
