@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.models import GameSession, User
 
 
-NON_TRADEABLE_STATUSES = {"completed", "expired", "archived"}
+TERMINAL_SESSION_STATES = {"completed", "archived"}
+NON_TRADEABLE_STATES = TERMINAL_SESSION_STATES | {"expired"}
 
 
 def _as_aware_utc(value: datetime | None) -> datetime | None:
@@ -25,6 +26,26 @@ def is_session_expired(session: GameSession, now: datetime | None = None) -> boo
         return False
     current_time = _as_aware_utc(now) or datetime.now(timezone.utc)
     return end_date <= current_time
+
+
+def resolve_session_lifecycle_state(
+    session: GameSession,
+    now: datetime | None = None,
+) -> str:
+    """Return the canonical Lifecycle State for one Game Session.
+
+    Explicit terminal states win, elapsed sessions are expired, then explicit
+    non-terminal state applies. Only rows without an explicit state consult the
+    legacy ``is_active`` adapter.
+    """
+    status = (session.status or "").lower()
+    if status in TERMINAL_SESSION_STATES:
+        return status
+    if is_session_expired(session, now):
+        return "expired"
+    if status:
+        return status
+    return "active" if session.is_active else "completed"
 
 
 def get_owned_session(
@@ -51,23 +72,38 @@ def get_owned_session(
     return session
 
 
-def get_current_session(db: Session, current_user: User) -> GameSession | None:
-    """Transitional helper for existing single-active-session behavior.
+def get_active_sessions(db: Session, current_user: User) -> list[GameSession]:
+    """Return this user's active Game Sessions in newest-first order.
 
-    Old rows only have is_active. New rows may also use status="active".
-    The newest matching session wins so existing routes can safely preserve
-    their current active-game behavior until they become explicitly session
-    scoped.
+    The SQL query narrows rows to states that can resolve as active; lifecycle
+    resolution remains the canonical final decision because expiry is computed.
     """
-    return (
+    sessions = (
         db.query(GameSession)
         .filter(
             GameSession.user_id == current_user.id,
-            or_(GameSession.is_active == True, GameSession.status == "active"),
+            or_(
+                func.lower(GameSession.status) == "active",
+                and_(
+                    or_(GameSession.status.is_(None), GameSession.status == ""),
+                    GameSession.is_active.is_(True),
+                ),
+            ),
         )
         .order_by(GameSession.start_date.desc(), GameSession.id.desc())
-        .first()
+        .all()
     )
+    return [
+        session
+        for session in sessions
+        if resolve_session_lifecycle_state(session) == "active"
+    ]
+
+
+def get_current_session(db: Session, current_user: User) -> GameSession | None:
+    """Return the newest active Game Session for legacy current-session paths."""
+    sessions = get_active_sessions(db, current_user)
+    return sessions[0] if sessions else None
 
 
 def get_tradeable_session(
@@ -79,11 +115,11 @@ def get_tradeable_session(
 ) -> GameSession:
     """Load an owned session and reject sessions that should not accept trades."""
     session = get_owned_session(db, current_user, session_id, for_update=for_update)
-    status = (session.status or "").lower()
-    if status in NON_TRADEABLE_STATUSES:
-        raise HTTPException(status_code=400, detail="Game session is not tradeable")
-    if is_session_expired(session):
+    lifecycle_state = resolve_session_lifecycle_state(session)
+    if lifecycle_state == "expired":
         raise HTTPException(status_code=400, detail="Game session has expired")
+    if lifecycle_state in NON_TRADEABLE_STATES:
+        raise HTTPException(status_code=400, detail="Game session is not tradeable")
     return session
 
 

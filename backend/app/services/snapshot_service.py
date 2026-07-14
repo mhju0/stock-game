@@ -1,11 +1,11 @@
 import logging
 
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.models import User, Holding, PortfolioSnapshot, GameSession
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
     ensure_session_cash_initialized,
+    get_active_sessions,
     get_current_session,
 )
 
@@ -151,14 +151,7 @@ def run_snapshot_batch(db: Session) -> int:
     ok = 0
     for user in users:
         try:
-            sessions = (
-                db.query(GameSession)
-                .filter(
-                    GameSession.user_id == user.id,
-                    or_(GameSession.is_active.is_(True), GameSession.status == "active"),
-                )
-                .all()
-            )
+            sessions = get_active_sessions(db, user)
             if sessions:
                 for session in sessions:
                     take_session_snapshot(db, user_id=user.id, game_session_id=session.id)

@@ -13,6 +13,7 @@ from app.services.game_session_service import (
     ensure_session_cash_initialized,
     get_current_session,
     get_owned_session,
+    resolve_session_lifecycle_state,
 )
 from app.services.valuation_service import (
     compute_session_total_value_krw,
@@ -35,24 +36,6 @@ def _as_aware_utc(value: datetime | None) -> datetime | None:
 def _iso(value: datetime | None) -> str | None:
     aware = _as_aware_utc(value)
     return aware.isoformat() if aware else None
-
-
-def _is_expired(session: GameSession, now: datetime | None = None) -> bool:
-    end_date = _as_aware_utc(session.end_date)
-    if end_date is None:
-        return False
-    return end_date <= (now or datetime.now(timezone.utc))
-
-
-def _effective_status(session: GameSession, now: datetime | None = None) -> str:
-    status = (session.status or "").lower()
-    if status in {"completed", "archived"}:
-        return status
-    if _is_expired(session, now):
-        return "expired"
-    if status:
-        return status
-    return "active" if session.is_active else "completed"
 
 
 def _ensure_session_cash_for_read(
@@ -186,13 +169,14 @@ def _serialize_session(db: Session, user: User, session: GameSession) -> dict:
         if latest_snapshot
         else session.updated_at or session.created_at or session.start_date
     )
+    lifecycle_state = resolve_session_lifecycle_state(session)
 
     return {
         "id": session.id,
         "title": session.title,
-        "status": _effective_status(session),
+        "status": lifecycle_state,
         "is_active": bool(session.is_active),
-        "is_expired": _is_expired(session),
+        "is_expired": lifecycle_state == "expired",
         "starting_balance_krw": session.starting_balance_krw,
         "starting_balance_usd": session.starting_balance_usd or 0.0,
         "cash_krw": session.cash_krw or 0.0,
@@ -229,12 +213,13 @@ def _build_session_status(db: Session, user: User, session: GameSession) -> dict
     holdings = _session_holdings(db, user.id, session.id)
     current_value = _session_current_value_krw(session, holdings, rate)
     starting_value = _session_starting_value_krw(session, rate)
+    lifecycle_state = resolve_session_lifecycle_state(session, now)
 
     return {
-        "active": _effective_status(session, now) == "active",
+        "active": lifecycle_state == "active",
         "session_id": session.id,
         "title": session.title,
-        "status": _effective_status(session, now),
+        "status": lifecycle_state,
         "starting_balance_krw": session.starting_balance_krw,
         "starting_balance_usd": session.starting_balance_usd or 0.0,
         "cash_krw": session.cash_krw or 0.0,
@@ -250,7 +235,7 @@ def _build_session_status(db: Session, user: User, session: GameSession) -> dict
         "days_remaining": round(days_remaining, 1),
         "start_date": start_date.isoformat() if start_date else None,
         "end_date": end_date.isoformat() if end_date else None,
-        "is_expired": remaining <= 0,
+        "is_expired": lifecycle_state == "expired",
     }
 
 
@@ -315,12 +300,13 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
     start_date = _as_aware_utc(session.start_date)
     end_date = _as_aware_utc(session.end_date)
     days_elapsed = (now - start_date).total_seconds() / 86400 if start_date else 0
+    lifecycle_state = resolve_session_lifecycle_state(session, now)
 
     return {
-        "active": _effective_status(session, now) == "active",
+        "active": lifecycle_state == "active",
         "session_id": session.id,
         "title": session.title,
-        "status": _effective_status(session, now),
+        "status": lifecycle_state,
         "starting_balance": session.starting_balance_krw,
         "starting_balance_krw": session.starting_balance_krw,
         "starting_balance_usd": session.starting_balance_usd or 0.0,
@@ -332,7 +318,7 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
         "days_elapsed": round(days_elapsed, 1),
         "start_date": start_date.isoformat() if start_date else None,
         "end_date": end_date.isoformat() if end_date else None,
-        "is_expired": _is_expired(session, now),
+        "is_expired": lifecycle_state == "expired",
         "total_trades": len(buys) + len(sells),
         "total_buys": len(buys),
         "total_sells": len(sells),
@@ -373,7 +359,7 @@ def _build_session_result(db: Session, user: User, session: GameSession) -> dict
     _ensure_session_cash_for_read(db, session, user)
     user_id = user.id
     now = datetime.now(timezone.utc)
-    effective_status = _effective_status(session, now)
+    effective_status = resolve_session_lifecycle_state(session, now)
     start_date = _as_aware_utc(session.start_date)
     end_date = _as_aware_utc(session.end_date)
     snapshots = _session_snapshots(db, user_id, session.id)
@@ -538,7 +524,7 @@ def game_sessions(
         sessions = [
             session
             for session in sessions
-            if _effective_status(session) == "active" and bool(session.is_active)
+            if resolve_session_lifecycle_state(session) == "active"
         ]
     return {
         "sessions": [
@@ -679,7 +665,7 @@ def start_new_game(
         "session": {
             "id": session.id,
             "title": session.title,
-            "status": _effective_status(session),
+            "status": resolve_session_lifecycle_state(session),
             "starting_balance_krw": session.starting_balance_krw,
             "starting_balance_usd": session.starting_balance_usd or 0.0,
             "cash_krw": session.cash_krw or 0.0,
@@ -709,20 +695,24 @@ def game_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    sessions = (
-        db.query(GameSession)
-        .filter(GameSession.user_id == current_user.id, GameSession.is_active == False)
-        .order_by(GameSession.start_date.desc(), GameSession.id.desc())
-        .offset(max(0, offset))
-        .limit(max(1, min(limit, 1000)))
-        .all()
-    )
+    sessions = [
+        session
+        for session in (
+            db.query(GameSession)
+            .filter(GameSession.user_id == current_user.id)
+            .order_by(GameSession.start_date.desc(), GameSession.id.desc())
+            .all()
+        )
+        if resolve_session_lifecycle_state(session) != "active"
+    ]
+    start = max(0, offset)
+    sessions = sessions[start : start + max(1, min(limit, 1000))]
 
     return [
         {
             "id": s.id,
             "title": s.title,
-            "status": _effective_status(s),
+            "status": resolve_session_lifecycle_state(s),
             "starting_balance_krw": s.starting_balance_krw,
             "starting_balance_usd": s.starting_balance_usd or 0.0,
             "cash_krw": s.cash_krw or 0.0,

@@ -12,15 +12,12 @@ export function gamePath(sessionId, section = 'status') {
 }
 
 export function sessionStatusLabelKey(session) {
-  if (session?.status === 'active' && !session?.is_expired) return 'games.statusActive'
+  if (session?.status === 'active') return 'games.statusActive'
   if (session?.status === 'completed') return 'games.statusCompleted'
   if (session?.status === 'archived') return 'games.statusArchived'
   return 'games.statusExpired'
 }
 
 export function isSessionEnded(session) {
-  return Boolean(
-    session?.is_expired ||
-    ['completed', 'expired', 'archived'].includes(session?.status)
-  )
+  return ['completed', 'expired', 'archived'].includes(session?.status)
 }

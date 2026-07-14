@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import User, GameSession, PortfolioSnapshot
+from app.models import User, PortfolioSnapshot
 from app.auth import get_current_user
 from app.services.exchange_service import get_exchange_rate
+from app.services.game_session_service import get_current_session
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -21,16 +22,12 @@ def require_dev_tools_enabled():
 @router.post("/add-funds")
 def add_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     require_dev_tools_enabled()
-    user_id = current_user.id
     user = current_user
 
-    session = db.query(GameSession).filter(
-        GameSession.user_id == user_id,
-        GameSession.is_active == True
-    ).first()
+    session = get_current_session(db, user)
     rate = get_exchange_rate()
 
-    snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user_id).all()
+    snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user.id).all()
         
     if request.currency.upper() == "KRW":
         user.balance_krw += request.amount
@@ -64,16 +61,12 @@ def add_funds(request: FundsRequest, db: Session = Depends(get_db), current_user
 @router.post("/remove-funds")
 def remove_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     require_dev_tools_enabled()
-    user_id = current_user.id
     user = current_user
 
-    session = db.query(GameSession).filter(
-        GameSession.user_id == user_id,
-        GameSession.is_active == True
-    ).first()
+    session = get_current_session(db, user)
     rate = get_exchange_rate()
 
-    snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user_id).all()
+    snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user.id).all()
         
     if request.currency.upper() == "KRW":
         if user.balance_krw < request.amount:

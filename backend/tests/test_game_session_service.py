@@ -10,6 +10,7 @@ from app.services.game_session_service import (
     get_owned_session,
     get_tradeable_session,
     is_session_expired,
+    resolve_session_lifecycle_state,
     sync_legacy_user_balance,
 )
 
@@ -81,6 +82,46 @@ class TestOwnedSession:
 
 
 class TestCurrentSession:
+    def test_current_session_accepts_case_normalized_active_status(self, db_session):
+        user = create_user(db_session)
+        session = create_session(
+            db_session,
+            user,
+            status="ACTIVE",
+            is_active=False,
+        )
+
+        result = get_current_session(db_session, user)
+
+        assert result.id == session.id
+
+    def test_current_session_skips_newer_expired_session(self, db_session):
+        user = create_user(db_session)
+        now = datetime.now(timezone.utc)
+        active = create_session(
+            db_session,
+            user,
+            title="active",
+            status="active",
+            start_date=now - timedelta(days=2),
+            end_date=now + timedelta(days=1),
+        )
+        create_session(
+            db_session,
+            user,
+            title="expired",
+            status="active",
+            start_date=now - timedelta(days=1),
+            end_date=now - timedelta(seconds=1),
+        )
+
+        result = get_current_session(
+            db_session,
+            user,
+        )
+
+        assert result.id == active.id
+
     def test_current_session_chooses_newest_active_session(self, db_session):
         user = create_user(db_session)
         old = create_session(
@@ -114,6 +155,38 @@ class TestCurrentSession:
 
 
 class TestTradeableSession:
+    @pytest.mark.parametrize(
+        ("status", "is_active", "end_date", "expected"),
+        [
+            ("archived", True, datetime.now(timezone.utc) - timedelta(days=1), "archived"),
+            ("completed", True, datetime.now(timezone.utc) - timedelta(days=1), "completed"),
+            ("active", True, datetime.now(timezone.utc) - timedelta(days=1), "expired"),
+            ("active", False, datetime.now(timezone.utc) + timedelta(days=1), "active"),
+            (None, True, datetime.now(timezone.utc) + timedelta(days=1), "active"),
+            (None, False, datetime.now(timezone.utc) + timedelta(days=1), "completed"),
+        ],
+    )
+    def test_resolves_canonical_lifecycle_state(
+        self,
+        db_session,
+        status,
+        is_active,
+        end_date,
+        expected,
+    ):
+        user = create_user(db_session)
+        session = create_session(
+            db_session,
+            user,
+            status=status,
+            is_active=is_active,
+            end_date=end_date,
+        )
+
+        state = resolve_session_lifecycle_state(session, now=datetime.now(timezone.utc))
+
+        assert state == expected
+
     def test_expired_session_blocks_trade(self, db_session):
         user = create_user(db_session)
         session = create_session(

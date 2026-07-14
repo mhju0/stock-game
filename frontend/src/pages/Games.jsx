@@ -453,7 +453,7 @@ function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequest
             <div className="game-card-title">{session.title || t('games.cardTitle')}</div>
             <div className="game-card-date">{t(sessionStatusLabelKey(session))}</div>
           </div>
-          <span className={`game-status-pill ${session.status === 'active' && !session.is_expired ? 'game-status-pill-active' : ''}`}>
+          <span className={`game-status-pill ${session.status === 'active' ? 'game-status-pill-active' : ''}`}>
             {t(sessionStatusLabelKey(session))}
           </span>
         </div>

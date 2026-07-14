@@ -19,6 +19,7 @@ def create_session(
     starting_balance_krw=1_000_000,
     starting_balance_usd=0.0,
     start_offset_days=0,
+    end_date=None,
 ):
     now = datetime.now(timezone.utc)
     start_date = now + timedelta(days=start_offset_days)
@@ -32,7 +33,7 @@ def create_session(
         cash_usd=cash_usd,
         duration_days=90,
         start_date=start_date,
-        end_date=start_date + timedelta(days=90),
+        end_date=end_date or (start_date + timedelta(days=90)),
         is_active=is_active,
     )
     db_session.add(session)
@@ -83,6 +84,63 @@ def create_scoped_data(db_session, user, session):
 
 
 class TestGameSessions:
+    def test_expired_session_payload_and_trade_gate_share_lifecycle_state(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(
+            db_session,
+            user,
+            status="active",
+            end_date=datetime.now(timezone.utc) - timedelta(seconds=1),
+        )
+
+        session_response = client.get(
+            f"/game/sessions/{session.id}",
+            headers=auth_headers,
+        )
+        trade_response = client.post(
+            f"/game/sessions/{session.id}/trade/buy",
+            json={"ticker": "KB", "quantity": 1},
+            headers=auth_headers,
+        )
+        db_session.refresh(session)
+
+        assert session_response.status_code == 200
+        assert session_response.json()["session"]["status"] == "expired"
+        assert session_response.json()["session"]["is_expired"] is True
+        assert trade_response.status_code == 400
+        assert session.status == "active"
+
+    def test_legacy_inactive_session_payload_and_trade_gate_share_lifecycle_state(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(db_session, user, status=None, is_active=False)
+
+        session_response = client.get(
+            f"/game/sessions/{session.id}",
+            headers=auth_headers,
+        )
+        trade_response = client.post(
+            f"/game/sessions/{session.id}/trade/buy",
+            json={"ticker": "KB", "quantity": 1},
+            headers=auth_headers,
+        )
+
+        assert session_response.status_code == 200
+        assert session_response.json()["session"]["status"] == "completed"
+        assert session_response.json()["session"]["is_expired"] is False
+        assert trade_response.status_code == 400
+
     def test_game_sessions_empty_without_any_game(
         self,
         client,

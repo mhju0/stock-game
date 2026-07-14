@@ -20,13 +20,20 @@ def _user(db_session, username):
     return user
 
 
-def _active_session(db_session, user, title="S", cash_krw=1_000_000.0):
+def _active_session(
+    db_session,
+    user,
+    title="S",
+    cash_krw=1_000_000.0,
+    end_date=None,
+):
     now = datetime.now(timezone.utc)
     session = GameSession(
         user_id=user.id, title=title, status="active",
         starting_balance_krw=1_000_000.0, starting_balance_usd=0.0,
         cash_krw=cash_krw, cash_usd=0.0, duration_days=90,
-        start_date=now - timedelta(days=1), end_date=now + timedelta(days=90),
+        start_date=now - timedelta(days=1),
+        end_date=end_date or (now + timedelta(days=90)),
         is_active=True,
     )
     db_session.add(session)
@@ -43,6 +50,21 @@ def _price_patch(rate=1300.0):
 
 
 class TestSnapshotBatchResilience:
+    def test_batch_skips_expired_sessions(self, db_session):
+        user = _user(db_session, "expired-user")
+        expired = _active_session(
+            db_session,
+            user,
+            end_date=datetime.now(timezone.utc) - timedelta(seconds=1),
+        )
+
+        with _price_patch():
+            run_snapshot_batch(db_session)
+
+        assert db_session.query(PortfolioSnapshot).filter(
+            PortfolioSnapshot.game_session_id == expired.id
+        ).count() == 0
+
     def test_batch_continues_past_a_failing_user(self, db_session):
         bad = _user(db_session, "bad-user")
         good = _user(db_session, "good-user")
