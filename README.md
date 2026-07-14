@@ -84,7 +84,7 @@ The app starts at `http://localhost:5173`.
 
 ```bash
 ./scripts/regression-smoke.sh
-cd frontend && npm run build && npm run lint
+cd frontend && npm test && npm run build && npm run lint
 cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
 ```
 
