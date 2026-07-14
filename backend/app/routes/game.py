@@ -10,10 +10,13 @@ from app.schemas import GameSessionCreateRequest, GameSessionUpdateRequest, NewG
 from app.services.benchmark_service import get_benchmark_data
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
-    ensure_session_cash_initialized,
     get_current_session,
     get_owned_session,
     resolve_session_lifecycle_state,
+)
+from app.services.portfolio_compatibility import (
+    ensure_session_cash_for_read,
+    session_starting_value_krw,
 )
 from app.services.valuation_service import (
     compute_session_total_value_krw,
@@ -36,25 +39,6 @@ def _as_aware_utc(value: datetime | None) -> datetime | None:
 def _iso(value: datetime | None) -> str | None:
     aware = _as_aware_utc(value)
     return aware.isoformat() if aware else None
-
-
-def _ensure_session_cash_for_read(
-    db: Session,
-    session: GameSession,
-    user: User,
-) -> GameSession:
-    needs_commit = session.cash_krw is None or session.cash_usd is None
-    ensure_session_cash_initialized(session, user)
-    if needs_commit:
-        db.commit()
-        db.refresh(session)
-    return session
-
-
-def _session_starting_value_krw(session: GameSession, rate: float) -> float:
-    return (session.starting_balance_krw or 0.0) + (
-        (session.starting_balance_usd or 0.0) * rate
-    )
 
 
 def _session_holdings(db: Session, user_id: int, session_id: int) -> list[Holding]:
@@ -156,11 +140,11 @@ def _request_updates(request) -> dict:
 
 
 def _serialize_session(db: Session, user: User, session: GameSession) -> dict:
-    _ensure_session_cash_for_read(db, session, user)
+    ensure_session_cash_for_read(db, session, user)
     rate = get_exchange_rate()
     holdings = _session_holdings(db, user.id, session.id)
     current_value = _session_current_value_krw(session, holdings, rate)
-    starting_value = _session_starting_value_krw(session, rate)
+    starting_value = session_starting_value_krw(session, rate)
     latest_snapshot = _latest_session_snapshot(db, user.id, session.id)
     start_date = _as_aware_utc(session.start_date)
     end_date = _as_aware_utc(session.end_date)
@@ -198,7 +182,7 @@ def _serialize_session(db: Session, user: User, session: GameSession) -> dict:
 
 
 def _build_session_status(db: Session, user: User, session: GameSession) -> dict:
-    _ensure_session_cash_for_read(db, session, user)
+    ensure_session_cash_for_read(db, session, user)
     now = datetime.now(timezone.utc)
     start_date = _as_aware_utc(session.start_date)
     end_date = _as_aware_utc(session.end_date)
@@ -212,7 +196,7 @@ def _build_session_status(db: Session, user: User, session: GameSession) -> dict
     rate = get_exchange_rate()
     holdings = _session_holdings(db, user.id, session.id)
     current_value = _session_current_value_krw(session, holdings, rate)
-    starting_value = _session_starting_value_krw(session, rate)
+    starting_value = session_starting_value_krw(session, rate)
     lifecycle_state = resolve_session_lifecycle_state(session, now)
 
     return {
@@ -240,7 +224,7 @@ def _build_session_status(db: Session, user: User, session: GameSession) -> dict
 
 
 def _build_session_summary(db: Session, user: User, session: GameSession) -> dict:
-    _ensure_session_cash_for_read(db, session, user)
+    ensure_session_cash_for_read(db, session, user)
     user_id = user.id
     rate = get_exchange_rate()
     holdings = _session_holdings(db, user_id, session.id)
@@ -248,7 +232,7 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
     prices = get_prices_for_tickers(tickers)
     infos = get_infos_for_tickers(tickers)
     current_value = compute_session_total_value_krw(session, holdings, rate, prices)
-    starting_value = _session_starting_value_krw(session, rate)
+    starting_value = session_starting_value_krw(session, rate)
     total_return = current_value - starting_value
     total_return_pct = (total_return / starting_value) * 100 if starting_value else 0
 
@@ -356,7 +340,7 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
 
 
 def _build_session_result(db: Session, user: User, session: GameSession) -> dict:
-    _ensure_session_cash_for_read(db, session, user)
+    ensure_session_cash_for_read(db, session, user)
     user_id = user.id
     now = datetime.now(timezone.utc)
     effective_status = resolve_session_lifecycle_state(session, now)
@@ -374,7 +358,7 @@ def _build_session_result(db: Session, user: User, session: GameSession) -> dict
     starting_value = (
         first_snapshot.total_value_krw
         if first_snapshot
-        else _session_starting_value_krw(session, start_rate)
+        else session_starting_value_krw(session, start_rate)
     )
     starting_source = "first_snapshot" if first_snapshot else "session_starting_balance"
 

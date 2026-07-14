@@ -169,6 +169,35 @@ class TestSnapshotCompatibilityWrapper:
         assert snapshot.total_value_krw == 3_131_300.0
         assert session.cash_krw == 1_000_000
 
+    def test_take_snapshot_keeps_legacy_precedence_for_mixed_holdings(self, db_session):
+        user = create_user(db_session, balance_krw=3_000_000, balance_usd=1.0)
+        session = create_session(db_session, user, cash_krw=1_000_000, cash_usd=0.0)
+        create_holding(
+            db_session,
+            user,
+            session=session,
+            ticker="AAPL",
+            quantity=1,
+            currency="USD",
+        )
+        create_holding(
+            db_session,
+            user,
+            session=None,
+            ticker="MSFT",
+            quantity=1,
+            currency="USD",
+        )
+
+        with price_patch({"AAPL": 100.0, "MSFT": 200.0}, rate=1300.0):
+            snapshot = take_snapshot(db_session, user.id)
+
+        assert snapshot.game_session_id is None
+        assert snapshot.cash_krw == user.balance_krw
+        assert snapshot.total_holdings_value_krw == 390_000.0
+        assert snapshot.total_value_krw == 3_391_300.0
+        assert session.cash_krw == 1_000_000
+
     def test_take_snapshot_handles_no_current_session_with_legacy_snapshot(self, db_session):
         user = create_user(db_session, balance_krw=2_000_000, balance_usd=1.0)
         create_holding(db_session, user, session=None, ticker="AAPL", quantity=2, currency="USD")

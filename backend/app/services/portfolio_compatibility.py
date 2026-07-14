@@ -79,6 +79,19 @@ def resolve_compatibility_session_id(
     return None if not has_scoped and has_unscoped else session.id
 
 
+def resolve_legacy_preferred_session_id(
+    db: Session,
+    user_id: int,
+    session: GameSession | None,
+    models: Iterable,
+) -> int | None:
+    """Preserve callers where any legacy row keeps the legacy storage path."""
+    if not session:
+        return None
+    has_unscoped = any(_has_unscoped_rows(db, model, user_id) for model in models)
+    return None if has_unscoped else session.id
+
+
 def holdings_query(db: Session, user_id: int, game_session_id: int | None):
     query = db.query(Holding).filter(Holding.user_id == user_id)
     if game_session_id is None:

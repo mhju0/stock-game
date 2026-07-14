@@ -8,6 +8,7 @@ from app.services.game_session_service import (
     get_active_sessions,
     get_current_session,
 )
+from app.services.portfolio_compatibility import resolve_legacy_preferred_session_id
 
 logger = logging.getLogger(__name__)
 from app.services.stock_service import get_stock_price
@@ -67,15 +68,6 @@ def _take_legacy_user_snapshot(db: Session, user: User) -> PortfolioSnapshot:
     )
 
 
-def _has_unscoped_holdings(db: Session, user_id: int) -> bool:
-    return (
-        db.query(Holding)
-        .filter(Holding.user_id == user_id, Holding.game_session_id.is_(None))
-        .first()
-        is not None
-    )
-
-
 def take_session_snapshot(db: Session, user_id: int, game_session_id: int) -> PortfolioSnapshot:
     """Create a portfolio snapshot for one game session.
 
@@ -132,8 +124,18 @@ def take_snapshot(db: Session, user_id: int) -> PortfolioSnapshot:
         raise ValueError("User not found")
 
     session = get_current_session(db, user)
-    if session and not _has_unscoped_holdings(db, user_id):
-        return take_session_snapshot(db, user_id=user_id, game_session_id=session.id)
+    game_session_id = resolve_legacy_preferred_session_id(
+        db,
+        user_id,
+        session,
+        (Holding,),
+    )
+    if game_session_id is not None:
+        return take_session_snapshot(
+            db,
+            user_id=user_id,
+            game_session_id=game_session_id,
+        )
 
     return _take_legacy_user_snapshot(db, user)
 
