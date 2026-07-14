@@ -1,8 +1,8 @@
-import { apiFetch } from '../api'
-import { useState, useEffect, useContext, useCallback } from 'react'
+import { useState, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../context/userContext'
+import { useTransactionsQuery } from '../query/queries'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney, formatDateTime } from '../utils/formatters'
 import { gamePath } from '../sessionRoutes'
@@ -14,20 +14,9 @@ function Transactions() {
   const { sessionId } = useParams()
   const { currentUserId } = useContext(UserContext)
 
-  const [transactions, setTransactions] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [filter, setFilter] = useState('ALL')
-
-  const fetchTransactions = useCallback(() => {
-    setLoading(true)
-    setError('')
-    apiFetch(`/game/sessions/${sessionId}/portfolio/transactions`, {}, setError)
-      .then(data => { if (data) setTransactions(data) })
-      .finally(() => setLoading(false))
-  }, [sessionId])
-
-  useEffect(() => { fetchTransactions() }, [fetchTransactions, currentUserId])
+  const transactionsQuery = useTransactionsQuery(currentUserId, sessionId)
+  const transactions = Array.isArray(transactionsQuery.data) ? transactionsQuery.data : []
 
   const filtered = filter === 'ALL'
     ? transactions
@@ -40,12 +29,17 @@ function Transactions() {
     { key: 'EXCHANGE', label: t('exchange.title') },
   ]
 
-  if (loading) return <p>{t('common.loading')}</p>
-  if (error) {
+  if (
+    transactionsQuery.isLoading ||
+    (transactionsQuery.isFetching && transactionsQuery.data === undefined)
+  ) return <p>{t('common.loading')}</p>
+  if (transactionsQuery.isError) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-        <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
-        <button className="btn btn-primary" onClick={fetchTransactions}>{t('common.retry')}</button>
+        <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+          {transactionsQuery.error?.message || t('common.loadError')}
+        </p>
+        <button className="btn btn-primary" onClick={() => transactionsQuery.refetch()}>{t('common.retry')}</button>
       </div>
     )
   }

@@ -8,8 +8,6 @@ export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)
 
 export const removeToken = () => localStorage.removeItem(TOKEN_KEY)
 
-export const isAuthenticated = () => !!getToken()
-
 export const getCurrentUserId = () => {
   const token = getToken()
   if (!token) return null
@@ -20,3 +18,5 @@ export const getCurrentUserId = () => {
     return null
   }
 }
+
+export const isAuthenticated = () => getCurrentUserId() !== null

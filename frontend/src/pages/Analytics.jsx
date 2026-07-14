@@ -1,5 +1,4 @@
-import { apiGet } from '../api'
-import { useState, useEffect, useContext, useMemo } from 'react'
+import { useState, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import {
@@ -11,7 +10,13 @@ import { formatMoney, formatDateTime } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
 import { UserContext } from '../context/userContext'
-import { useAnalyticsPerformanceQuery, useAccountQuery } from '../query/queries'
+import {
+  useAccountQuery,
+  useAnalyticsBySectorQuery,
+  useAnalyticsByStockQuery,
+  useAnalyticsPerformanceQuery,
+  useAnalyticsRealizedQuery,
+} from '../query/queries'
 import { gamePath, isSessionEnded } from '../sessionRoutes'
 
 // Cohesive categorical palette (cobalt-led, muted) for the allocation pie —
@@ -26,9 +31,6 @@ function Analytics() {
   const { currentUserId } = useContext(UserContext)
   const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   
-  const [byStock, setByStock] = useState([])
-  const [bySector, setBySector] = useState([])
-  const [realized, setRealized] = useState(null)
   const [timeRange, setTimeRange] = useState('ALL')
   const [stockView, setStockView] = useState('list')
   const [stockSort, setStockSort] = useState('alloc_desc')
@@ -38,18 +40,20 @@ function Analytics() {
   const { data: accountData } = useAccountQuery(currentUserId, sessionId)
   const exchangeRate = accountData?.exchange_rate || 1350
 
-  const {
-    data: performance,
-    isLoading: perfLoading,
-    isError: perfError,
-    refetch: refetchPerformance,
-  } = useAnalyticsPerformanceQuery(currentUserId, sessionId)
-
-  useEffect(() => {
-    apiGet(`/game/sessions/${sessionId}/analytics/by-stock`, setByStock)
-    apiGet(`/game/sessions/${sessionId}/analytics/by-sector`, setBySector)
-    apiGet(`/game/sessions/${sessionId}/analytics/realized`, setRealized)
-  }, [currentUserId, sessionId])
+  const performanceQuery = useAnalyticsPerformanceQuery(currentUserId, sessionId)
+  const byStockQuery = useAnalyticsByStockQuery(currentUserId, sessionId)
+  const bySectorQuery = useAnalyticsBySectorQuery(currentUserId, sessionId)
+  const realizedQuery = useAnalyticsRealizedQuery(currentUserId, sessionId)
+  const performance = performanceQuery.data
+  const byStock = useMemo(
+    () => Array.isArray(byStockQuery.data) ? byStockQuery.data : [],
+    [byStockQuery.data],
+  )
+  const bySector = useMemo(
+    () => Array.isArray(bySectorQuery.data) ? bySectorQuery.data : [],
+    [bySectorQuery.data],
+  )
+  const realized = realizedQuery.data || null
 
   const startVal = performance?.starting_value || 0
   const snapshots = useMemo(() => performance?.snapshots || [], [performance?.snapshots])
@@ -192,17 +196,27 @@ function Analytics() {
     { label: t('nav.watchlist'), to: gamePath(sessionId, 'watchlist') },
   ]
 
-  if (perfLoading) return <p>{t('common.loading')}</p>
+  const analyticsQueries = [performanceQuery, byStockQuery, bySectorQuery, realizedQuery]
+  const analyticsError = analyticsQueries.find((query) => query.isError)?.error
+  const refetchAnalytics = () => {
+    for (const query of analyticsQueries) query.refetch()
+  }
+
+  if (analyticsQueries.some((query) => (
+    query.isLoading || (query.isFetching && query.data === undefined)
+  ))) return <p>{t('common.loading')}</p>
   if (
-    perfError ||
+    analyticsError ||
     !performance ||
     performance.starting_value === undefined ||
     !Array.isArray(performance.snapshots)
   ) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+        {analyticsError?.message || t('common.loadError')}
+      </p>
       <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>{t('analytics.retryBody')}</p>
-      <button type="button" className="btn btn-primary" onClick={() => refetchPerformance()}>
+      <button type="button" className="btn btn-primary" onClick={refetchAnalytics}>
         {t('common.retry')}
       </button>
     </div>

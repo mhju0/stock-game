@@ -6,6 +6,19 @@ function getConnectionErrorMessage() {
   return i18n.t('common.connectionError')
 }
 
+function isRetryableStatus(status) {
+  return status === 408 || status === 429 || status >= 500
+}
+
+export class ApiRequestError extends Error {
+  constructor(message, { status = null, retryable = false } = {}) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+    this.retryable = retryable
+  }
+}
+
 // Matches backend trading_service.py buy/sell insufficiency messages, e.g.
 // "Insufficient KRW balance. Need ₩5,000, have ₩3,000"
 const INSUFFICIENT_BALANCE_NEED_RE = /^Insufficient (KRW|USD) balance\. Need (₩[\d,]+|\$[\d,.]+), have (₩[\d,]+|\$[\d,.]+)$/
@@ -72,17 +85,41 @@ export async function apiFetch(path, options = {}, onError = null) {
       if (import.meta.env.DEV) {
         console.error(`API response error [${path}]`, { status: res.status, data })
       }
-      if (onError) onError(message)
+      if (onError) {
+        onError(message, {
+          status: res.status,
+          retryable: isRetryableStatus(res.status),
+        })
+      }
       return null
     }
 
     return await res.json()
   } catch (err) {
     const message = getConnectionErrorMessage()
-    if (onError) onError(message)
+    if (onError) onError(message, { status: null, retryable: true })
     console.error(`API error [${path}]:`, err)
     return null
   }
+}
+
+export async function apiFetchOrThrow(path, options = {}) {
+  let failure = null
+  const data = await apiFetch(path, options, (message, metadata = {}) => {
+    failure = { message, ...metadata }
+  })
+
+  if (data === null) {
+    throw new ApiRequestError(
+      failure?.message || getConnectionErrorMessage(),
+      {
+        status: failure?.status ?? null,
+        retryable: failure?.retryable ?? false,
+      },
+    )
+  }
+
+  return data
 }
 
 export function apiGet(path, setter, onError = null) {

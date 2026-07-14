@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useContext, useEffect, useState } from "react";
+import { useContext } from "react";
 import { UserContext } from "./context/userContext";
 import { isAuthenticated } from "./auth";
-import { apiFetch } from "./api";
+import { useSessionDetailQuery, useSessionListQuery } from "./query/queries";
 import { gamePath, getSessionIdFromPath, sessionStatusLabelKey } from "./sessionRoutes";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -31,50 +31,34 @@ function RequireAuth({ children }) {
 function ResolveGameRedirect({ section = "status" }) {
   const { t } = useTranslation();
   const location = useLocation();
-  const [target, setTarget] = useState("");
+  const { currentUserId } = useContext(UserContext);
+  const sessionsQuery = useSessionListQuery(currentUserId);
 
-  useEffect(() => {
-    let cancelled = false;
-    apiFetch("/game/sessions").then((data) => {
-      if (cancelled) return;
-      const session = Array.isArray(data?.sessions) ? data.sessions[0] : null;
-      const path = session?.id ? gamePath(session.id, section) : "/games";
-      setTarget(session?.id ? `${path}${location.search}` : path);
-    });
-    return () => { cancelled = true; };
-  }, [section, location.search]);
+  if (sessionsQuery.isLoading) return <p>{t("common.loading")}</p>;
 
-  if (target) return <Navigate to={target} replace />;
-  return <p>{t("common.loading")}</p>;
+  const session = Array.isArray(sessionsQuery.data?.sessions)
+    ? sessionsQuery.data.sessions[0]
+    : null;
+  const path = session?.id ? gamePath(session.id, section) : "/games";
+  const target = session?.id ? `${path}${location.search}` : path;
+  return <Navigate to={target} replace />;
 }
 
 function SessionGuard() {
   const { t } = useTranslation();
   const { sessionId } = useParams();
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { currentUserId } = useContext(UserContext);
+  const sessionQuery = useSessionDetailQuery(currentUserId, sessionId);
+  const session = sessionQuery.data?.session || null;
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    apiFetch(`/game/sessions/${sessionId}`, {}, setError).then((data) => {
-      if (cancelled) return;
-      setSession(data?.session || null);
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [sessionId]);
-
-  if (loading) return <p>{t("common.loading")}</p>;
+  if (sessionQuery.isLoading) return <p>{t("common.loading")}</p>;
 
   if (!session) {
     return (
       <div className="card" style={{ textAlign: "center", padding: 40 }}>
         <h1 className="page-title" style={{ marginBottom: 8 }}>{t("games.notFoundTitle")}</h1>
         <p style={{ color: "var(--text-secondary)", marginBottom: 16 }}>
-          {error || t("games.notFoundBody")}
+          {sessionQuery.error?.message || t("games.notFoundBody")}
         </p>
         <NavLink to="/games" className="btn btn-primary">
           {t("nav.myGames")}
@@ -100,8 +84,8 @@ function SessionGuard() {
               border: "1px solid var(--border)",
               borderRadius: 999,
               padding: "5px 10px",
-              color: session.status === "active" && !session.is_expired ? "var(--positive)" : "var(--text-secondary)",
-              background: session.status === "active" && !session.is_expired ? "var(--positive-bg)" : "var(--bg-secondary)",
+              color: session.status === "active" ? "var(--positive)" : "var(--text-secondary)",
+              background: session.status === "active" ? "var(--positive-bg)" : "var(--bg-secondary)",
               fontSize: 12,
               fontWeight: 700,
             }}

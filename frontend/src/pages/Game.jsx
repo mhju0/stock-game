@@ -1,10 +1,17 @@
 import { apiFetch } from '../api'
-import { useCallback, useState, useEffect, useMemo } from 'react'
+import { useContext, useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getStockName } from '../utils/stockNames'
 import { formatDateTime, formatMoney } from '../utils/formatters'
+import { UserContext } from '../context/userContext'
+import {
+  useAnalyticsPerformanceQuery,
+  useSessionResultQuery,
+  useSessionStatusQuery,
+  useSessionSummaryQuery,
+} from '../query/queries'
 import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
 
 function ResultMetric({ label, children, tone = '' }) {
@@ -20,53 +27,60 @@ function Game() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { sessionId } = useParams()
+  const { currentUserId } = useContext(UserContext)
   
-  const [status, setStatus] = useState(null)
-  const [summary, setSummary] = useState(null)
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [benchmarkData, setBenchmarkData] = useState([])
-  const [portfolioData, setPortfolioData] = useState([])
   const [benchmarkIndex, setBenchmarkIndex] = useState('SP500')
   const [showSummary, setShowSummary] = useState(false)
-
-  const fetchData = useCallback(() => {
-    setLoading(true)
-    Promise.all([
-      apiFetch(`/game/sessions/${sessionId}/status`).then(d => { if (d) setStatus(d) }),
-      apiFetch(`/game/sessions/${sessionId}/summary`).then(d => { if (d) setSummary(d) }),
-      apiFetch(`/game/sessions/${sessionId}/result`).then(d => { if (d) setResult(d) }),
-    ]).finally(() => setLoading(false))
-  }, [sessionId])
-
-  useEffect(() => { fetchData() }, [fetchData])
+  const statusQuery = useSessionStatusQuery(currentUserId, sessionId)
+  const summaryQuery = useSessionSummaryQuery(currentUserId, sessionId)
+  const resultQuery = useSessionResultQuery(currentUserId, sessionId)
+  const status = statusQuery.data || null
+  const summary = summaryQuery.data || null
+  const result = resultQuery.data || null
+  const active = status?.status === 'active'
+  const performanceQuery = useAnalyticsPerformanceQuery(
+    currentUserId,
+    sessionId,
+    { enabled: active },
+  )
+  const performance = performanceQuery.data
+  const primaryQueries = [statusQuery, summaryQuery, resultQuery]
+  const loading = primaryQueries.some((query) => (
+    query.isLoading || (query.isFetching && query.data === undefined)
+  ))
+  const performanceLoading = performanceQuery.isLoading || (
+    performanceQuery.isFetching && performanceQuery.data === undefined
+  )
+  const fetchData = () => {
+    statusQuery.refetch()
+    summaryQuery.refetch()
+    resultQuery.refetch()
+    if (active) performanceQuery.refetch()
+  }
+  const portfolioData = useMemo(() => {
+    if (!Array.isArray(performance?.snapshots)) return []
+    const startVal = performance.starting_value
+    return performance.snapshots.map((snapshot) => ({
+      date: snapshot.date.split('T')[0],
+      change_pct: startVal ? ((snapshot.value - startVal) / startVal) * 100 : 0,
+      value: snapshot.value,
+    }))
+  }, [performance])
 
   useEffect(() => {
-    if (!status) return
-    if (!status.active || status.is_expired) return
+    if (!active || !Array.isArray(performance?.snapshots)) return
     // Benchmark window = the game's elapsed days (not full duration), so the
     // 0% baseline of both lines is the game start date.
     const days = Math.max(2, Math.ceil(status.days_elapsed ?? status.duration_days))
 
-    apiFetch(`/game/sessions/${sessionId}/analytics/performance`)
-      .then(data => {
-        if (data?.snapshots) {
-          const startVal = data.starting_value
-          setPortfolioData(data.snapshots.map(s => ({
-            date: s.date.split('T')[0],
-            change_pct: ((s.value - startVal) / startVal) * 100,
-            value: s.value,
-          })))
-
-          // Fewer than 2 snapshots renders the day-one placeholder instead of
-          // the chart, so skip the benchmark call entirely until then.
-          if (data.snapshots.length >= 2) {
-            apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
-              .then(bd => { if (Array.isArray(bd)) setBenchmarkData(bd) })
-          }
-        }
-      })
-  }, [status, benchmarkIndex, sessionId])
+    // Fewer than 2 snapshots renders the day-one placeholder instead of the
+    // chart, so skip the benchmark call entirely until then.
+    if (performance.snapshots.length >= 2) {
+      apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
+        .then(bd => { if (Array.isArray(bd)) setBenchmarkData(bd) })
+    }
+  }, [active, performance, status, benchmarkIndex])
 
   const mergedChartData = useMemo(() => {
     const map = {}
@@ -97,16 +111,32 @@ function Game() {
   if (loading) return <p>{t('common.loading')}</p>
   if (!status) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+        {statusQuery.error?.message || t('common.loadError')}
+      </p>
       <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
     </div>
   )
 
-  if (!status.active || status.is_expired) {
+  if (showSummary && summaryQuery.isError) return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+        {summaryQuery.error?.message || t('common.loadError')}
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+        <button className="btn" onClick={() => setShowSummary(false)}>{t('common.back')}</button>
+        <button className="btn btn-primary" onClick={() => summaryQuery.refetch()}>{t('common.retry')}</button>
+      </div>
+    </div>
+  )
+
+  if (status.status !== 'active') {
     if (!result) {
       return (
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-          <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+          <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+            {resultQuery.error?.message || t('common.loadError')}
+          </p>
           <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
         </div>
       )
@@ -298,7 +328,7 @@ function Game() {
         <div className="card" style={{ textAlign: 'center', padding: 32 }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>{isPositive ? '📈' : '📉'}</div>
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
-            {status.is_expired ? (t('game.gameOver')) : (t('game.progress'))}
+            {!active ? (t('game.gameOver')) : (t('game.progress'))}
           </h2>
           <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 36, fontWeight: 700 }}>
             {isPositive ? '+' : ''}{summary.total_return_pct.toFixed(2)}%
@@ -414,20 +444,20 @@ function Game() {
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('game.daysLeft')}</div>
-          <div className="metric-value">{status.is_expired ? (t('game.done')) : `${Math.round(status.days_remaining)}${isKo ? '일' : 'd'}`}</div>
+          <div className="metric-value">{!active ? (t('game.done')) : `${Math.round(status.days_remaining)}${isKo ? '일' : 'd'}`}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{Math.round(status.days_elapsed)}{isKo ? '일' : 'd'} / {status.duration_days}{isKo ? '일' : 'd'}</div>
         </div>
       </div>
 
-      <div className={`game-status-bar ${status.is_expired ? 'game-expired' : 'game-active'}`}>
+      <div className={`game-status-bar ${!active ? 'game-expired' : 'game-active'}`}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>
-          {status.is_expired ? (t('game.endedTitle')) : (t('game.gameActive'))}
+          {!active ? (t('game.endedTitle')) : (t('game.gameActive'))}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {status.is_expired ? t('game.endedBody') : `${new Date(status.start_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')} → ${new Date(status.end_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')}`}
+            {!active ? t('game.endedBody') : `${new Date(status.start_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')} → ${new Date(status.end_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')}`}
           </div>
-          {status.is_expired && (
+          {!active && (
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
               {t('game.tradeUnavailableEnded')}
             </div>
@@ -454,7 +484,20 @@ function Game() {
           </div>
         </div>
 
-        {portfolioData.length < 2 ? (
+        {performanceLoading ? (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            {t('common.loading')}
+          </div>
+        ) : performanceQuery.isError ? (
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+            <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+              {performanceQuery.error?.message || t('common.loadError')}
+            </p>
+            <button className="btn btn-primary" onClick={() => performanceQuery.refetch()}>
+              {t('common.retry')}
+            </button>
+          </div>
+        ) : portfolioData.length < 2 ? (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('game.chartInsufficientTitle')}</div>

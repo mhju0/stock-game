@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { apiDelete, apiFetch, apiPatch, apiPost } from '../api'
+import { UserContext } from '../context/userContext'
+import {
+  useCreateSessionMutation,
+  useDeleteSessionMutation,
+  useSessionListQuery,
+  useUpdateSessionMutation,
+} from '../query/queries'
 import { formatDateTime, formatMoney } from '../utils/formatters'
 import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
 
@@ -134,7 +140,7 @@ function ModalShell({ titleId, title, descriptionId, description, closeLabel, on
   )
 }
 
-function CreateGameModal({ t, initialSetup, onClose, onCreated }) {
+function CreateGameModal({ t, initialSetup, onClose, onCreate, onCreated }) {
   const setupDefaults = normalizeSetupDefaults(initialSetup)
   const initialCash = setupDefaults?.starting_balance_krw || 10_000_000
   const initialDuration = setupDefaults?.duration_days || 30
@@ -181,17 +187,18 @@ function CreateGameModal({ t, initialSetup, onClose, onCreated }) {
 
     setCreating(true)
     setError('')
-    const data = await apiPost(
-      '/game/sessions',
-      {
+    try {
+      const data = await onCreate({
         title: title.trim() || null,
         starting_balance_krw: startingValue,
         duration_days: Math.round(durationValue),
-      },
-      setError
-    )
-    setCreating(false)
-    if (data?.session?.id) onCreated(data.session)
+      })
+      if (data?.session?.id) onCreated(data.session)
+    } catch (requestError) {
+      setError(requestError.message || t('common.error'))
+    } finally {
+      setCreating(false)
+    }
   }
 
   return (
@@ -314,7 +321,7 @@ function CreateGameModal({ t, initialSetup, onClose, onCreated }) {
 }
 
 function GameSessionCard({ session, locale, onOpen, onManage, t }) {
-  const isPlayable = session.status === 'active' && !session.is_expired
+  const isPlayable = session.status === 'active'
 
   return (
     <div className="card game-session-card">
@@ -384,7 +391,7 @@ function DetailItem({ label, children }) {
   )
 }
 
-function ArchiveGameModal({ session, t, onClose, onArchived }) {
+function ArchiveGameModal({ session, t, onClose, onArchive, onArchived }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -392,9 +399,14 @@ function ArchiveGameModal({ session, t, onClose, onArchived }) {
     if (submitting) return
     setSubmitting(true)
     setError('')
-    const data = await apiPatch(`/game/sessions/${session.id}`, { status: 'archived' }, setError)
-    setSubmitting(false)
-    if (data?.session) onArchived(data.session)
+    try {
+      const data = await onArchive(session.id, { status: 'archived' })
+      if (data?.session) onArchived(data.session)
+    } catch (requestError) {
+      setError(requestError.message || t('common.error'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -422,7 +434,7 @@ function ArchiveGameModal({ session, t, onClose, onArchived }) {
   )
 }
 
-function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequestDelete, onRequestArchive }) {
+function GameManagementModal({ session, locale, t, onClose, onSave, onUpdated, onRequestDelete, onRequestArchive }) {
   const [title, setTitle] = useState(session.title || '')
   const [submitting, setSubmitting] = useState('')
   const [error, setError] = useState('')
@@ -432,9 +444,14 @@ function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequest
   const updateSession = async (payload, action) => {
     setSubmitting(action)
     setError('')
-    const data = await apiPatch(`/game/sessions/${session.id}`, payload, setError)
-    setSubmitting('')
-    if (data?.session) onUpdated(data.session)
+    try {
+      const data = await onSave(session.id, payload)
+      if (data?.session) onUpdated(data.session)
+    } catch (requestError) {
+      setError(requestError.message || t('common.error'))
+    } finally {
+      setSubmitting('')
+    }
   }
 
   return (
@@ -527,7 +544,7 @@ function GameManagementModal({ session, locale, t, onClose, onUpdated, onRequest
   )
 }
 
-function DeleteGameModal({ session, t, onClose, onDeleted }) {
+function DeleteGameModal({ session, t, onClose, onDelete, onDeleted }) {
   const [confirmation, setConfirmation] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -538,9 +555,14 @@ function DeleteGameModal({ session, t, onClose, onDeleted }) {
     if (!canDelete || submitting) return
     setSubmitting(true)
     setError('')
-    const data = await apiDelete(`/game/sessions/${session.id}`, setError)
-    setSubmitting(false)
-    if (data?.status === 'success') onDeleted()
+    try {
+      const data = await onDelete(session.id)
+      if (data?.status === 'success') onDeleted()
+    } catch (requestError) {
+      setError(requestError.message || t('common.error'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -591,15 +613,24 @@ function Games({ startSetup = false }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const { currentUserId } = useContext(UserContext)
+  const sessionsQuery = useSessionListQuery(currentUserId, { includeAll: true })
+  const createSessionMutation = useCreateSessionMutation(currentUserId)
+  const updateSessionMutation = useUpdateSessionMutation(currentUserId)
+  const deleteSessionMutation = useDeleteSessionMutation(currentUserId)
+  const sessions = useMemo(
+    () => Array.isArray(sessionsQuery.data?.sessions) ? sessionsQuery.data.sessions : [],
+    [sessionsQuery.data?.sessions],
+  )
+  const loading = sessionsQuery.isLoading || (
+    sessionsQuery.isFetching && !sessionsQuery.data
+  )
 
-  const [sessions, setSessions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [showSetup, setShowSetup] = useState(startSetup)
   const [setupDefaults, setSetupDefaults] = useState(() => normalizeSetupDefaults(location.state?.setupDefaults))
   const [managingSession, setManagingSession] = useState(null)
   const [deletingSession, setDeletingSession] = useState(null)
   const [archivingSession, setArchivingSession] = useState(null)
-  const [error, setError] = useState('')
   const [coldStart, setColdStart] = useState(false)
   const coldStartTimerRef = useRef(null)
 
@@ -625,26 +656,12 @@ function Games({ startSetup = false }) {
     }
   }, [startSetup, location.state])
 
-  const loadSessions = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    const data = await apiFetch('/game/sessions?include_all=true', {}, setError)
-    if (data && Array.isArray(data.sessions)) {
-      setSessions(data.sessions)
-    }
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    loadSessions()
-  }, [loadSessions])
-
   const activeSessions = useMemo(
-    () => sessions.filter((session) => session.status === 'active' && !session.is_expired),
+    () => sessions.filter((session) => session.status === 'active'),
     [sessions]
   )
   const otherSessions = useMemo(
-    () => sessions.filter((session) => !(session.status === 'active' && !session.is_expired)),
+    () => sessions.filter((session) => session.status !== 'active'),
     [sessions]
   )
 
@@ -652,34 +669,27 @@ function Games({ startSetup = false }) {
     navigate(gamePath(session.id), { replace: true })
   }
 
-  const handleUpdated = (updatedSession) => {
-    setSessions((currentSessions) => (
-      currentSessions.map((session) => (
-        session.id === updatedSession.id ? updatedSession : session
-      ))
-    ))
+  const handleUpdated = () => {
     setManagingSession(null)
-    loadSessions()
   }
 
   const handleDeleted = () => {
     setDeletingSession(null)
     setManagingSession(null)
     navigate('/games', { replace: true })
-    loadSessions()
   }
 
   if (loading) {
     return <PageState title={t('games.loading')} body={coldStart ? t('auth.coldStartHint') : ''} />
   }
 
-  if (error) {
+  if (sessionsQuery.isError) {
     return (
       <PageState
         title={t('games.errorTitle')}
-        body={error}
+        body={sessionsQuery.error?.message || t('common.loadError')}
         actionLabel={t('games.retry')}
-        onAction={loadSessions}
+        onAction={() => sessionsQuery.refetch()}
       />
     )
   }
@@ -759,6 +769,7 @@ function Games({ startSetup = false }) {
             setShowSetup(false)
             setSetupDefaults(null)
           }}
+          onCreate={(payload) => createSessionMutation.mutateAsync(payload)}
           onCreated={handleCreated}
         />
       )}
@@ -769,6 +780,7 @@ function Games({ startSetup = false }) {
           locale={locale}
           t={t}
           onClose={() => setManagingSession(null)}
+          onSave={(sessionId, updates) => updateSessionMutation.mutateAsync({ sessionId, updates })}
           onUpdated={handleUpdated}
           onRequestDelete={(session) => {
             setManagingSession(null)
@@ -786,6 +798,7 @@ function Games({ startSetup = false }) {
           session={deletingSession}
           t={t}
           onClose={() => setDeletingSession(null)}
+          onDelete={(sessionId) => deleteSessionMutation.mutateAsync(sessionId)}
           onDeleted={handleDeleted}
         />
       )}
@@ -795,6 +808,7 @@ function Games({ startSetup = false }) {
           session={archivingSession}
           t={t}
           onClose={() => setArchivingSession(null)}
+          onArchive={(sessionId, updates) => updateSessionMutation.mutateAsync({ sessionId, updates })}
           onArchived={(updatedSession) => {
             setArchivingSession(null)
             handleUpdated(updatedSession)

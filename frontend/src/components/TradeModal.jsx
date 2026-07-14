@@ -1,10 +1,15 @@
-import { apiFetch, apiPost } from '../api'
+import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getStockName } from "../utils/stockNames";
 import { UserContext } from "../context/userContext";
-import { useQueryClient } from '@tanstack/react-query'
-import { useAccountQuery, useWatchlistContainsQuery, useWatchlistToggleMutation, queryKeys } from '../query/queries'
+import {
+  useAccountQuery,
+  useHoldingsQuery,
+  useTradeMutation,
+  useWatchlistContainsQuery,
+  useWatchlistToggleMutation,
+} from '../query/queries'
 
 
 function TradeModal({
@@ -17,24 +22,28 @@ function TradeModal({
 }) {
   const { t, i18n } = useTranslation();
   const { currentUserId } = useContext(UserContext);
-  const queryClient = useQueryClient()
 
   const [stock, setStock] = useState(null);
   const [myHolding, setMyHolding] = useState(0);
   const [quantity, setQuantity] = useState("1");
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [stockLoading, setStockLoading] = useState(true);
   const [confirmAction, setConfirmAction] = useState(null); // "BUY" or "SELL"
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showDelayedLoading, setShowDelayedLoading] = useState(false);
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
-  const { data: account } = useAccountQuery(currentUserId, sessionId)
+  const accountQuery = useAccountQuery(currentUserId, sessionId)
+  const holdingsQuery = useHoldingsQuery(currentUserId, sessionId)
+  const account = accountQuery.data
   const { data: watchlistContains } = useWatchlistContainsQuery(currentUserId, ticker)
   const toggleWatchlistMutation = useWatchlistToggleMutation(currentUserId)
+  const tradeMutation = useTradeMutation(currentUserId, sessionId)
   const isInWatchlist = !!watchlistContains?.in_watchlist
+  const loading = stockLoading || accountQuery.isLoading || holdingsQuery.isLoading
+  const sessionDataError = accountQuery.error || holdingsQuery.error
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement;
@@ -56,7 +65,7 @@ function TradeModal({
 
   useEffect(() => {
     if (!ticker) return;
-    setLoading(true);
+    setStockLoading(true);
     setMessage("");
     setIsSuccess(false);
     setConfirmAction(null);
@@ -67,30 +76,26 @@ function TradeModal({
       setShowDelayedLoading(true);
     }, 300);
 
-    Promise.all([
-      apiFetch(`/stock/${ticker}`, {}, setMessage),
-      apiFetch(
-        sessionId
-          ? `/game/sessions/${sessionId}/portfolio/holdings`
-          : `/portfolio/holdings?user_id=${currentUserId}`,
-        {}
-      ),
-    ])
-      .then(([stockData, holdingsData]) => {
+    apiFetch(`/stock/${ticker}`, {}, setMessage)
+      .then((stockData) => {
         setStock(stockData);
-        const held = (holdingsData || []).find(h => h.ticker === ticker);
-        setMyHolding(held ? held.quantity : 0);
-        setLoading(false);
+        setStockLoading(false);
         setShowDelayedLoading(false);
       })
       .catch(() => {
         setMessage(t("common.error"));
-        setLoading(false);
+        setStockLoading(false);
         setShowDelayedLoading(true);
       });
 
     return () => window.clearTimeout(loadingTimer);
   }, [ticker, currentUserId, sessionId, t]);
+
+  useEffect(() => {
+    if (!Array.isArray(holdingsQuery.data)) return
+    const held = holdingsQuery.data.find((holding) => holding.ticker === ticker)
+    setMyHolding(held ? held.quantity : 0)
+  }, [holdingsQuery.data, ticker])
 
   if (!ticker) return null;
 
@@ -99,32 +104,22 @@ function TradeModal({
     setMessage("");
     setIsSuccess(false);
     setSubmitting(true);
-    const data = await apiPost(
-      sessionId
-        ? `/game/sessions/${sessionId}/trade/buy`
-        : `/trade/buy?user_id=${currentUserId}`,
-      { ticker, quantity: quantityNumber },
-      (err) => setMessage(err)
-    );
-    setSubmitting(false);
-    if (data) {
+    try {
+      await tradeMutation.mutateAsync({
+        type: 'buy',
+        payload: { ticker, quantity: quantityNumber },
+      })
       setMessage(t("trade.buySuccess"));
       setIsSuccess(true);
-      setMyHolding((current) => current + quantityNumber);
-      if (data.balance) {
-        queryClient.setQueryData(queryKeys.account(currentUserId, sessionId), (current) => ({
-          ...(current || {}),
-          balance_krw: data.balance.krw,
-          balance_usd: data.balance.usd,
-        }))
-      }
-      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId, sessionId) })
+      setMyHolding(myHolding + quantityNumber);
       if (onComplete) setTimeout(onComplete, 800);
+      setSubmitting(false);
       return true;
+    } catch (error) {
+      setMessage(error.message || t("common.error"))
+      setSubmitting(false);
+      return false;
     }
-    return false;
   };
 
   const sell = async () => {
@@ -132,32 +127,22 @@ function TradeModal({
     setMessage("");
     setIsSuccess(false);
     setSubmitting(true);
-    const data = await apiPost(
-      sessionId
-        ? `/game/sessions/${sessionId}/trade/sell`
-        : `/trade/sell?user_id=${currentUserId}`,
-      { ticker, quantity: quantityNumber },
-      (err) => setMessage(err)
-    );
-    setSubmitting(false);
-    if (data) {
+    try {
+      await tradeMutation.mutateAsync({
+        type: 'sell',
+        payload: { ticker, quantity: quantityNumber },
+      })
       setMessage(t("trade.sellSuccess"));
       setIsSuccess(true);
-      setMyHolding((current) => Math.max(0, current - quantityNumber));
-      if (data.balance) {
-        queryClient.setQueryData(queryKeys.account(currentUserId, sessionId), (current) => ({
-          ...(current || {}),
-          balance_krw: data.balance.krw,
-          balance_usd: data.balance.usd,
-        }))
-      }
-      queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.analyticsPerformance(currentUserId, sessionId) })
+      setMyHolding(Math.max(0, myHolding - quantityNumber));
       if (onComplete) setTimeout(onComplete, 800);
+      setSubmitting(false);
       return true;
+    } catch (error) {
+      setMessage(error.message || t("common.error"))
+      setSubmitting(false);
+      return false;
     }
-    return false;
   };
 
   const toggleWatchlist = async () => {
@@ -204,7 +189,8 @@ function TradeModal({
   const exceedsHolding = !!stock && quantityNumber > safeWholeHolding;
   const showCashWarning = !invalidQuantity && exceedsCash && (!confirmAction || confirmAction === 'BUY');
   const showHoldingWarning = !invalidQuantity && exceedsHolding && confirmAction === 'SELL';
-  const tradeBlocked = Boolean(tradeDisabledReason);
+  const tradeUnavailableMessage = tradeDisabledReason || sessionDataError?.message || '';
+  const tradeBlocked = Boolean(tradeUnavailableMessage);
   const confirmDisabled = submitting ||
     tradeBlocked ||
     invalidQuantity ||
@@ -411,7 +397,7 @@ function TradeModal({
                 </div>
                 {tradeBlocked && (
                   <div className="trade-unavailable-notice">
-                    {tradeDisabledReason}
+                    {tradeUnavailableMessage}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
@@ -434,7 +420,7 @@ function TradeModal({
               <>
                 {tradeBlocked && (
                   <div className="trade-unavailable-notice">
-                    {tradeDisabledReason}
+                    {tradeUnavailableMessage}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>

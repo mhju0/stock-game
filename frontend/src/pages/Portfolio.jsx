@@ -1,5 +1,4 @@
-import { apiFetch } from '../api'
-import { useState, useEffect, useContext, useMemo } from 'react'
+import { useState, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import TradeModal from '../components/TradeModal'
@@ -8,6 +7,7 @@ import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/userContext'
+import { useAccountQuery, useHoldingsQuery } from '../query/queries'
 import { gamePath, isSessionEnded } from '../sessionRoutes'
 
 
@@ -19,27 +19,27 @@ function Portfolio() {
   const { currentUserId } = useContext(UserContext)
   const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   
-  const [account, setAccount] = useState(null)
-  const [holdings, setHoldings] = useState([])
-  const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('alloc_desc')
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [filterSector, setFilterSector] = useState('ALL')
   const [displayCurrency, setDisplayCurrency] = useState('KRW')
   const [tradeTicker, setTradeTicker] = useState(null)
 
-  const fetchData = async () => {
-    setLoading(true)
-    const [holdingsData, accountData] = await Promise.all([
-      apiFetch(`/game/sessions/${sessionId}/portfolio/holdings`),
-      apiFetch(`/game/sessions/${sessionId}/portfolio/account`)
-    ])
-    setHoldings(Array.isArray(holdingsData) ? holdingsData : [])
-    setAccount(accountData || null)
-    setLoading(false)
-  }
+  const accountQuery = useAccountQuery(currentUserId, sessionId)
+  const holdingsQuery = useHoldingsQuery(currentUserId, sessionId)
+  const account = accountQuery.data || null
+  const holdings = useMemo(
+    () => Array.isArray(holdingsQuery.data) ? holdingsQuery.data : [],
+    [holdingsQuery.data],
+  )
+  const loading = accountQuery.isLoading || holdingsQuery.isLoading ||
+    (accountQuery.isFetching && accountQuery.data === undefined) ||
+    (holdingsQuery.isFetching && holdingsQuery.data === undefined)
 
-  useEffect(() => { fetchData() }, [currentUserId, sessionId])
+  const fetchData = () => {
+    accountQuery.refetch()
+    holdingsQuery.refetch()
+  }
 
   const sorted = useMemo(() => {
     let filtered = holdings
@@ -93,9 +93,11 @@ function Portfolio() {
   }, {}), [holdings])
 
   if (loading) return <p>{t('common.loading')}</p>
-  if (!account) return (
+  if (accountQuery.isError || holdingsQuery.isError || !account) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+        {accountQuery.error?.message || holdingsQuery.error?.message || t('common.loadError')}
+      </p>
       <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
     </div>
   )
@@ -234,7 +236,7 @@ function Portfolio() {
           sessionId={sessionId}
           tradeDisabledReason={tradeDisabledReason}
           onClose={() => setTradeTicker(null)}
-          onComplete={() => { setTradeTicker(null); fetchData() }} />
+          onComplete={() => setTradeTicker(null)} />
       )}
     </div>
   )

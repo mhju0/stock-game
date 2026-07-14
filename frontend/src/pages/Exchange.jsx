@@ -1,8 +1,9 @@
-import { apiFetch, apiPost } from '../api'
+import { apiFetch } from '../api'
 import { useState, useEffect, useContext, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { UserContext } from '../context/userContext'
+import { useAccountQuery, useTradeMutation } from '../query/queries'
 import { isSessionEnded } from '../sessionRoutes'
 
 
@@ -14,25 +15,36 @@ function Exchange() {
   const ended = isSessionEnded(session)
   
   const [rate, setRate] = useState(null)
-  const [account, setAccount] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [rateLoading, setRateLoading] = useState(true)
+  const [rateError, setRateError] = useState('')
   const [fromCurrency, setFromCurrency] = useState('KRW')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const accountQuery = useAccountQuery(currentUserId, sessionId)
+  const tradeMutation = useTradeMutation(currentUserId, sessionId)
+  const account = accountQuery.data || null
+  const loading = rateLoading || accountQuery.isLoading || (
+    accountQuery.isFetching && accountQuery.data === undefined
+  )
 
-  const fetchData = useCallback(() => {
-    setLoading(true)
-    Promise.all([
-      apiFetch('/exchange-rate').then(d => { if (d) setRate(d.usd_to_krw) }),
-      apiFetch(
-        sessionId ? `/game/sessions/${sessionId}/portfolio/account` : '/portfolio/account'
-      ).then(d => { if (d) setAccount(d) }),
-    ]).finally(() => setLoading(false))
-  }, [sessionId])
+  const fetchRate = useCallback(() => {
+    setRateLoading(true)
+    setRateError('')
+    apiFetch('/exchange-rate', {}, setRateError)
+      .then((data) => {
+        if (data) setRate(data.usd_to_krw)
+      })
+      .finally(() => setRateLoading(false))
+  }, [])
 
-  useEffect(() => { fetchData() }, [fetchData, currentUserId])
+  const fetchData = () => {
+    fetchRate()
+    accountQuery.refetch()
+  }
+
+  useEffect(() => { fetchRate() }, [fetchRate])
 
   const toCurrency = fromCurrency === 'KRW' ? 'USD' : 'KRW'
   const numericAmount = Number(amount)
@@ -54,27 +66,35 @@ function Exchange() {
     setMessage('')
     setIsSuccess(false)
     setSubmitting(true)
-    const data = await apiPost(
-      sessionId ? `/game/sessions/${sessionId}/trade/exchange` : '/trade/exchange',
-      { from_currency: fromCurrency, to_currency: toCurrency, amount: numericAmount },
-      (err) => setMessage(err)
-    )
-    setSubmitting(false)
-    if (data?.exchange && data?.balance) {
+    try {
+      const data = await tradeMutation.mutateAsync({
+        type: 'exchange',
+        payload: {
+          from_currency: fromCurrency,
+          to_currency: toCurrency,
+          amount: numericAmount,
+        },
+      })
+      if (!data?.exchange || !data?.balance) return
       const ex = data.exchange
       const fromFmt = ex.from === 'KRW' ? `₩${Math.round(ex.amount).toLocaleString()}` : `$${Number(ex.amount).toFixed(2)}`
       const toFmt = ex.to === 'KRW' ? `₩${Math.round(ex.converted).toLocaleString()}` : `$${Number(ex.converted).toFixed(2)}`
       setMessage(t('exchange.success', { from: fromFmt, to: toFmt }))
       setIsSuccess(true)
-      setAccount({ ...account, balance_krw: data.balance.krw, balance_usd: data.balance.usd })
       setAmount('')
+    } catch (error) {
+      setMessage(error.message || t('common.error'))
+    } finally {
+      setSubmitting(false)
     }
   }
 
   if (loading) return <p>{t('common.loading')}</p>
-  if (!rate || !account) return (
+  if (rateError || accountQuery.isError || !rate || !account) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
+      <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
+        {rateError || accountQuery.error?.message || t('common.loadError')}
+      </p>
       <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
     </div>
   )
