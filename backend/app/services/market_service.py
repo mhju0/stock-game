@@ -1,18 +1,11 @@
-try:
-    import yfinance as yf
-except Exception:  # yfinance import must never abort app startup
-    yf = None
 import gc
 import logging
 import time
-import threading
-from datetime import datetime, time as dt_time
+
+from app.services import market_data_provider
+from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 
 logger = logging.getLogger(__name__)
-
-_yf_semaphore = threading.Semaphore(4)
-from zoneinfo import ZoneInfo
-from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 
 # ── Static ranking by market cap (updated periodically) ─────────
 # These are pre-sorted by approximate market cap, largest first.
@@ -70,74 +63,30 @@ KR_NAMES = {
     "042700.KS": "한미반도체",
 }
 
-cache = {
-    "US": {"data": [], "timestamp": 0, "session_date": None},
-    "KR": {"data": [], "timestamp": 0, "session_date": None},
-}
-
-MARKET_OPEN_CONFIG = {
-    "US": {"tz": ZoneInfo("America/New_York"), "open": dt_time(9, 30)},
-    "KR": {"tz": ZoneInfo("Asia/Seoul"), "open": dt_time(9, 0)},
-}
+cache = market_data_provider._market_cache
 
 
-def _is_trading_day(local_now: datetime) -> bool:
-    return local_now.weekday() < 5
-
-
-def _session_date_if_open(market: str) -> str | None:
-    cfg = MARKET_OPEN_CONFIG[market]
-    local_now = datetime.now(cfg["tz"])
-    if not _is_trading_day(local_now):
-        return None
-    market_open = local_now.replace(
-        hour=cfg["open"].hour,
-        minute=cfg["open"].minute,
-        second=0,
-        microsecond=0,
+def _market_inputs(market: str) -> tuple[list[str], dict[str, str]]:
+    return (
+        (US_TOP_50, US_NAMES)
+        if market == "US"
+        else (KR_TOP_50, KR_NAMES)
     )
-    if local_now >= market_open:
-        return local_now.date().isoformat()
-    return None
 
 
-def fetch_top_30(market: str) -> list:
-    """Download prices in batch, rank by static market cap order."""
-    candidates = US_TOP_50 if market == "US" else KR_TOP_50
-    names = US_NAMES if market == "US" else KR_NAMES
-
-    try:
-        with _yf_semaphore:
-            data = yf.download(
-                candidates, period="2d", group_by="ticker",
-                threads=4, progress=False,
-            )
-    except Exception as e:
-        logger.warning("Batch download failed for %s: %s", market, e)
-        return []
-
-    if data.empty:
-        return []
-
+def _format_top_30(
+    market: str,
+    closes_by_ticker: dict[str, tuple[float, float]],
+) -> list:
+    candidates, names = _market_inputs(market)
     stocks = []
     for rank, ticker in enumerate(candidates, start=1):
         try:
-            if len(candidates) == 1:
-                ticker_data = data
-            else:
-                if ticker not in data.columns.get_level_values(0):
-                    continue
-                ticker_data = data[ticker]
-
-            closes = ticker_data["Close"].dropna()
-            if closes.empty:
+            if ticker not in closes_by_ticker:
                 continue
-
-            current = float(closes.iloc[-1])
-            prev = float(closes.iloc[-2]) if len(closes) >= 2 else current
+            current, prev = closes_by_ticker[ticker]
             change = current - prev
             change_pct = (change / prev) * 100 if prev else 0
-
             stocks.append({
                 "rank": rank,
                 "ticker": ticker,
@@ -147,43 +96,32 @@ def fetch_top_30(market: str) -> list:
                 "change_pct": round(change_pct, 2),
                 "currency": "KRW" if market == "KR" else "USD",
             })
-        except Exception as e:
-            logger.warning("Skipping ticker %s: %s", ticker, e)
-            continue
-
-    # Already in rank order from the static list, just take top 30
-    stocks.sort(key=lambda x: x["rank"])
+        except Exception as exc:
+            logger.warning("Skipping ticker %s: %s", ticker, exc)
+    stocks.sort(key=lambda stock: stock["rank"])
     return stocks[:30]
+
+
+def fetch_top_30(market: str) -> list:
+    """Download prices in batch, rank by static market cap order."""
+    candidates, _ = _market_inputs(market)
+    return _format_top_30(market, market_data_provider.fetch_market_closes(candidates))
 
 
 def refresh_cache(market: str):
     try:
-        data = fetch_top_30(market)
-        if data:
-            cache[market]["data"] = data
-            cache[market]["timestamp"] = time.time()
-            cache[market]["session_date"] = _session_date_if_open(market)
-            logger.info("Top 30 %s cache refreshed: %d stocks", market, len(data))
-    except Exception as e:
-        logger.warning("Cache refresh error for %s: %s", market, e)
+        candidates, _ = _market_inputs(market)
+        closes = market_data_provider.refresh_market_closes(market, candidates)
+        if closes:
+            logger.info("Top 30 %s cache refreshed: %d stocks", market, len(_format_top_30(market, closes)))
+    except Exception as exc:
+        logger.warning("Cache refresh error for %s: %s", market, exc)
 
 
 def get_top_30(market: str) -> list:
-    twelve_hours = 12 * 3600
-    session_date = _session_date_if_open(market)
-    session_needs_refresh = (
-        session_date is not None and cache[market].get("session_date") != session_date
-    )
-
-    if (
-        cache[market]["data"]
-        and (time.time() - cache[market]["timestamp"] < twelve_hours)
-        and not session_needs_refresh
-    ):
-        return cache[market]["data"]
-
-    refresh_cache(market)
-    return cache[market]["data"]
+    candidates, _ = _market_inputs(market)
+    closes = market_data_provider.get_market_closes(market, candidates)
+    return _format_top_30(market, closes)
 
 
 def schedule_refresh():

@@ -1,10 +1,8 @@
 import logging
 
-try:
-    import yfinance as yf
-except Exception:  # yfinance import must never abort app startup
-    yf = None
 from datetime import datetime, timedelta
+
+from app.services import market_data_provider
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +18,17 @@ def get_benchmark_data(index: str, days: int = 90) -> list:
         return []
 
     try:
-        ticker = yf.Ticker(symbol)
         # Anchor the window to `days` ago (the caller passes the game's
         # elapsed days) so the 0% baseline lines up with the game start
         # instead of a fixed lookback period.
         start = datetime.now() - timedelta(days=max(int(days), 2))
-        data = ticker.history(start=start.strftime("%Y-%m-%d"))
-
-        if data.empty:
+        closes = market_data_provider.get_close_history(symbol, start.strftime("%Y-%m-%d"))
+        if not closes:
             return []
 
-        first_close = float(data["Close"].iloc[0])
+        first_close = closes[0][1]
         results = []
-        for date, row in data.iterrows():
-            close = float(row["Close"])
+        for date, close in closes:
             change_pct = ((close - first_close) / first_close) * 100
             results.append({
                 "date": date.strftime("%Y-%m-%d"),

@@ -1,9 +1,5 @@
-try:
-    import yfinance as yf
-except Exception:  # yfinance import must never abort app startup
-    yf = None
 from fastapi import APIRouter
-from app.services.stock_service import get_stock_info, search_stocks
+from app.services.stock_service import get_stock_history, get_stock_info, search_stocks
 from app.services.exchange_service import get_exchange_rate
 from app.services.market_service import get_top_30
 
@@ -19,30 +15,7 @@ def stock_search(query: str):
 
 @router.get("/stock/{ticker}/history")
 def stock_history(ticker: str, period: str = "1mo"):
-    valid_periods = {"1d": "1d", "1w": "5d", "1mo": "1mo", "3mo": "3mo", "1y": "1y"}
-    yf_period = valid_periods.get(period, "1mo")
-    try:
-        stock = yf.Ticker(ticker)
-        history_kwargs = {"period": yf_period}
-        if period == "1d":
-            history_kwargs["interval"] = "5m"
-        data = stock.history(**history_kwargs)
-        if data.empty:
-            return []
-        result = []
-        for date, row in data.iterrows():
-            timestamp = date.to_pydatetime() if hasattr(date, "to_pydatetime") else date
-            result.append({
-                "date": timestamp.isoformat(timespec="seconds") if period == "1d" else date.strftime("%Y-%m-%d"),
-                "open": round(float(row["Open"]), 2),
-                "high": round(float(row["High"]), 2),
-                "low": round(float(row["Low"]), 2),
-                "close": round(float(row["Close"]), 2),
-                "volume": int(row["Volume"]),
-            })
-        return result
-    except Exception:
-        return []
+    return get_stock_history(ticker, period)
 
 
 @router.get("/stock/{ticker}")

@@ -1,5 +1,7 @@
 import pandas as pd
 
+from app.services import market_data_provider
+
 
 class FakeTicker:
     calls = []
@@ -24,7 +26,7 @@ class FakeYFinance:
 
 def test_one_day_history_requests_intraday_interval(client, monkeypatch):
     FakeTicker.calls = []
-    monkeypatch.setattr("app.routes.stocks.yf", FakeYFinance)
+    monkeypatch.setattr(market_data_provider, "yf", FakeYFinance)
 
     resp = client.get("/stock/AAPL/history?period=1d")
 
@@ -37,7 +39,7 @@ def test_one_day_history_requests_intraday_interval(client, monkeypatch):
 
 def test_non_intraday_history_uses_daily_period_without_interval(client, monkeypatch):
     FakeTicker.calls = []
-    monkeypatch.setattr("app.routes.stocks.yf", FakeYFinance)
+    monkeypatch.setattr(market_data_provider, "yf", FakeYFinance)
 
     resp = client.get("/stock/AAPL/history?period=1mo")
 
@@ -46,3 +48,13 @@ def test_non_intraday_history_uses_daily_period_without_interval(client, monkeyp
     data = resp.json()
     assert len(data) == 2
     assert data[0]["date"] == "2026-07-09"
+
+
+def test_unknown_history_period_falls_back_to_one_month(client, monkeypatch):
+    FakeTicker.calls = []
+    monkeypatch.setattr(market_data_provider, "yf", FakeYFinance)
+
+    resp = client.get("/stock/AAPL/history?period=unknown")
+
+    assert resp.status_code == 200
+    assert FakeTicker.calls == [{"period": "1mo"}]

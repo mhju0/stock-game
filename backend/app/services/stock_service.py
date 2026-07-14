@@ -1,15 +1,11 @@
-try:
-    import yfinance as yf
-except Exception:  # yfinance import must never abort app startup
-    yf = None
-import requests
 import time
 
+from app.services import market_data_provider
 from app.services.static_fundamentals import STATIC_FUNDAMENTALS
 
 # ── Caches ──────────────────────────────────────────────────────────
-_price_cache: dict[str, dict] = {}
-PRICE_CACHE_TTL = 300
+# Compatibility alias for tests and callers that clear the long-lived cache.
+_price_cache = market_data_provider._price_cache
 
 _info_cache: dict[str, dict] = {}
 INFO_CACHE_TTL = 600
@@ -228,61 +224,33 @@ def search_stocks(query: str) -> list:
                 "type": "EQUITY",
             })
 
-    # Also try Yahoo Finance search API for stocks not in local dicts
-    try:
-        url = "https://query2.finance.yahoo.com/v1/finance/search"
-        params = {"q": query, "quotesCount": 10, "newsCount": 0, "listsCount": 0}
-        headers = {"User-Agent": "Mozilla/5.0"}
-        res = requests.get(url, params=params, headers=headers, timeout=5)
-        data = res.json()
-        for q in data.get("quotes", []):
-            if q.get("quoteType") == "EQUITY" and q.get("symbol") not in matched_tickers:
-                ticker = q.get("symbol", "")
-                en_name = q.get("shortname") or q.get("longname", "")
-                ko_name = US_STOCK_NAMES_KO.get(ticker) or KR_STOCK_NAMES_EN.get(ticker) or en_name
-                if ticker in KOREAN_STOCKS.values():
-                    ko_name = next((name for name, t in KOREAN_STOCKS.items() if t == ticker), en_name)
-                results.append({
-                    "ticker": ticker,
-                    "name": en_name,
-                    "name_en": en_name,
-                    "name_ko": ko_name,
-                    "exchange": q.get("exchange", ""),
-                    "type": q.get("quoteType", ""),
-                })
-    except Exception:
-        pass
+    # Add Yahoo search matches that are not already in the local catalog.
+    for quote in market_data_provider.search_equities(query):
+        if quote.get("quoteType") == "EQUITY" and quote.get("symbol") not in matched_tickers:
+            ticker = quote.get("symbol", "")
+            en_name = quote.get("shortname") or quote.get("longname", "")
+            ko_name = US_STOCK_NAMES_KO.get(ticker) or KR_STOCK_NAMES_EN.get(ticker) or en_name
+            if ticker in KOREAN_STOCKS.values():
+                ko_name = next((name for name, t in KOREAN_STOCKS.items() if t == ticker), en_name)
+            results.append({
+                "ticker": ticker,
+                "name": en_name,
+                "name_en": en_name,
+                "name_ko": ko_name,
+                "exchange": quote.get("exchange", ""),
+                "type": quote.get("quoteType", ""),
+            })
 
     return results
 
 
 # ── Price ────────────────────────────────────────────────────────────
 def get_stock_price(ticker: str) -> float | None:
-    now = time.time()
+    return market_data_provider.get_stock_price(ticker)
 
-    cached = _price_cache.get(ticker)
-    if cached and now - cached["ts"] < PRICE_CACHE_TTL:
-        return cached["value"]
 
-    try:
-        stock = yf.Ticker(ticker)
-        data = stock.history(period="1d")
-        if data.empty:
-            return None
-        closes = data["Close"].dropna()
-        if closes.empty:
-            return None
-        price = round(float(closes.iloc[-1]), 2)
-        # Reject NaN / non-positive closes: they sail through downstream
-        # `is None` checks and can NaN-out a balance or hand out free shares.
-        if price != price or price <= 0:
-            return None
-        _price_cache[ticker] = {"value": price, "ts": now}
-        return price
-    except Exception:
-        if cached:
-            return cached["value"]
-        return None
+def get_stock_history(ticker: str, period: str = "1mo") -> list[dict]:
+    return market_data_provider.get_stock_history(ticker, period)
 
 
 # ── Sector/Industry lookup (static map is PRIMARY) ──────────────────
@@ -313,10 +281,9 @@ def get_stock_info(ticker: str) -> dict | None:
     # Get sector/industry from static map (primary source)
     sector, industry = _get_sector_industry(ticker)
 
-    # Try yfinance .info for name (and fallback sector if not in static map)
+    # Try provider metadata for name (and fallback sector if not in static map)
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.info
+        info = market_data_provider.get_ticker_metadata(ticker)
         if info and "shortName" in info:
             en_name = info.get("shortName", "")
             ko_name = en_name
