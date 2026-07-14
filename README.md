@@ -12,19 +12,15 @@ Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Rende
 
 ### Game overview
 
-<img src="docs/screenshots/games-overview.png" alt="Demo game overview" width="1280">
+<img src="docs/screenshots/games-overview.png" alt="Demo game overview" width="1440">
 
 ### Active game and benchmark
 
-<img src="docs/screenshots/game-status.png" alt="Active game status with benchmark comparison" width="1274">
+<img src="docs/screenshots/game-status.png" alt="Active game status with benchmark comparison" width="1440">
 
 ### Portfolio
 
-<img src="docs/screenshots/portfolio.png" alt="Demo portfolio holdings and allocation" width="1274">
-
-### Mobile replay setup
-
-<img src="docs/screenshots/mobile-replay.png" alt="Replay setup prefilled from an ended game on mobile" width="384">
+<img src="docs/screenshots/portfolio.png" alt="Demo portfolio holdings and allocation" width="1440">
 
 ## Highlights
 
