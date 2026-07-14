@@ -298,6 +298,40 @@ class TestSessionScopedPortfolioRoutes:
 
 
 class TestPortfolioCompatibilityRoutes:
+    def test_compatibility_routes_select_rows_per_resource_in_mixed_state(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        current = create_session(
+            db_session,
+            user,
+            title="Current",
+            cash_krw=1_500_000,
+            start_offset_days=1,
+        )
+        create_holding(db_session, user, session=current, ticker="SCOPED", quantity=2)
+        create_transaction(db_session, user, session=None, ticker="LEGACY_TX")
+        create_snapshot(db_session, user, session=None, total_value_krw=9_900_000)
+
+        with portfolio_patches({"SCOPED": 1000.0}):
+            account_resp = client.get("/portfolio/account", headers=auth_headers)
+            holdings_resp = client.get("/portfolio/holdings", headers=auth_headers)
+            transactions_resp = client.get("/portfolio/transactions", headers=auth_headers)
+            snapshots_resp = client.get("/portfolio/snapshots", headers=auth_headers)
+
+        assert account_resp.status_code == 200
+        assert account_resp.json()["balance_krw"] == 1_500_000
+        assert account_resp.json()["holdings_value_krw"] == 2_000
+        assert [(h["ticker"], h["quantity"]) for h in holdings_resp.json()] == [
+            ("SCOPED", 2)
+        ]
+        assert [t["ticker"] for t in transactions_resp.json()] == ["LEGACY_TX"]
+        assert [s["total_value_krw"] for s in snapshots_resp.json()] == [9_900_000]
+
     def test_old_portfolio_account_uses_current_session_when_available(
         self,
         client,

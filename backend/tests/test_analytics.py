@@ -300,6 +300,46 @@ class TestSessionScopedAnalytics:
 
 
 class TestAnalyticsCompatibility:
+    def test_compatibility_routes_preserve_grouped_selection_in_mixed_state(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+    ):
+        user = current_user(db_session, registered_user)
+        current = create_session(
+            db_session,
+            user,
+            title="Current",
+            cash_krw=1_000_000,
+            start_offset_days=1,
+        )
+        create_holding(db_session, user, session=current, ticker="SCOPED", quantity=2)
+        create_transaction(
+            db_session,
+            user,
+            session=None,
+            ticker="LEGACY_TX",
+            realized_pnl=75,
+        )
+        create_snapshot(db_session, user, session=None, total_value_krw=9_900_000)
+
+        with analytics_patches({"SCOPED": 1000.0}):
+            performance_resp = client.get("/analytics/performance", headers=auth_headers)
+            stock_resp = client.get("/analytics/by-stock", headers=auth_headers)
+            realized_resp = client.get("/analytics/realized", headers=auth_headers)
+
+        assert performance_resp.status_code == 200
+        assert performance_resp.json()["current_value"] == 1_002_000
+        assert performance_resp.json()["snapshots"] == []
+        assert stock_resp.status_code == 200
+        assert [(row["ticker"], row["realized_pnl"]) for row in stock_resp.json()] == [
+            ("SCOPED", 0)
+        ]
+        assert realized_resp.status_code == 200
+        assert realized_resp.json()["total_realized_pnl"] == 75
+
     def test_old_analytics_routes_use_current_session_when_available(
         self,
         client,

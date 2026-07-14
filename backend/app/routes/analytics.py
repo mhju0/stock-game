@@ -3,12 +3,18 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import GameSession, Holding, PortfolioSnapshot, Transaction, User
+from app.models import Holding, PortfolioSnapshot, Transaction, User
 from app.services.exchange_service import get_exchange_rate
-from app.services.game_session_service import (
-    ensure_session_cash_initialized,
-    get_current_session,
-    get_owned_session,
+from app.services.game_session_service import get_owned_session
+from app.services.portfolio_compatibility import (
+    ensure_session_cash_for_read,
+    holdings_query,
+    legacy_starting_value_krw,
+    read_current_session,
+    resolve_compatibility_session_id,
+    session_starting_value_krw,
+    snapshots_query,
+    transactions_query,
 )
 from app.services.valuation_service import (
     compute_holdings_value_krw,
@@ -19,99 +25,6 @@ from app.services.valuation_service import (
 )
 
 router = APIRouter(tags=["analytics"])
-
-
-def _ensure_session_cash_for_read(
-    db: Session,
-    session: GameSession,
-    user: User,
-) -> GameSession:
-    needs_commit = session.cash_krw is None or session.cash_usd is None
-    ensure_session_cash_initialized(session, user)
-    if needs_commit:
-        db.commit()
-        db.refresh(session)
-    return session
-
-
-def _session_starting_value_krw(session: GameSession, rate: float) -> float:
-    return (session.starting_balance_krw or 0.0) + (
-        (session.starting_balance_usd or 0.0) * rate
-    )
-
-
-def _legacy_starting_value_krw(session: GameSession | None) -> float:
-    return session.starting_balance_krw if session else 10_000_000
-
-
-def _has_scoped_rows(db: Session, model, user_id: int, session_id: int) -> bool:
-    return (
-        db.query(model)
-        .filter(model.user_id == user_id, model.game_session_id == session_id)
-        .first()
-        is not None
-    )
-
-
-def _has_unscoped_rows(db: Session, model, user_id: int) -> bool:
-    return (
-        db.query(model)
-        .filter(model.user_id == user_id, model.game_session_id.is_(None))
-        .first()
-        is not None
-    )
-
-
-def _read_current_session(db: Session, user: User) -> GameSession | None:
-    session = get_current_session(db, user)
-    if session:
-        _ensure_session_cash_for_read(db, session, user)
-    return session
-
-
-def _use_legacy_rows_for_current_session(
-    db: Session,
-    models,
-    user_id: int,
-    session_id: int,
-) -> bool:
-    has_scoped = any(_has_scoped_rows(db, model, user_id, session_id) for model in models)
-    has_unscoped = any(_has_unscoped_rows(db, model, user_id) for model in models)
-    return not has_scoped and has_unscoped
-
-
-def _holdings_query(db: Session, user_id: int, game_session_id: int | None):
-    query = db.query(Holding).filter(Holding.user_id == user_id)
-    if game_session_id is None:
-        return query.filter(Holding.game_session_id.is_(None))
-    return query.filter(Holding.game_session_id == game_session_id)
-
-
-def _transactions_query(db: Session, user_id: int, game_session_id: int | None):
-    query = db.query(Transaction).filter(Transaction.user_id == user_id)
-    if game_session_id is None:
-        return query.filter(Transaction.game_session_id.is_(None))
-    return query.filter(Transaction.game_session_id == game_session_id)
-
-
-def _snapshots_query(db: Session, user_id: int, game_session_id: int | None):
-    query = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user_id)
-    if game_session_id is None:
-        return query.filter(PortfolioSnapshot.game_session_id.is_(None))
-    return query.filter(PortfolioSnapshot.game_session_id == game_session_id)
-
-
-def _compat_session_id(
-    db: Session,
-    user_id: int,
-    session: GameSession | None,
-    models,
-) -> int | None:
-    if not session:
-        return None
-    if _use_legacy_rows_for_current_session(db, models, user_id, session.id):
-        return None
-    return session.id
 
 
 def _performance_response(
@@ -307,11 +220,11 @@ def get_session_performance(
     current_user: User = Depends(get_current_user),
 ):
     session = get_owned_session(db, current_user, session_id)
-    _ensure_session_cash_for_read(db, session, current_user)
+    ensure_session_cash_for_read(db, session, current_user)
     rate = get_exchange_rate()
-    holdings = _holdings_query(db, current_user.id, session.id).all()
+    holdings = holdings_query(db, current_user.id, session.id).all()
     snapshots = (
-        _snapshots_query(db, current_user.id, session.id)
+        snapshots_query(db, current_user.id, session.id)
         .order_by(PortfolioSnapshot.created_at.asc())
         .all()
     )
@@ -320,7 +233,7 @@ def get_session_performance(
         cash_usd=session.cash_usd or 0.0,
         holdings=holdings,
         snapshots=snapshots,
-        starting_value=_session_starting_value_krw(session, rate),
+        starting_value=session_starting_value_krw(session, rate),
         rate=rate,
         limit=limit,
     )
@@ -333,17 +246,17 @@ def get_performance(
     current_user: User = Depends(get_current_user),
 ):
     user_id = current_user.id
-    session = _read_current_session(db, current_user)
-    game_session_id = _compat_session_id(
+    session = read_current_session(db, current_user)
+    game_session_id = resolve_compatibility_session_id(
         db,
         user_id,
         session,
         (PortfolioSnapshot, Holding),
     )
     rate = get_exchange_rate()
-    holdings = _holdings_query(db, user_id, game_session_id).all()
+    holdings = holdings_query(db, user_id, game_session_id).all()
     snapshots = (
-        _snapshots_query(db, user_id, game_session_id)
+        snapshots_query(db, user_id, game_session_id)
         .order_by(PortfolioSnapshot.created_at.asc())
         .all()
     )
@@ -351,11 +264,11 @@ def get_performance(
     if session and game_session_id == session.id:
         cash_krw = session.cash_krw or 0.0
         cash_usd = session.cash_usd or 0.0
-        starting_value = _session_starting_value_krw(session, rate)
+        starting_value = session_starting_value_krw(session, rate)
     else:
         cash_krw = current_user.balance_krw
         cash_usd = current_user.balance_usd
-        starting_value = _legacy_starting_value_krw(session)
+        starting_value = legacy_starting_value_krw(session)
 
     return _performance_response(
         cash_krw=cash_krw,
@@ -375,8 +288,8 @@ def session_performance_by_stock(
     current_user: User = Depends(get_current_user),
 ):
     session = get_owned_session(db, current_user, session_id)
-    holdings = _holdings_query(db, current_user.id, session.id).all()
-    transactions = _transactions_query(db, current_user.id, session.id).all()
+    holdings = holdings_query(db, current_user.id, session.id).all()
+    transactions = transactions_query(db, current_user.id, session.id).all()
     return _by_stock_response(holdings, transactions)
 
 
@@ -385,15 +298,15 @@ def performance_by_stock(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    session = _read_current_session(db, current_user)
-    game_session_id = _compat_session_id(
+    session = read_current_session(db, current_user)
+    game_session_id = resolve_compatibility_session_id(
         db,
         current_user.id,
         session,
         (Holding, Transaction),
     )
-    holdings = _holdings_query(db, current_user.id, game_session_id).all()
-    transactions = _transactions_query(db, current_user.id, game_session_id).all()
+    holdings = holdings_query(db, current_user.id, game_session_id).all()
+    transactions = transactions_query(db, current_user.id, game_session_id).all()
     return _by_stock_response(holdings, transactions)
 
 
@@ -404,7 +317,7 @@ def session_performance_by_sector(
     current_user: User = Depends(get_current_user),
 ):
     session = get_owned_session(db, current_user, session_id)
-    holdings = _holdings_query(db, current_user.id, session.id).all()
+    holdings = holdings_query(db, current_user.id, session.id).all()
     return _by_sector_response(holdings)
 
 
@@ -413,9 +326,14 @@ def performance_by_sector(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    session = _read_current_session(db, current_user)
-    game_session_id = _compat_session_id(db, current_user.id, session, (Holding,))
-    holdings = _holdings_query(db, current_user.id, game_session_id).all()
+    session = read_current_session(db, current_user)
+    game_session_id = resolve_compatibility_session_id(
+        db,
+        current_user.id,
+        session,
+        (Holding,),
+    )
+    holdings = holdings_query(db, current_user.id, game_session_id).all()
     return _by_sector_response(holdings)
 
 
@@ -427,7 +345,7 @@ def session_realized_performance(
 ):
     session = get_owned_session(db, current_user, session_id)
     transactions = (
-        _transactions_query(db, current_user.id, session.id)
+        transactions_query(db, current_user.id, session.id)
         .order_by(Transaction.created_at.desc())
         .all()
     )
@@ -439,10 +357,15 @@ def realized_performance(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    session = _read_current_session(db, current_user)
-    game_session_id = _compat_session_id(db, current_user.id, session, (Transaction,))
+    session = read_current_session(db, current_user)
+    game_session_id = resolve_compatibility_session_id(
+        db,
+        current_user.id,
+        session,
+        (Transaction,),
+    )
     transactions = (
-        _transactions_query(db, current_user.id, game_session_id)
+        transactions_query(db, current_user.id, game_session_id)
         .order_by(Transaction.created_at.desc())
         .all()
     )
