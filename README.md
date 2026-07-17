@@ -16,11 +16,11 @@ Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Rende
 
 ### Active game and benchmark
 
-<img src="docs/screenshots/game-status.png" alt="Active game status with benchmark comparison" width="1440">
+<img src="docs/screenshots/performance-benchmark.png" alt="Active game status with benchmark comparison" width="1440">
 
 ### Portfolio
 
-<img src="docs/screenshots/portfolio.png" alt="Demo portfolio holdings and allocation" width="1440">
+<img src="docs/screenshots/portfolio-summary.png" alt="Demo portfolio holdings and allocation" width="1440">
 
 ## Highlights
 
