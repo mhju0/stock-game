@@ -4,6 +4,11 @@ Stock Game is a full-stack paper-trading simulator for US and Korean equities. I
 
 **[Open the live app](https://stock-game-gray.vercel.app)** · **[Browse the API](https://stock-game-6411.onrender.com/docs)**
 
+## License
+
+Copyright (c) 2026 Michael Ju. All rights reserved.
+No license is granted for use, copying, modification, or distribution of this code as of 2026-07-30. This repository is public for portfolio review purposes only.
+
 ## Demo
 
 Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Render API uses free hosting, so the first request can take 30–60 seconds while the service starts.
@@ -110,7 +115,3 @@ The regression smoke covers authentication, games, trading, FX, analytics, owner
 - Market data comes from yfinance, an unofficial source; the app uses caching and static fundamentals as fallbacks, but quotes can still be unavailable during an outage.
 - The free Render service can cold-start slowly.
 - Authentication throttling is process-local and resets whenever the worker restarts, including deploys and routine recycling; a multi-worker production deployment should move the counters to a shared store such as Redis.
-
-## License
-
-Released under the [MIT License](LICENSE).
