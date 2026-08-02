@@ -5,8 +5,14 @@ from app.schemas import BuyRequest, SellRequest, ExchangeRequest
 from app.services.trading_service import buy_stock, sell_stock, exchange_currency
 from app.auth import get_current_user
 from app.models import User
+from app.services.public_rate_limit import enforce_trade_rate_limit
 
-router = APIRouter(tags=["trading"])
+# Every route here writes a transaction and a snapshot row, so the throttle
+# belongs on the router rather than being remembered per route.
+router = APIRouter(
+    tags=["trading"],
+    dependencies=[Depends(enforce_trade_rate_limit)],
+)
 
 
 @router.post("/trade/buy")

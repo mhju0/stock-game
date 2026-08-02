@@ -10,6 +10,7 @@ from app.schemas import GameSessionCreateRequest, GameSessionUpdateRequest, NewG
 from app.services.benchmark_service import get_benchmark_data
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
+    get_active_sessions,
     get_current_session,
     get_owned_session,
     resolve_session_lifecycle_state,
@@ -27,6 +28,10 @@ from app.services.valuation_service import (
 )
 
 router = APIRouter(prefix="/game", tags=["game"])
+
+# Game creation is non-destructive and unlimited, so an account could otherwise
+# grow the table without bound. Far above any real play pattern.
+MAX_ACTIVE_SESSIONS = 20
 
 
 def _as_aware_utc(value: datetime | None) -> datetime | None:
@@ -108,6 +113,16 @@ def _create_session(
     starting_balance_krw: float,
     starting_balance_usd: float = 0.0,
 ) -> GameSession:
+    # Guarded here rather than per route so both creation entry points are covered.
+    if len(get_active_sessions(db, user)) >= MAX_ACTIVE_SESSIONS:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"You already have {MAX_ACTIVE_SESSIONS} active games. "
+                "Finish or delete one before starting another."
+            ),
+        )
+
     now = datetime.now(timezone.utc)
     session = GameSession(
         user_id=user.id,
