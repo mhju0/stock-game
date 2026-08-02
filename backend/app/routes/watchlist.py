@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Watchlist
 from app.auth import get_current_user
+from app.schemas import TickerPath, TickerQuery
 from app.services.stock_service import get_stock_info
 from app.services.valuation_service import get_prices_for_tickers
 
@@ -27,7 +28,7 @@ def get_watchlist(db: Session = Depends(get_db), current_user: User = Depends(ge
 
 
 @router.get("/contains")
-def contains_watchlist_item(ticker: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def contains_watchlist_item(ticker: TickerQuery, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     item = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id,
         Watchlist.ticker == ticker
@@ -35,7 +36,7 @@ def contains_watchlist_item(ticker: str, db: Session = Depends(get_db), current_
     return {"ticker": ticker, "in_watchlist": bool(item)}
 
 @router.post("/add")
-def add_to_watchlist(ticker: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def add_to_watchlist(ticker: TickerQuery, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     existing = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id,
         Watchlist.ticker == ticker
@@ -58,7 +59,7 @@ def add_to_watchlist(ticker: str, db: Session = Depends(get_db), current_user: U
     return {"status": "success", "ticker": ticker}
 
 @router.delete("/remove/{ticker}")
-def remove_from_watchlist(ticker: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def remove_from_watchlist(ticker: TickerPath, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     item = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id,
         Watchlist.ticker == ticker

@@ -1,13 +1,25 @@
+from typing import Annotated
+
+from fastapi import Path, Query
 from pydantic import BaseModel, Field
+
+# Yahoo symbol shape: letters and digits, plus the dot suffix (005930.KS) and
+# hyphen (BRK-B) real symbols use. yfinance interpolates the symbol into a
+# request URL, so bound it here rather than at each call site. Search is
+# excluded on purpose — it takes free text, not symbols.
+TICKER_PATTERN = r"^[A-Za-z0-9.\-]{1,12}$"
+
+TickerPath = Annotated[str, Path(pattern=TICKER_PATTERN)]
+TickerQuery = Annotated[str, Query(pattern=TICKER_PATTERN)]
 
 
 class BuyRequest(BaseModel):
-    ticker: str
+    ticker: str = Field(pattern=TICKER_PATTERN)
     quantity: int = Field(gt=0)
 
 
 class SellRequest(BaseModel):
-    ticker: str
+    ticker: str = Field(pattern=TICKER_PATTERN)
     quantity: int = Field(gt=0)
 
 
