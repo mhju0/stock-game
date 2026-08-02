@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import process from 'node:process'
 import { describe, expect, it } from 'vitest'
 
 // react-router below 7.18.0 carries an open-redirect and a route-matching DoS.
