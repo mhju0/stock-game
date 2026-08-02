@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -712,7 +712,7 @@ def game_history(
 
 
 @router.get("/benchmark/{index}")
-def benchmark(index: str, days: int = 90):
+def benchmark(index: str, days: int = Query(default=90, ge=2, le=3650)):
     data = get_benchmark_data(index, days)
     if not data:
         return {"error": "Could not fetch benchmark data"}
