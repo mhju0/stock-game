@@ -147,7 +147,27 @@ async def lifespan(app: FastAPI):
         _lock_fd.close()
 
 
-app = FastAPI(title="Stock Game API", lifespan=lifespan)
+def resolve_doc_urls(env) -> dict:
+    """Interactive docs enumerate every route, including /admin/*.
+
+    Serve them only where ENABLE_DEV_TOOLS already marks a developer
+    environment, matching the gate app/routes/admin.py uses. Fails closed on an
+    absent or unexpected value.
+    """
+    if env.get("ENABLE_DEV_TOOLS", "").lower() == "true":
+        return {
+            "docs_url": "/docs",
+            "redoc_url": "/redoc",
+            "openapi_url": "/openapi.json",
+        }
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
+app = FastAPI(
+    title="Stock Game API",
+    lifespan=lifespan,
+    **resolve_doc_urls(os.environ),
+)
 
 app.add_middleware(
     CORSMiddleware,
