@@ -14,6 +14,7 @@ from app.services.game_session_service import (
     get_owned_session,
     resolve_session_lifecycle_state,
 )
+from app.services.public_rate_limit import enforce_market_data_rate_limit
 from app.services.portfolio_compatibility import (
     ensure_session_cash_for_read,
     session_starting_value_krw,
@@ -711,7 +712,10 @@ def game_history(
     ]
 
 
-@router.get("/benchmark/{index}")
+@router.get(
+    "/benchmark/{index}",
+    dependencies=[Depends(enforce_market_data_rate_limit)],
+)
 def benchmark(index: str, days: int = Query(default=90, ge=2, le=3650)):
     data = get_benchmark_data(index, days)
     if not data:
