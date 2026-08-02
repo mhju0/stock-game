@@ -53,13 +53,27 @@ def _init_db_with_retry(attempts: int = 3, delay: float = 5.0) -> None:
     raise last_err
 
 
-# CORS: allow localhost for dev, plus any production frontend URL
-ALLOWED_ORIGINS = [
+DEV_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
 ]
-if os.environ.get("FRONTEND_URL"):
-    ALLOWED_ORIGINS.append(os.environ["FRONTEND_URL"])
+
+
+def resolve_allowed_origins(env) -> list[str]:
+    """CORS origins for this environment.
+
+    FRONTEND_URL is set only on the deployed backend (render.yaml declares it
+    sync:false), so its absence means local dev. Keeping the dev-server origins
+    out of the deployed allowlist stops a page on a developer's own machine
+    from calling production.
+    """
+    frontend_url = env.get("FRONTEND_URL")
+    if frontend_url:
+        return [frontend_url]
+    return list(DEV_ORIGINS)
+
+
+ALLOWED_ORIGINS = resolve_allowed_origins(os.environ)
 
 
 async def snapshot_loop():
@@ -138,7 +152,9 @@ app = FastAPI(title="Stock Game API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    # The API authenticates with a Bearer header from localStorage, never a
+    # cookie, so credentialed cross-origin requests need no sanction.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

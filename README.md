@@ -90,7 +90,7 @@ The app starts at `http://localhost:5173`.
 |---|---|---|---|
 | backend | `JWT_SECRET_KEY` | Yes | Signs access tokens; the server refuses to start without it. |
 | backend | `DATABASE_URL` | No | Supabase Postgres connection URL; unset uses local SQLite. |
-| backend | `FRONTEND_URL` | No | Adds the deployed frontend origin to CORS. |
+| backend | `FRONTEND_URL` | No | Sole allowed CORS origin. Unset means local dev, where the localhost dev servers are allowed instead. |
 | backend | `ENABLE_DEV_TOOLS` | No | Enables local-only balance adjustment endpoints. Keep unset in production. |
 | frontend | `VITE_API_URL` | No | Backend API base URL. |
 | frontend | `VITE_ENABLE_DEV_TOOLS` | No | Exposes local-only developer controls. Keep unset in production. |
