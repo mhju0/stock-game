@@ -101,13 +101,62 @@ def enforce_auth_rate_limit(
     process-wide ceiling, that ceiling is a resource backstop against a genuinely
     distributed flood rather than something one client can trip.
     """
-    normalized_identity = identity.strip().casefold() or "<empty>"
-    checks = (
-        (f"{scope}:identity:{normalized_identity}", identity_limit),
-        (f"{scope}:ip:{address}", ip_limit),
-        (f"{scope}:global", global_limit),
+    _apply(
+        (
+            (f"{scope}:identity:{_normalize(identity)}", identity_limit),
+            (f"{scope}:ip:{address}", ip_limit),
+            (f"{scope}:global", global_limit),
+        ),
+        window_seconds,
     )
 
+
+def enforce_request_rate_limit(
+    scope: str,
+    address: str,
+    *,
+    ip_limit: int,
+    global_limit: int,
+    window_seconds: int,
+) -> None:
+    """Address and process-wide ceilings only, applied before any expensive work.
+
+    Callers that verify credentials use this first so the per-address ceiling
+    still bounds how many password hashes one client can force.
+    """
+    _apply(
+        (
+            (f"{scope}:ip:{address}", ip_limit),
+            (f"{scope}:global", global_limit),
+        ),
+        window_seconds,
+    )
+
+
+def register_identity_failure(
+    scope: str,
+    identity: str,
+    *,
+    identity_limit: int,
+    window_seconds: int,
+) -> None:
+    """Count one failed attempt against an account and reject once over budget.
+
+    Consulted only after credentials are checked and only when they were wrong,
+    so a third party cannot spend an account's budget to lock its owner out. A
+    correct password never reaches this limit.
+    """
+    _apply(
+        ((f"{scope}:identity:{_normalize(identity)}", identity_limit),),
+        window_seconds,
+    )
+
+
+def _normalize(identity: str) -> str:
+    return identity.strip().casefold() or "<empty>"
+
+
+def _apply(checks, window_seconds: int) -> None:
     for key, limit in checks:
         retry_after = auth_rate_limiter.hit(
             key,

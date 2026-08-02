@@ -16,6 +16,8 @@ from app.services.auth_rate_limit import (
     REGISTER_WINDOW_SECONDS,
     client_address,
     enforce_auth_rate_limit,
+    enforce_request_rate_limit,
+    register_identity_failure,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -72,17 +74,25 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
 
 @router.post("/login")
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    enforce_auth_rate_limit(
+    # Address and process ceilings first: they bound how many password hashes a
+    # single client can force before any verification runs.
+    enforce_request_rate_limit(
         "login",
-        body.username,
         client_address(request),
-        identity_limit=LOGIN_IDENTITY_LIMIT,
         ip_limit=LOGIN_IP_LIMIT,
         global_limit=LOGIN_GLOBAL_LIMIT,
         window_seconds=LOGIN_WINDOW_SECONDS,
     )
     user = db.query(User).filter(User.username == body.username).first()
     if not user or not user.hashed_password or not verify_password(body.password, user.hashed_password):
+        # Charged only on failure, so nobody can spend an account's budget from
+        # elsewhere and leave the owner's correct password meeting a 429.
+        register_identity_failure(
+            "login",
+            body.username,
+            identity_limit=LOGIN_IDENTITY_LIMIT,
+            window_seconds=LOGIN_WINDOW_SECONDS,
+        )
         raise HTTPException(status_code=401, detail="Invalid username or password")
     token = create_access_token(user.id, user.username)
     return {"access_token": token, "token_type": "bearer", "user_id": user.id, "username": user.username}
