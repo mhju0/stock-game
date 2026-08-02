@@ -12,15 +12,20 @@ TICKER_PATTERN = r"^[A-Za-z0-9.\-]{1,12}$"
 TickerPath = Annotated[str, Path(pattern=TICKER_PATTERN)]
 TickerQuery = Annotated[str, Query(pattern=TICKER_PATTERN)]
 
+# Python integers are unbounded, so a floor alone lets a caller send a value with
+# hundreds of digits; multiplying that by a float price raises OverflowError in
+# the handler. Set far above any share count a real portfolio could hold.
+MAX_TRADE_QUANTITY = 1_000_000_000
+
 
 class BuyRequest(BaseModel):
     ticker: str = Field(pattern=TICKER_PATTERN)
-    quantity: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=MAX_TRADE_QUANTITY)
 
 
 class SellRequest(BaseModel):
     ticker: str = Field(pattern=TICKER_PATTERN)
-    quantity: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=MAX_TRADE_QUANTITY)
 
 
 class ExchangeRequest(BaseModel):
