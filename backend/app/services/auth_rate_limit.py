@@ -17,11 +17,13 @@ from fastapi import HTTPException, status
 
 
 LOGIN_IDENTITY_LIMIT = 10
-LOGIN_GLOBAL_LIMIT = 300
+LOGIN_IP_LIMIT = 20
+LOGIN_GLOBAL_LIMIT = 600
 LOGIN_WINDOW_SECONDS = 60
 
 REGISTER_IDENTITY_LIMIT = 5
-REGISTER_GLOBAL_LIMIT = 30
+REGISTER_IP_LIMIT = 5
+REGISTER_GLOBAL_LIMIT = 100
 REGISTER_WINDOW_SECONDS = 10 * 60
 
 MAX_TRACKED_KEYS = 10_000
@@ -68,18 +70,41 @@ class InMemoryWindowRateLimiter:
 auth_rate_limiter = InMemoryWindowRateLimiter()
 
 
+def client_address(request) -> str:
+    """The address a request is billed to.
+
+    A client can send its own X-Forwarded-For and the platform proxy appends the
+    real peer to it, so only the rightmost entry is beyond the client's control.
+    """
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+        if hops:
+            return hops[-1]
+    return request.client.host if request.client else "unknown"
+
+
 def enforce_auth_rate_limit(
     scope: str,
     identity: str,
+    address: str,
     *,
     identity_limit: int,
+    ip_limit: int,
     global_limit: int,
     window_seconds: int,
 ) -> None:
-    """Apply a normalized identity limit plus a process-wide safety ceiling."""
+    """Apply identity, per-address and process-wide limits, in that order.
+
+    The per-address bucket is the control that stops one client from spending
+    everyone else's budget. Because a single address is cut off long before the
+    process-wide ceiling, that ceiling is a resource backstop against a genuinely
+    distributed flood rather than something one client can trip.
+    """
     normalized_identity = identity.strip().casefold() or "<empty>"
     checks = (
         (f"{scope}:identity:{normalized_identity}", identity_limit),
+        (f"{scope}:ip:{address}", ip_limit),
         (f"{scope}:global", global_limit),
     )
 
