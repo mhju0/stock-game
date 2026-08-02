@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from app.schemas import TickerPath
 from app.services.stock_service import get_stock_history, get_stock_info, search_stocks
 from app.services.exchange_service import get_exchange_rate
 from app.services.market_service import get_top_30
@@ -14,12 +15,12 @@ def stock_search(query: str):
 
 
 @router.get("/stock/{ticker}/history")
-def stock_history(ticker: str, period: str = "1mo"):
+def stock_history(ticker: TickerPath, period: str = "1mo"):
     return get_stock_history(ticker, period)
 
 
 @router.get("/stock/{ticker}")
-def stock_info_endpoint(ticker: str):
+def stock_info_endpoint(ticker: TickerPath):
     info = get_stock_info(ticker)
     if not info:
         return {"error": "Stock not found"}

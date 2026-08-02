@@ -53,13 +53,27 @@ def _init_db_with_retry(attempts: int = 3, delay: float = 5.0) -> None:
     raise last_err
 
 
-# CORS: allow localhost for dev, plus any production frontend URL
-ALLOWED_ORIGINS = [
+DEV_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
 ]
-if os.environ.get("FRONTEND_URL"):
-    ALLOWED_ORIGINS.append(os.environ["FRONTEND_URL"])
+
+
+def resolve_allowed_origins(env) -> list[str]:
+    """CORS origins for this environment.
+
+    FRONTEND_URL is set only on the deployed backend (render.yaml declares it
+    sync:false), so its absence means local dev. Keeping the dev-server origins
+    out of the deployed allowlist stops a page on a developer's own machine
+    from calling production.
+    """
+    frontend_url = env.get("FRONTEND_URL")
+    if frontend_url:
+        return [frontend_url]
+    return list(DEV_ORIGINS)
+
+
+ALLOWED_ORIGINS = resolve_allowed_origins(os.environ)
 
 
 async def snapshot_loop():
@@ -133,15 +147,53 @@ async def lifespan(app: FastAPI):
         _lock_fd.close()
 
 
-app = FastAPI(title="Stock Game API", lifespan=lifespan)
+def resolve_doc_urls(env) -> dict:
+    """Interactive docs enumerate every route, including /admin/*.
+
+    Serve them only where ENABLE_DEV_TOOLS already marks a developer
+    environment, matching the gate app/routes/admin.py uses. Fails closed on an
+    absent or unexpected value.
+    """
+    if env.get("ENABLE_DEV_TOOLS", "").lower() == "true":
+        return {
+            "docs_url": "/docs",
+            "redoc_url": "/redoc",
+            "openapi_url": "/openapi.json",
+        }
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
+app = FastAPI(
+    title="Stock Game API",
+    lifespan=lifespan,
+    **resolve_doc_urls(os.environ),
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    # The API authenticates with a Bearer header from localStorage, never a
+    # cookie, so credentialed cross-origin requests need no sanction.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Registered after CORS so it is the outermost layer and stamps every response,
+# including preflights and error paths. Browsers ignore HSTS delivered over
+# plain HTTP (RFC 6797 s8.1), so it is inert in local dev and needs no env gate.
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault(
+        "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+    )
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
+
 
 app.include_router(auth_router)
 app.include_router(users_router)
