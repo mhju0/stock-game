@@ -31,6 +31,15 @@ EXCHANGE_RATE_CACHE_TTL = 3600
 MARKET_CACHE_TTL = 12 * 3600
 DEFAULT_EXCHANGE_RATE = 1350.0
 
+# A lookup that resolves to nothing is remembered too, so repeated requests for
+# an unresolvable symbol cost one upstream call rather than one each. Kept short
+# so a symbol that is only briefly unavailable recovers quickly.
+NEGATIVE_CACHE_TTL = 60
+
+# Caching misses means miss keys accumulate, so the caches are bounded. Eviction
+# is oldest-inserted-first, which is a rough LRU and enough for this workload.
+MAX_CACHE_KEYS = 2000
+
 _price_cache: dict[str, dict[str, Any]] = {}
 _metadata_cache: dict[str, dict[str, Any]] = {}
 _exchange_rate_cache: dict[str, Any] = {"value": None, "timestamp": 0}
@@ -45,6 +54,20 @@ MARKET_OPEN_CONFIG = {
     "US": {"tz": ZoneInfo("America/New_York"), "open": dt_time(9, 30)},
     "KR": {"tz": ZoneInfo("Asia/Seoul"), "open": dt_time(9, 0)},
 }
+
+
+def _is_fresh(entry: dict, now: float, ttl: float) -> bool:
+    """Misses expire on the shorter negative TTL, hits on the full one."""
+    effective_ttl = NEGATIVE_CACHE_TTL if entry["value"] is None else ttl
+    return now - entry["ts"] < effective_ttl
+
+
+def _store(cache: dict, key: str, value: Any, now: float) -> Any:
+    # Plain dicts preserve insertion order, so the first key is the oldest.
+    while len(cache) >= MAX_CACHE_KEYS:
+        cache.pop(next(iter(cache)))
+    cache[key] = {"value": value, "ts": now}
+    return value
 
 
 def search_equities(query: str) -> list[dict]:
@@ -71,47 +94,47 @@ def get_stock_price(ticker: str) -> float | None:
     """Return a cached latest close, preserving the existing stale fallback."""
     now = time.time()
     cached = _price_cache.get(ticker)
-    if cached and now - cached["ts"] < PRICE_CACHE_TTL:
+    if cached and _is_fresh(cached, now, PRICE_CACHE_TTL):
         return cached["value"]
 
     try:
         stock = yf.Ticker(ticker)
         data = stock.history(period="1d")
         if data.empty:
-            return None
+            return _store(_price_cache, ticker, None, now)
         closes = data["Close"].dropna()
         if closes.empty:
-            return None
+            return _store(_price_cache, ticker, None, now)
         price = round(float(closes.iloc[-1]), 2)
         if price != price or price <= 0:
-            return None
-        _price_cache[ticker] = {"value": price, "ts": now}
-        return price
+            return _store(_price_cache, ticker, None, now)
+        return _store(_price_cache, ticker, price, now)
     except Exception:
         if cached:
             return cached["value"]
-        return None
+        return _store(_price_cache, ticker, None, now)
 
 
 def get_ticker_metadata(ticker: str) -> dict | None:
     """Return cached Yahoo metadata without leaking a yfinance Ticker."""
     now = time.time()
     cached = _metadata_cache.get(ticker)
-    if cached and now - cached["ts"] < METADATA_CACHE_TTL:
-        return cached["value"].copy()
+    if cached and _is_fresh(cached, now, METADATA_CACHE_TTL):
+        value = cached["value"]
+        return value.copy() if value is not None else None
 
     try:
         info = yf.Ticker(ticker).info
         if isinstance(info, dict) and info:
-            value = info.copy()
-            _metadata_cache[ticker] = {"value": value, "ts": now}
-            return value.copy()
+            _store(_metadata_cache, ticker, info.copy(), now)
+            return info.copy()
+        return _store(_metadata_cache, ticker, None, now)
     except Exception:
         pass
 
-    if cached:
+    if cached and cached["value"] is not None:
         return cached["value"].copy()
-    return None
+    return _store(_metadata_cache, ticker, None, now)
 
 
 def get_stock_history(ticker: str, period: str = "1mo") -> list[dict]:

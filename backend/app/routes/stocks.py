@@ -1,10 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.schemas import TickerPath
+from app.services.public_rate_limit import enforce_market_data_rate_limit
 from app.services.stock_service import get_stock_history, get_stock_info, search_stocks
 from app.services.exchange_service import get_exchange_rate
 from app.services.market_service import get_top_30
 
-router = APIRouter(tags=["stocks"])
+# Every route here is unauthenticated and reaches an upstream provider, so the
+# throttle is applied to the whole router rather than remembered per route.
+router = APIRouter(
+    tags=["stocks"],
+    dependencies=[Depends(enforce_market_data_rate_limit)],
+)
 
 
 # IMPORTANT: /stock/search must come BEFORE /stock/{ticker}

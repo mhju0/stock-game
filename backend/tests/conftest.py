@@ -13,15 +13,18 @@ from fastapi.testclient import TestClient
 from app.database import Base, get_db
 from app.main import app
 from app.services.auth_rate_limit import auth_rate_limiter
+from app.services.public_rate_limit import market_data_rate_limiter, trade_rate_limiter
 
 SQLALCHEMY_TEST_URL = "sqlite:///:memory:"
 
 
 @pytest.fixture(autouse=True)
-def reset_auth_rate_limiter():
-    auth_rate_limiter.reset()
+def reset_rate_limiters():
+    for limiter in (auth_rate_limiter, market_data_rate_limiter, trade_rate_limiter):
+        limiter.reset()
     yield
-    auth_rate_limiter.reset()
+    for limiter in (auth_rate_limiter, market_data_rate_limiter, trade_rate_limiter):
+        limiter.reset()
 
 
 @pytest.fixture(scope="function")

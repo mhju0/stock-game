@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -10,10 +10,12 @@ from app.schemas import GameSessionCreateRequest, GameSessionUpdateRequest, NewG
 from app.services.benchmark_service import get_benchmark_data
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
+    get_active_sessions,
     get_current_session,
     get_owned_session,
     resolve_session_lifecycle_state,
 )
+from app.services.public_rate_limit import enforce_market_data_rate_limit
 from app.services.portfolio_compatibility import (
     ensure_session_cash_for_read,
     session_starting_value_krw,
@@ -26,6 +28,10 @@ from app.services.valuation_service import (
 )
 
 router = APIRouter(prefix="/game", tags=["game"])
+
+# Game creation is non-destructive and unlimited, so an account could otherwise
+# grow the table without bound. Far above any real play pattern.
+MAX_ACTIVE_SESSIONS = 20
 
 
 def _as_aware_utc(value: datetime | None) -> datetime | None:
@@ -107,6 +113,16 @@ def _create_session(
     starting_balance_krw: float,
     starting_balance_usd: float = 0.0,
 ) -> GameSession:
+    # Guarded here rather than per route so both creation entry points are covered.
+    if len(get_active_sessions(db, user)) >= MAX_ACTIVE_SESSIONS:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"You already have {MAX_ACTIVE_SESSIONS} active games. "
+                "Finish or delete one before starting another."
+            ),
+        )
+
     now = datetime.now(timezone.utc)
     session = GameSession(
         user_id=user.id,
@@ -711,8 +727,11 @@ def game_history(
     ]
 
 
-@router.get("/benchmark/{index}")
-def benchmark(index: str, days: int = 90):
+@router.get(
+    "/benchmark/{index}",
+    dependencies=[Depends(enforce_market_data_rate_limit)],
+)
+def benchmark(index: str, days: int = Query(default=90, ge=2, le=3650)):
     data = get_benchmark_data(index, days)
     if not data:
         return {"error": "Could not fetch benchmark data"}

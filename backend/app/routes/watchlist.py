@@ -4,12 +4,15 @@ from app.database import get_db
 from app.models import User, Watchlist
 from app.auth import get_current_user
 from app.schemas import TickerPath, TickerQuery
+from app.services.public_rate_limit import enforce_market_data_rate_limit
 from app.services.stock_service import get_stock_info
 from app.services.valuation_service import get_prices_for_tickers
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
-@router.get("/")
+# Only the two routes that reach the market-data provider are throttled;
+# contains/remove are pure database reads and must stay usable regardless.
+@router.get("/", dependencies=[Depends(enforce_market_data_rate_limit)])
 def get_watchlist(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     items = db.query(Watchlist).filter(Watchlist.user_id == current_user.id).all()
     prices = get_prices_for_tickers([item.ticker for item in items])
@@ -35,7 +38,7 @@ def contains_watchlist_item(ticker: TickerQuery, db: Session = Depends(get_db), 
     ).first()
     return {"ticker": ticker, "in_watchlist": bool(item)}
 
-@router.post("/add")
+@router.post("/add", dependencies=[Depends(enforce_market_data_rate_limit)])
 def add_to_watchlist(ticker: TickerQuery, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     existing = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id,

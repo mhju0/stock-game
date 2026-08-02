@@ -6,8 +6,10 @@ import asyncio
 import fcntl
 import threading
 import time
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.database import engine, SessionLocal, Base, get_db
@@ -193,6 +195,22 @@ async def add_security_headers(request, call_next):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     return response
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_validation_error(request: Request, exc: RequestValidationError):
+    """Report where and why a request failed validation, without echoing the
+    value back.
+
+    The default body includes the rejected input, and Starlette renders JSON
+    with allow_nan=False, so a non-finite float made the 422 itself
+    unserialisable and produced a 500 instead.
+    """
+    detail = [
+        {"type": error.get("type"), "loc": error.get("loc"), "msg": error.get("msg")}
+        for error in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": detail})
 
 
 app.include_router(auth_router)
