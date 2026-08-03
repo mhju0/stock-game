@@ -74,6 +74,7 @@ docs/agents/
 
 # Internal audit reports — never committed
 FINAL_AUDIT.md
+SECURITY_AUDIT.md
 
 # Supabase local-only files
 supabase/.branches/
