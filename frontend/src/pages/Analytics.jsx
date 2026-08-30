@@ -143,6 +143,7 @@ function Analytics() {
   const topAllocationPct = totalStockValueKRW
     ? ((topStock?.total_value_krw || 0) / totalStockValueKRW) * 100
     : 0
+  const latestReturn = chartDataReturn[chartDataReturn.length - 1]
   const latestAllocation = chartDataAllocation[chartDataAllocation.length - 1]
   const cashPct = latestAllocation ? latestAllocation.cash_pct : (byStock.length === 0 ? 100 : 0)
   const totalReturnPct = Number(performance?.total_return_pct || 0)
@@ -320,31 +321,33 @@ function Analytics() {
         {chartDataReturn.length < 2 ? (
           <div className="empty-state" style={{ padding: '24px 0' }}>{t('analytics.chartEmpty')}</div>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={chartDataReturn}>
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
-                domain={returnDomain}
-                tickFormatter={v => `${v.toFixed(returnTickDecimals)}%`} />
-              <Tooltip
-                formatter={(value, _name, item) => {
-                  const payload = item?.payload || {}
-                  return [
-                    `${Number(value).toFixed(2)}% (${payload.absolute_change >= 0 ? '+' : ''}${formatKRW(payload.absolute_change || 0)})`,
-                    t('analytics.totalChangePct'),
-                  ]
-                }}
-                labelFormatter={(_, payload) => {
-                  const p = payload?.[0]?.payload
-                  if (!p) return ''
-                  return `${p.date} · ${t('dashboard.totalValue')}: ${formatKRW(p.total_value || 0)}`
-                }}
-                labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
-                contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
-              />
-              <Line type="linear" dataKey="total_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="total_pct" />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="chart-visual" role="img" aria-label={`${t('analytics.returnOverTime')}. ${t('analytics.totalChangePct')}: ${Number(latestReturn?.total_pct || 0).toFixed(2)}%.`}>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={chartDataReturn}>
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
+                  domain={returnDomain}
+                  tickFormatter={v => `${v.toFixed(returnTickDecimals)}%`} />
+                <Tooltip
+                  formatter={(value, _name, item) => {
+                    const payload = item?.payload || {}
+                    return [
+                      `${Number(value).toFixed(2)}% (${payload.absolute_change >= 0 ? '+' : ''}${formatKRW(payload.absolute_change || 0)})`,
+                      t('analytics.totalChangePct'),
+                    ]
+                  }}
+                  labelFormatter={(_, payload) => {
+                    const p = payload?.[0]?.payload
+                    if (!p) return ''
+                    return `${p.date} · ${t('dashboard.totalValue')}: ${formatKRW(p.total_value || 0)}`
+                  }}
+                  labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
+                  contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
+                />
+                <Line type="linear" dataKey="total_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="total_pct" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
 
         <div style={{ borderTop: '1px solid var(--border-light)', margin: '24px 0' }} />
@@ -365,24 +368,26 @@ function Analytics() {
         {chartDataAllocation.length < 2 ? (
           <div className="empty-state" style={{ padding: '24px 0' }}>{t('analytics.chartEmpty')}</div>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={chartDataAllocation}>
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
-                tickFormatter={v => `${v.toFixed(0)}%`} />
-              <Tooltip
-                formatter={(value, name) => {
-                  const label = name === 'stocks_pct' ? t('analytics.stocksShare') : t('analytics.cashShare')
-                  return [`${Number(value).toFixed(1)}%`, label]
-                }}
-                labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
-                contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
-              />
-              <Line type="monotone" dataKey="stocks_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="stocks_pct" />
-              <Line type="monotone" dataKey="cash_pct" stroke="var(--text-secondary)" strokeWidth={1.5} dot={false}
-                strokeDasharray="4 4" name="cash_pct" />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="chart-visual" role="img" aria-label={`${t('analytics.allocationOverTime')}. ${t('analytics.stocksShare')}: ${Number(latestAllocation?.stocks_pct || 0).toFixed(1)}%. ${t('analytics.cashShare')}: ${Number(latestAllocation?.cash_pct || 0).toFixed(1)}%.`}>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={chartDataAllocation}>
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
+                  tickFormatter={v => `${v.toFixed(0)}%`} />
+                <Tooltip
+                  formatter={(value, name) => {
+                    const label = name === 'stocks_pct' ? t('analytics.stocksShare') : t('analytics.cashShare')
+                    return [`${Number(value).toFixed(1)}%`, label]
+                  }}
+                  labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
+                  contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
+                />
+                <Line type="monotone" dataKey="stocks_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="stocks_pct" />
+                <Line type="monotone" dataKey="cash_pct" stroke="var(--text-secondary)" strokeWidth={1.5} dot={false}
+                  strokeDasharray="4 4" name="cash_pct" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
 
@@ -510,26 +515,28 @@ function Analytics() {
       {bySector.length > 0 && (
         <div className="card">
           <div className="card-title">{t('analytics.bySector')}</div>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={bySector}
-                dataKey="allocation_pct"
-                nameKey="sector"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-              >
-                {bySector.map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value, name) => [`${Number(value).toFixed(1)}%`, name]}
-                contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="chart-visual" role="img" aria-label={`${t('analytics.bySector')}. ${bySector.map((sector) => `${sector.sector}: ${sector.allocation_pct.toFixed(1)}%`).join(', ')}.`}>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={bySector}
+                  dataKey="allocation_pct"
+                  nameKey="sector"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                >
+                  {bySector.map((_, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, name) => [`${Number(value).toFixed(1)}%`, name]}
+                  contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
             {bySector.map((s, i) => (
               <div key={s.sector} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>

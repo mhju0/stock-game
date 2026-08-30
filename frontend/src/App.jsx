@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { lazy, Suspense, useContext } from "react";
+import { lazy, Suspense, useContext, useEffect } from "react";
 import { UserContext } from "./context/userContext";
 import { isAuthenticated } from "./auth";
 import { useSessionDetailQuery, useSessionListQuery } from "./query/queries";
@@ -105,6 +105,28 @@ function SessionGuard() {
   );
 }
 
+function NavGlyph({ name }) {
+  const paths = {
+    games: <><rect x="4" y="5" width="16" height="14" rx="3" /><path d="M8 9h8M8 13h5" /></>,
+    game: <><path d="M4 17V9M10 17V5M16 17v-7M22 17V7" /><path d="M2 19h22" /></>,
+    search: <><circle cx="11" cy="11" r="6" /><path d="m16 16 5 5" /></>,
+    portfolio: <><path d="M4 8h16v11H4z" /><path d="M8 8V5h8v3M4 12h16" /></>,
+    analytics: <><path d="M4 19V9M10 19V5M16 19v-7M22 19V7" /></>,
+    watchlist: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
+    market: <><path d="M3 18h18M5 15l4-4 3 2 6-7" /><path d="M15 6h3v3" /></>,
+    exchange: <><path d="M5 7h13l-3-3M19 17H6l3 3" /></>,
+    transactions: <><path d="M6 4h12v16H6z" /><path d="M9 8h6M9 12h6M9 16h4" /></>,
+    dashboard: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
+    more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
+  };
+
+  return (
+    <svg className="nav-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
+
 function AppLayout() {
   const { t, i18n } = useTranslation();
   const { logout } = useContext(UserContext);
@@ -112,35 +134,39 @@ function AppLayout() {
   const sessionId = getSessionIdFromPath(location.pathname);
   const selectedGameBase = sessionId ? `/games/${sessionId}` : null;
 
+  useEffect(() => {
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+  }, [location.pathname]);
+
   const primaryNav = selectedGameBase
     ? [
-        { to: "/games", label: t("nav.myGames"), end: true },
-        { to: selectedGameBase, label: t("nav.game"), end: true },
-        { to: `${selectedGameBase}/portfolio`, label: t("nav.portfolio") },
-        { to: `${selectedGameBase}/search`, label: t("nav.search") },
-        { to: `${selectedGameBase}/exchange`, label: t("nav.exchange") },
+        { to: "/games", label: t("nav.myGames"), icon: "games", end: true },
+        { to: selectedGameBase, label: t("nav.game"), icon: "game", end: true },
+        { to: `${selectedGameBase}/search`, label: t("nav.trade"), icon: "search" },
+        { to: `${selectedGameBase}/portfolio`, label: t("nav.portfolio"), icon: "portfolio" },
+        { to: `${selectedGameBase}/analytics`, label: t("nav.analytics"), icon: "analytics" },
       ]
     : [
-        { to: "/games", label: t("nav.myGames"), end: true },
-        { to: "/", label: t("nav.game"), end: true },
-        { to: "/portfolio", label: t("nav.portfolio") },
-        { to: "/search", label: t("nav.search") },
-        { to: "/exchange", label: t("nav.exchange") },
+        { to: "/games", label: t("nav.myGames"), icon: "games", end: true },
+        { to: "/", label: t("nav.game"), icon: "game", end: true },
+        { to: "/search", label: t("nav.trade"), icon: "search" },
+        { to: "/portfolio", label: t("nav.portfolio"), icon: "portfolio" },
+        { to: "/analytics", label: t("nav.analytics"), icon: "analytics" },
       ];
   const secondaryNav = selectedGameBase
     ? [
-        { to: `${selectedGameBase}/watchlist`, label: t("nav.watchlist") },
-        { to: `${selectedGameBase}/transactions`, label: t("nav.transactions") },
-        { to: `${selectedGameBase}/analytics`, label: t("nav.analytics") },
-        { to: `${selectedGameBase}/market`, label: t("nav.market") },
-        { to: `${selectedGameBase}/dashboard`, label: t("nav.dashboard") },
+        { to: `${selectedGameBase}/watchlist`, label: t("nav.watchlist"), icon: "watchlist" },
+        { to: `${selectedGameBase}/market`, label: t("nav.market"), icon: "market" },
+        { to: `${selectedGameBase}/exchange`, label: t("nav.exchange"), icon: "exchange" },
+        { to: `${selectedGameBase}/transactions`, label: t("nav.transactions"), icon: "transactions" },
+        { to: `${selectedGameBase}/dashboard`, label: t("nav.dashboard"), icon: "dashboard" },
       ]
     : [
-        { to: "/watchlist", label: t("nav.watchlist") },
-        { to: "/transactions", label: t("nav.transactions") },
-        { to: "/analytics", label: t("nav.analytics") },
-        { to: "/market", label: t("nav.market") },
-        { to: "/dashboard", label: t("nav.dashboard") },
+        { to: "/watchlist", label: t("nav.watchlist"), icon: "watchlist" },
+        { to: "/market", label: t("nav.market"), icon: "market" },
+        { to: "/exchange", label: t("nav.exchange"), icon: "exchange" },
+        { to: "/transactions", label: t("nav.transactions"), icon: "transactions" },
+        { to: "/dashboard", label: t("nav.dashboard"), icon: "dashboard" },
       ];
 
   const toggleLanguage = () => {
@@ -149,73 +175,129 @@ function AppLayout() {
     i18n.changeLanguage(next);
   };
 
+  const closeMobileMore = (event) => {
+    event.currentTarget.closest("details")?.removeAttribute("open");
+  };
+  const mobileMoreItems = [primaryNav[4], ...secondaryNav];
+  const mobileMoreActive = mobileMoreItems.some(
+    (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  );
+
   return (
-    <>
-      <nav className="nav" aria-label={t("common.mainNavigation")}>
-        <NavLink to="/games" className="nav-logo" aria-label={t("common.appName")}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
-          </svg>
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">{t("common.skipToContent")}</a>
+
+      <aside className="app-sidebar">
+        <NavLink to="/games" className="sidebar-brand" aria-label={t("common.appName")}>
+          <span className="nav-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
+            </svg>
+          </span>
+          <span>{t("common.appName")}</span>
         </NavLink>
 
-        <div className="nav-scroll" aria-label={t("common.appSections")}>
-          <div className="nav-group">
-            {[...primaryNav, ...secondaryNav].map((item) => (
+        <nav className="sidebar-nav" aria-label={t("common.mainNavigation")}>
+          <div className="sidebar-section">
+            <div className="sidebar-label">{t("nav.primary")}</div>
+            {primaryNav.map((item) => (
               <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
-                {item.label}
+                <NavGlyph name={item.icon} />
+                <span>{item.label}</span>
               </NavLink>
             ))}
           </div>
-        </div>
+          <div className="sidebar-section">
+            <div className="sidebar-label">{t("nav.tools")}</div>
+            {secondaryNav.map((item) => (
+              <NavLink key={item.to} to={item.to} className="nav-link nav-link-secondary">
+                <NavGlyph name={item.icon} />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </nav>
 
-        <div className="nav-actions">
-          <button
-            className="btn"
-            onClick={logout}
-            style={{
-              fontSize: 12,
-              padding: "5px 12px",
-            }}
-          >
-            {t("auth.logout")}
-          </button>
+        <div className="sidebar-actions">
           <button className="lang-toggle" onClick={toggleLanguage}>
             {i18n.language === "ko" ? "EN" : "한국어"}
           </button>
+          <button className="btn sidebar-logout" onClick={logout}>{t("auth.logout")}</button>
         </div>
-      </nav>
-      <main className="main">
-        <ErrorBoundary>
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/watchlist" element={<ResolveGameRedirect section="watchlist" />} />
-              <Route path="/market" element={<Market />} />
-              <Route path="/games" element={<Games />} />
-              <Route path="/games/new" element={<Games startSetup />} />
-              <Route path="/games/:sessionId" element={<SessionGuard />}>
-                <Route index element={<Game />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="portfolio" element={<Portfolio />} />
-                <Route path="search" element={<SearchStock />} />
-                <Route path="exchange" element={<Exchange />} />
-                <Route path="watchlist" element={<Watchlist />} />
-                <Route path="market" element={<Market />} />
-                <Route path="transactions" element={<Transactions />} />
-                <Route path="analytics" element={<Analytics />} />
-              </Route>
-              <Route path="/dashboard" element={<ResolveGameRedirect section="dashboard" />} />
-              <Route path="/analytics" element={<ResolveGameRedirect section="analytics" />} />
-              <Route path="/search" element={<ResolveGameRedirect section="search" />} />
-              <Route path="/portfolio" element={<ResolveGameRedirect section="portfolio" />} />
-              <Route path="/exchange" element={<ResolveGameRedirect section="exchange" />} />
-              <Route path="/transactions" element={<ResolveGameRedirect section="transactions" />} />
-              <Route path="/" element={<ResolveGameRedirect section="status" />} />
-              <Route path="*" element={<Navigate to="/games" replace />} />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
-      </main>
-    </>
+      </aside>
+
+      <div className="app-workspace">
+        <header className="mobile-header">
+          <NavLink to="/games" className="sidebar-brand" aria-label={t("common.appName")}>
+            <span className="nav-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
+              </svg>
+            </span>
+            <span>{t("common.appName")}</span>
+          </NavLink>
+          <button className="lang-toggle" onClick={toggleLanguage}>
+            {i18n.language === "ko" ? "EN" : "한국어"}
+          </button>
+        </header>
+
+        <main id="main-content" className="main" tabIndex={-1}>
+          <ErrorBoundary>
+            <Suspense fallback={<RouteLoading />}>
+              <Routes>
+                <Route path="/watchlist" element={<ResolveGameRedirect section="watchlist" />} />
+                <Route path="/market" element={<Market />} />
+                <Route path="/games" element={<Games />} />
+                <Route path="/games/new" element={<Games startSetup />} />
+                <Route path="/games/:sessionId" element={<SessionGuard />}>
+                  <Route index element={<Game />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="portfolio" element={<Portfolio />} />
+                  <Route path="search" element={<SearchStock />} />
+                  <Route path="exchange" element={<Exchange />} />
+                  <Route path="watchlist" element={<Watchlist />} />
+                  <Route path="market" element={<Market />} />
+                  <Route path="transactions" element={<Transactions />} />
+                  <Route path="analytics" element={<Analytics />} />
+                </Route>
+                <Route path="/dashboard" element={<ResolveGameRedirect section="dashboard" />} />
+                <Route path="/analytics" element={<ResolveGameRedirect section="analytics" />} />
+                <Route path="/search" element={<ResolveGameRedirect section="search" />} />
+                <Route path="/portfolio" element={<ResolveGameRedirect section="portfolio" />} />
+                <Route path="/exchange" element={<ResolveGameRedirect section="exchange" />} />
+                <Route path="/transactions" element={<ResolveGameRedirect section="transactions" />} />
+                <Route path="/" element={<ResolveGameRedirect section="status" />} />
+                <Route path="*" element={<Navigate to="/games" replace />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </main>
+
+        <nav className="mobile-tabbar" aria-label={t("common.mainNavigation")}>
+          {primaryNav.slice(0, 4).map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className="mobile-tab">
+              <NavGlyph name={item.icon} />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+          <details className="mobile-more">
+            <summary className={`mobile-tab ${mobileMoreActive ? "active" : ""}`}>
+              <NavGlyph name="more" />
+              <span>{t("nav.more")}</span>
+            </summary>
+            <div className="mobile-more-menu">
+              {mobileMoreItems.map((item) => (
+                <NavLink key={item.to} to={item.to} className="mobile-more-link" onClick={closeMobileMore}>
+                  <NavGlyph name={item.icon} />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+              <button className="mobile-more-link mobile-logout" onClick={logout}>{t("auth.logout")}</button>
+            </div>
+          </details>
+        </nav>
+      </div>
+    </div>
   );
 }
 
