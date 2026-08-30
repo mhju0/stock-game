@@ -170,14 +170,17 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('completes the core trading review flow', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/games')
   await expect(page.getByRole('heading', { name: 'My Games' })).toBeVisible()
+  await expect(page.locator('#main-content')).toHaveCSS('outline-style', 'none')
+  await page.screenshot({ path: testInfo.outputPath('games-overview.png'), fullPage: true, animations: 'disabled' })
 
   const activeCard = page.locator('.game-session-card').filter({ hasText: 'Active Strategy' })
   await activeCard.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
   await expect(page.getByRole('img', { name: /My Portfolio: 2\.50%.*S&P 500: 1\.40%/ })).toBeVisible()
-  await page.screenshot({ path: testInfo.outputPath('desktop-game-status.png'), fullPage: true })
+  await page.screenshot({ path: testInfo.outputPath('desktop-game-status.png'), fullPage: true, animations: 'disabled' })
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Trade' }).click()
   const search = page.getByRole('textbox', { name: 'Search' })
@@ -192,6 +195,7 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Portfolio' }).click()
   await expect(page.getByRole('button', { name: /Apple.*Trade/ })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('portfolio-summary.png'), fullPage: true, animations: 'disabled' })
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'My Games' }).click()
   const archivedCard = page.locator('.game-session-card').filter({ hasText: 'Archived Review' })
@@ -220,10 +224,10 @@ test('keeps the authenticated shell usable on a narrow screen', async ({ page },
   }
 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('mobile-game-status.png'), fullPage: true })
+  await page.screenshot({ path: testInfo.outputPath('mobile-game-status.png'), fullPage: true, animations: 'disabled' })
   await page.getByText('More', { exact: true }).click()
   await expect(page.locator('.mobile-more-menu').getByRole('link', { name: 'Analysis' })).toBeVisible()
-  await page.screenshot({ path: testInfo.outputPath('mobile-more-menu.png'), fullPage: true })
+  await page.screenshot({ path: testInfo.outputPath('mobile-more-menu.png'), fullPage: true, animations: 'disabled' })
 
   const skipLink = page.getByRole('link', { name: 'Skip to main content' })
   await skipLink.focus()

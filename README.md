@@ -4,6 +4,10 @@ Stock Game is a full-stack paper-trading simulator for US and Korean equities. I
 
 **[Open the live app](https://stock-game-gray.vercel.app)** · API base `https://stock-game-6411.onrender.com`
 
+> **v1.0.0 · Feature complete · Maintenance mode**
+>
+> The planned product scope is complete. New feature development is paused; maintenance is limited to security and dependency updates, production compatibility, regressions against the documented v1.0 behavior, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
+
 Interactive API docs are a developer-environment feature and are disabled on the deployed API; see [Run locally](#run-locally) to browse them.
 
 ## Demo
@@ -11,6 +15,8 @@ Interactive API docs are a developer-environment feature and are disabled on the
 Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Render API uses free hosting, so the first request can take 30–60 seconds while the service starts.
 
 ## Screenshots
+
+These v1.0.0 captures use deterministic demo data exercised through the automated browser core flow; they do not contain production user data.
 
 ### Game overview
 
@@ -32,6 +38,7 @@ Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Rende
 - Korean and English UI, a global user-level watchlist, and market browsing for US and Korean stocks.
 - Ownership checks at every session-scoped API boundary; cross-user resources return 404.
 - Rate limiting, bounded request validation, and hardened response headers on the API — see [Security](#security).
+- An adaptive desktop sidebar/mobile tab bar, keyboard skip link, reduced-motion support, and a rendered browser test for the complete review flow.
 
 ## Architecture
 
@@ -79,6 +86,7 @@ The account budget is charged only after credentials are checked and only when t
 - Market-data misses are cached too, so a loop over unknown symbols cannot force an outbound call per request.
 
 Backend dependencies are pinned, and a test enforces the `react-router` floor so a reinstall cannot resolve backwards past a fixed advisory.
+The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnerability alerts and automated security fixes are enabled, and Dependabot checks npm, pip, and GitHub Actions dependencies weekly.
 
 ## Tech stack
 
@@ -134,11 +142,13 @@ The app starts at `http://localhost:5173`.
 
 ```bash
 ./scripts/regression-smoke.sh
-cd frontend && npm test && npm run build && npm run lint
+cd frontend && npm test && npm run test:e2e && npm run build && npm run lint
 cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
 ```
 
-That is 273 backend tests and 21 frontend tests. GitHub Actions runs the same commands on every push and pull request.
+Install the Playwright Chromium runtime once with `cd frontend && npx playwright install chromium` before running the browser tests locally.
+
+That is 275 backend tests, 22 frontend unit/config tests, and 2 rendered Chromium flows. GitHub Actions runs the same gates on every push and pull request.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 

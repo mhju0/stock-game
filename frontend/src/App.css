@@ -330,6 +330,10 @@ body {
   z-index: 1;
 }
 
+.main:focus {
+  outline: none;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
