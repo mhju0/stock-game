@@ -578,6 +578,14 @@ def update_game_session(
         status = (request.status or "").strip().lower()
         if status not in {"active", "completed", "archived"}:
             raise HTTPException(status_code=400, detail="Invalid game session status")
+        if status == "active" and resolve_session_lifecycle_state(session) in {
+            "completed",
+            "archived",
+        }:
+            raise HTTPException(
+                status_code=400,
+                detail="Ended game sessions cannot be reactivated",
+            )
 
         session.status = status
         if status == "active":
