@@ -12,7 +12,7 @@
     "pageErrorTitle": "Could not load this page",
     "pageErrorBody": "Please try again shortly.",
     "mainNavigation": "Main navigation",
-    "appSections": "App sections",
+    "skipToContent": "Skip to main content",
     "search": "Search",
     "krw": "KRW",
     "usd": "USD",
@@ -31,7 +31,11 @@
     "market": "Market",
     "analytics": "Analysis",
     "game": "Game Status",
-    "myGames": "My Games"
+    "myGames": "My Games",
+    "trade": "Trade",
+    "primary": "Play",
+    "tools": "Tools",
+    "more": "More"
   },
   "dashboard": {
     "title": "Overview",

@@ -44,6 +44,8 @@ node_modules/
 # Build outputs
 frontend/dist/
 frontend/dist-ssr/
+frontend/playwright-report/
+frontend/test-results/
 dist/
 build/
 

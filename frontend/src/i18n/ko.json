@@ -12,7 +12,7 @@
     "pageErrorTitle": "화면을 불러오지 못했어요",
     "pageErrorBody": "잠시 후 다시 시도해 주세요.",
     "mainNavigation": "주요 메뉴",
-    "appSections": "앱 메뉴",
+    "skipToContent": "본문으로 건너뛰기",
     "search": "검색",
     "krw": "원",
     "usd": "달러",
@@ -31,7 +31,11 @@
     "market": "인기 종목",
     "analytics": "분석",
     "game": "게임 현황",
-    "myGames": "내 게임"
+    "myGames": "내 게임",
+    "trade": "거래",
+    "primary": "게임",
+    "tools": "도구",
+    "more": "더보기"
   },
   "dashboard": {
     "title": "전체 요약",

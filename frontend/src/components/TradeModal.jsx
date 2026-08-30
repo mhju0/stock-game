@@ -274,7 +274,9 @@ function TradeModal({
                   color: isInWatchlist ? "var(--accent)" : "var(--text-primary)",
                 }}
               >
-                {isInWatchlist ? "★" : "☆"}
+                <svg viewBox="0 0 24 24" fill={isInWatchlist ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+                </svg>
               </button>
             )}
             <button
@@ -284,7 +286,9 @@ function TradeModal({
               onClick={onClose}
               aria-label={t("common.close")}
             >
-              ×
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="m6 6 12 12M18 6 6 18" />
+              </svg>
             </button>
           </div>
         </div>

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app.models import GameSession, Holding, PortfolioSnapshot, Transaction, User, Watchlist
 
 
@@ -411,6 +413,35 @@ class TestGameSessions:
         assert session.status == "archived"
         assert session.is_active is False
         assert session.completed_at is not None
+
+    @pytest.mark.parametrize("terminal_status", ["completed", "archived"])
+    def test_ended_session_cannot_be_reactivated(
+        self,
+        client,
+        db_session,
+        registered_user,
+        auth_headers,
+        terminal_status,
+    ):
+        user = current_user(db_session, registered_user)
+        session = create_session(
+            db_session,
+            user,
+            status=terminal_status,
+            is_active=False,
+        )
+
+        resp = client.patch(
+            f"/game/sessions/{session.id}",
+            json={"status": "active"},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 400
+        assert resp.json() == {"detail": "Ended game sessions cannot be reactivated"}
+        session_resp = client.get(f"/game/sessions/{session.id}", headers=auth_headers)
+        assert session_resp.status_code == 200
+        assert session_resp.json()["session"]["status"] == terminal_status
 
     def test_user_can_rename_own_session(
         self,

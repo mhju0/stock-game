@@ -92,6 +92,8 @@ function Game() {
     })
     return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
   }, [benchmarkData, portfolioData])
+  const latestChartPoint = mergedChartData[mergedChartData.length - 1]
+  const chartPercent = value => Number.isFinite(value) ? `${value.toFixed(2)}%` : t('common.unavailable')
 
   const formatKRW = (v) => formatMoney(v, 'KRW')
   const isKo = i18n.language === 'ko'
@@ -499,20 +501,22 @@ function Game() {
           </div>
         ) : portfolioData.length < 2 ? (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
+            <svg className="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 18V9M10 18V5M16 18v-7M22 18V7" /><path d="M2 20h22" />
+            </svg>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('game.chartInsufficientTitle')}</div>
             <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('game.chartInsufficientBody')}</div>
             <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, textAlign: 'left', fontSize: 14 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-                <span style={{ fontSize: 18 }}>1️⃣</span>
+                <span className="step-number" aria-hidden="true">1</span>
                 <span>{t('game.day1StepSearch')}</span>
               </div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-                <span style={{ fontSize: 18 }}>2️⃣</span>
+                <span className="step-number" aria-hidden="true">2</span>
                 <span>{t('game.day1StepExchange')}</span>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 18 }}>3️⃣</span>
+                <span className="step-number" aria-hidden="true">3</span>
                 <span>{t('game.day1StepCompare')}</span>
               </div>
             </div>
@@ -520,23 +524,29 @@ function Game() {
         ) : (
           <>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('game.chartCaption')}</div>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={mergedChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
-                  tickFormatter={v => `${new Date(v).getMonth() + 1}/${new Date(v).getDate()}`} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
-                <Tooltip formatter={(value, name) => [`${value?.toFixed(2)}%`, name]}
-                  labelStyle={{ fontSize: 12 }} contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13 }} />
-                <Legend />
-                <Line type="monotone" dataKey="portfolio" stroke="var(--accent)" strokeWidth={2}
-                  dot={mergedChartData.length <= 2 ? { r: 5, fill: 'var(--accent)', stroke: '#fff', strokeWidth: 2 } : false}
-                  name={t('game.myPortfolio')} connectNulls />
-                <Line type="monotone" dataKey="benchmark" stroke="var(--text-secondary)" strokeWidth={1.5}
-                  dot={mergedChartData.length <= 2 ? { r: 4, fill: 'var(--text-secondary)', stroke: '#fff', strokeWidth: 2 } : false}
-                  strokeDasharray="4 4"
-                  name={benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'} connectNulls />
-              </LineChart>
-            </ResponsiveContainer>
+            <div
+              className="chart-visual"
+              role="img"
+              aria-label={`${t('game.vsBenchmark')}. ${t('game.myPortfolio')}: ${chartPercent(latestChartPoint?.portfolio)}. ${benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'}: ${chartPercent(latestChartPoint?.benchmark)}.`}
+            >
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={mergedChartData}>
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false}
+                    tickFormatter={v => `${new Date(v).getMonth() + 1}/${new Date(v).getDate()}`} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
+                  <Tooltip formatter={(value, name) => [`${value?.toFixed(2)}%`, name]}
+                    labelStyle={{ fontSize: 12 }} contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13 }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="portfolio" stroke="var(--accent)" strokeWidth={2}
+                    dot={mergedChartData.length <= 2 ? { r: 5, fill: 'var(--accent)', stroke: '#fff', strokeWidth: 2 } : false}
+                    name={t('game.myPortfolio')} connectNulls />
+                  <Line type="monotone" dataKey="benchmark" stroke="var(--text-secondary)" strokeWidth={1.5}
+                    dot={mergedChartData.length <= 2 ? { r: 4, fill: 'var(--text-secondary)', stroke: '#fff', strokeWidth: 2 } : false}
+                    strokeDasharray="4 4"
+                    name={benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </>
         )}
       </div>
