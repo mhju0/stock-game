@@ -19,7 +19,11 @@
     "back": "Back",
     "close": "Close",
     "delete": "Delete",
-    "unavailable": "Unavailable"
+    "unavailable": "Unavailable",
+    "useLightTheme": "Use light theme",
+    "useDarkTheme": "Use dark theme",
+    "lightTheme": "Light",
+    "darkTheme": "Dark"
   },
   "nav": {
     "dashboard": "Overview",
@@ -30,11 +34,11 @@
     "transactions": "Transactions",
     "market": "Market",
     "analytics": "Analysis",
-    "game": "Game Status",
+    "game": "Overview",
     "myGames": "My Games",
     "trade": "Trade",
-    "primary": "Play",
-    "tools": "Tools",
+    "primary": "Game",
+    "tools": "Utilities",
     "more": "More"
   },
   "dashboard": {

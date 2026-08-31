@@ -173,12 +173,23 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/games')
   await expect(page.getByRole('heading', { name: 'My Games' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+  const desktopThemeToggle = page.locator('.app-sidebar').getByRole('button', { name: 'Use light theme' })
+  await desktopThemeToggle.click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('stockGameTheme'))).toBe('light')
+  await page.locator('.app-sidebar').getByRole('button', { name: 'Use dark theme' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
   await expect(page.locator('#main-content')).toHaveCSS('outline-style', 'none')
   await page.screenshot({ path: testInfo.outputPath('games-overview.png'), fullPage: true, animations: 'disabled' })
 
   const activeCard = page.locator('.game-session-card').filter({ hasText: 'Active Strategy' })
   await activeCard.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
+  await expect(page.locator('.sidebar-game-context')).toContainText('Active Strategy')
+  await expect(page.locator('.app-sidebar').getByRole('link', { name: 'Overview' })).toBeVisible()
   await expect(page.getByRole('img', { name: /My Portfolio: 2\.50%.*S&P 500: 1\.40%/ })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('desktop-game-status.png'), fullPage: true, animations: 'disabled' })
 
@@ -215,6 +226,8 @@ test('keeps the authenticated shell usable on a narrow screen', async ({ page },
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
 
   const tabs = page.locator('.mobile-tabbar .mobile-tab')
+  await expect(tabs).toHaveCount(5)
+  await expect(tabs.nth(1)).toContainText('Overview')
   for (const box of await tabs.evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect()
     return { width: rect.width, height: rect.height }
@@ -232,4 +245,18 @@ test('keeps the authenticated shell usable on a narrow screen', async ({ page },
   const skipLink = page.getByRole('link', { name: 'Skip to main content' })
   await skipLink.focus()
   await expect(skipLink).toBeVisible()
+})
+
+test('respects reduced motion in the authenticated route stage', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await page.goto('/games/101')
+
+  const routeStage = page.locator('.route-stage')
+  await expect(routeStage).toBeVisible()
+  expect(await routeStage.evaluate((element) => {
+    const value = getComputedStyle(element).animationDuration
+    return value.endsWith('ms') ? Number.parseFloat(value) / 1000 : Number.parseFloat(value)
+  })).toBeLessThanOrEqual(0.001)
+  await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
 })
