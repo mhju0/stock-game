@@ -9,6 +9,7 @@ import {
   useUpdateSessionMutation,
 } from '../query/queries'
 import { formatDateTime, formatMoney } from '../utils/formatters'
+import { trapDialogFocus } from '../utils/dialogFocus'
 import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
 
 const CASH_PRESETS = [
@@ -103,6 +104,7 @@ function ModalShell({ titleId, title, descriptionId, description, closeLabel, on
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose()
+      trapDialogFocus(event, dialogRef.current)
     }
 
     window.addEventListener('keydown', handleKeyDown)

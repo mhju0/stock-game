@@ -197,6 +197,22 @@ async function installApiFixture(page) {
   })
 }
 
+async function expectDialogFocusTrap(page, dialog) {
+  const focusable = dialog.locator(
+    'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+  )
+  const first = focusable.first()
+  const last = focusable.last()
+
+  await last.focus()
+  await page.keyboard.press('Tab')
+  await expect(first).toBeFocused()
+
+  await first.focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(last).toBeFocused()
+}
+
 test.beforeEach(async ({ page }) => {
   await seedAuthenticatedUser(page)
   await installApiFixture(page)
@@ -218,6 +234,13 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await expect(page.locator('#main-content')).toHaveCSS('outline-style', 'none')
   await page.screenshot({ path: testInfo.outputPath('games-overview.png'), fullPage: true, animations: 'disabled' })
 
+  await page.getByRole('button', { name: 'Create new game' }).click()
+  const setupDialog = page.getByRole('dialog')
+  await expect(setupDialog).toBeVisible()
+  await expectDialogFocusTrap(page, setupDialog)
+  await page.keyboard.press('Escape')
+  await expect(setupDialog).toBeHidden()
+
   const activeCard = page.locator('.game-session-card').filter({ hasText: 'Active Strategy' })
   await expect(activeCard.getByRole('progressbar', { name: 'Game progress' })).toBeVisible()
   await activeCard.getByRole('button', { name: 'Continue' }).click()
@@ -237,6 +260,7 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: 'Open trade ticket' }).click()
 
   const tradeDialog = page.getByRole('dialog', { name: 'Apple' })
+  await expectDialogFocusTrap(page, tradeDialog)
   await tradeDialog.getByRole('button', { name: 'Buy', exact: true }).click()
   await tradeDialog.getByRole('button', { name: 'Confirm' }).click()
   await expect(tradeDialog.getByText('Purchase complete')).toBeVisible()
@@ -307,8 +331,20 @@ test('presents the simulator clearly before sign in', async ({ page }, testInfo)
   await expect(page.getByText('Virtual cash. Real market context.')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
   await expect(page.getByText('Demo account — username: demo · password: demo1234')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Use light theme' })).toBeVisible()
+  const authThemeToggle = page.getByRole('button', { name: 'Use light theme' })
+  await expect(authThemeToggle).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('auth-showcase.png'), fullPage: true, animations: 'disabled' })
+
+  await authThemeToggle.click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('.auth-story')).toHaveCSS('color', 'rgb(244, 247, 251)')
+  await page.screenshot({ path: testInfo.outputPath('auth-showcase-light.png'), fullPage: true, animations: 'disabled' })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('.auth-story')).toBeHidden()
+  await expect(page.locator('.auth-mobile-brand')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('auth-mobile.png'), fullPage: true, animations: 'disabled' })
 })
 
 test('keeps secondary workspaces clear and connected', async ({ page }, testInfo) => {

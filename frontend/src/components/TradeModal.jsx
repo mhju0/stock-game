@@ -12,6 +12,7 @@ import {
   useWatchlistToggleMutation,
 } from '../query/queries'
 import { gamePath } from '../sessionRoutes'
+import { trapDialogFocus } from '../utils/dialogFocus'
 
 
 function TradeModal({
@@ -37,6 +38,7 @@ function TradeModal({
   const [submitting, setSubmitting] = useState(false);
   const [showDelayedLoading, setShowDelayedLoading] = useState(false);
   const closeButtonRef = useRef(null);
+  const dialogRef = useRef(null);
   const previousFocusRef = useRef(null);
   const accountQuery = useAccountQuery(currentUserId, sessionId)
   const holdingsQuery = useHoldingsQuery(currentUserId, sessionId)
@@ -53,6 +55,7 @@ function TradeModal({
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") onClose();
+      trapDialogFocus(event, dialogRef.current);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -230,6 +233,7 @@ function TradeModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="modal-content trade-modal-content"
         role="dialog"
         aria-modal="true"
