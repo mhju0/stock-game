@@ -1534,9 +1534,9 @@ body {
 }
 
 .trade-feedback {
-  border-color: rgba(71, 214, 160, 0.24);
-  background: var(--positive-bg);
-  color: var(--positive);
+  border-color: var(--accent-soft);
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 13px;
   font-weight: 700;
 }

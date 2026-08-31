@@ -184,6 +184,9 @@ async function installApiFixture(page) {
     if (pathname === '/watchlist/') {
       return respond([{ ...appleHolding, price: 185 }])
     }
+    if (pathname === '/watchlist/add' && request.method() === 'POST') {
+      return respond({ status: 'added' })
+    }
     if (pathname === '/watchlist/contains') return respond({ in_watchlist: false })
     if (pathname === '/market/top30/US') {
       return respond([{ ...appleHolding, price: 185, change: 2.5, change_pct: 1.37 }])
@@ -266,6 +269,21 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   const search = page.getByRole('textbox', { name: 'Search' })
   await search.fill('Apple')
   await page.getByRole('button', { name: /Apple.*View details/ }).click()
+  await page.getByRole('button', { name: '+ Watchlist', exact: true }).click()
+  const watchlistSuccess = page.getByRole('status').filter({ hasText: 'Apple Inc. → Watchlist' })
+  await expect(watchlistSuccess).toBeVisible()
+  const { watchlistFeedbackColor, accentColor } = await watchlistSuccess.evaluate((element) => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--accent)'
+    element.appendChild(probe)
+    const colors = {
+      watchlistFeedbackColor: getComputedStyle(element).color,
+      accentColor: getComputedStyle(probe).color,
+    }
+    probe.remove()
+    return colors
+  })
+  expect(watchlistFeedbackColor).toBe(accentColor)
   await page.getByRole('button', { name: 'Open trade ticket' }).click()
 
   const tradeDialog = page.getByRole('dialog', { name: 'Apple' })
