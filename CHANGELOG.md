@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased - 1.1.0 candidate
+## 1.1.0 - 2026-09-01
 
 Explicitly approved showcase-interface release. Product scope and trading rules
-remain unchanged, and the project returns to maintenance mode after release.
+remain unchanged, and the project returns to maintenance mode with this release.
 
 ### Interface
 
