@@ -1,8 +1,8 @@
 # Project Status
 
-Last verified: 2026-08-31  
-Current release: [v1.0.1](https://github.com/mhju0/stock-game/releases/tag/v1.0.1)  
-Lifecycle: feature complete, maintenance mode
+- Last verified: 2026-08-31
+- Current release: [v1.0.2](https://github.com/mhju0/stock-game/releases/tag/v1.0.2)
+- Lifecycle: feature complete, maintenance mode
 
 This is the authoritative point-in-time record for the maintained project.
 `FINAL_AUDIT.md` and `SECURITY_AUDIT.md` are gitignored historical snapshots;
@@ -17,15 +17,15 @@ code before being acted on.
 | Frontend | `[Verified]` React/Vite is deployed at `https://stock-game-gray.vercel.app`; the audited response was HTTP 200 with the repository CSP and security headers. |
 | Backend | `[Verified]` FastAPI is deployed at `https://stock-game-6411.onrender.com`; `/health/db` returned HTTP 200 and production API docs returned 404. |
 | Data boundary | `[Verified]` Game sessions own cash, holdings, transactions, and snapshots. Watchlist data remains user-level. Session routes use ownership helpers and cross-user access is covered by 404 regression tests. |
-| Test inventory | `[Verified]` 275 backend tests, 23 frontend unit/config tests, and 2 rendered Chromium flows pass on the v1.0.1 dependency set. |
+| Test inventory | `[Verified]` 275 backend tests, 26 frontend unit/config tests, and 2 rendered Chromium flows pass on the v1.0.2 release tree. |
 | Dependency audit | `[Verified]` `npm audit` reports 0 vulnerabilities. `pip-audit` reports one no-fix `ecdsa` P-256 timing advisory; application JWT encode/decode paths pin HS256 and contain no ECDSA use. `[Inferred]` The advisory is not reachable through the current authentication path. |
-| GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, and push protection are enabled; the audit found 0 open repository security alerts. |
+| GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, push protection, and CodeQL default setup are enabled; the audit found 0 open Dependabot, CodeQL, or secret-scanning alerts. |
 | GitHub workflow | `[Verified]` `main` requires a pull request, up-to-date `backend` and `frontend` checks, and resolved conversations. Force-push and branch deletion are blocked; administrators retain recovery bypass. |
-| Automation | `[Verified]` CI runs the complete backend/frontend gates, Dependabot checks npm/pip/Actions weekly, and keepalive queries `/health/db` every three days. |
+| Automation | `[Verified]` CI runs the complete backend/frontend gates, Dependabot checks npm/pip/Actions weekly, CodeQL scans Actions/JavaScript/TypeScript/Python weekly, and keepalive queries `/health/db` every three days. Workflow token permissions are explicit and least-privilege. |
 
 ## Release verification
 
-The v1.0.1 candidate passed these credential-independent gates before release:
+The v1.0.2 candidate passed these credential-independent gates before release:
 
 ```bash
 ./scripts/regression-smoke.sh
