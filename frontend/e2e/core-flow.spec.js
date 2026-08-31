@@ -186,18 +186,22 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await page.screenshot({ path: testInfo.outputPath('games-overview.png'), fullPage: true, animations: 'disabled' })
 
   const activeCard = page.locator('.game-session-card').filter({ hasText: 'Active Strategy' })
+  await expect(activeCard.getByRole('progressbar', { name: 'Game progress' })).toBeVisible()
   await activeCard.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
   await expect(page.locator('.sidebar-game-context')).toContainText('Active Strategy')
   await expect(page.locator('.app-sidebar').getByRole('link', { name: 'Overview' })).toBeVisible()
+  await expect(page.locator('.overview-hero')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Trade stocks' })).toBeVisible()
   await expect(page.getByRole('img', { name: /My Portfolio: 2\.50%.*S&P 500: 1\.40%/ })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('desktop-game-status.png'), fullPage: true, animations: 'disabled' })
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Trade' }).click()
+  await expect(page.getByRole('heading', { name: 'Find your next trade' })).toBeVisible()
   const search = page.getByRole('textbox', { name: 'Search' })
   await search.fill('Apple')
   await page.getByRole('button', { name: /Apple.*View details/ }).click()
-  await page.getByRole('button', { name: 'Buy / Sell' }).click()
+  await page.getByRole('button', { name: 'Open trade ticket' }).click()
 
   const tradeDialog = page.getByRole('dialog', { name: 'Apple' })
   await tradeDialog.getByRole('button', { name: 'Buy', exact: true }).click()
@@ -205,6 +209,7 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await expect(tradeDialog.getByText('Purchase complete')).toBeVisible()
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Portfolio' }).click()
+  await expect(page.getByRole('heading', { name: 'Portfolio' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Apple.*Trade/ })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('portfolio-summary.png'), fullPage: true, animations: 'disabled' })
 
@@ -259,4 +264,16 @@ test('respects reduced motion in the authenticated route stage', async ({ page }
     return value.endsWith('ms') ? Number.parseFloat(value) / 1000 : Number.parseFloat(value)
   })).toBeLessThanOrEqual(0.001)
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
+})
+
+test('presents the simulator clearly before sign in', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/login')
+
+  await expect(page.getByRole('heading', { name: 'Practice the market. Keep the lesson.' })).toBeVisible()
+  await expect(page.getByText('Virtual cash. Real market context.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  await expect(page.getByText('Demo account — username: demo · password: demo1234')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Use light theme' })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('auth-showcase.png'), fullPage: true, animations: 'disabled' })
 })

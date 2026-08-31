@@ -114,7 +114,18 @@
     "loadingDetails": "종목 정보를 불러오는 중...",
     "noSearchResults": "일치하는 종목이 없어요. 티커나 이름을 다시 입력해 보세요.",
     "intradayDataLimited": "오늘 차트 데이터가 아직 충분하지 않아요.",
-    "chartDataLimited": "차트 데이터가 아직 충분하지 않아요."
+    "chartDataLimited": "차트 데이터가 아직 충분하지 않아요.",
+    "tradeEyebrow": "거래 데스크",
+    "tradeTitle": "다음 거래를 찾아보세요",
+    "tradeSubtitle": "회사명이나 티커를 검색하고 가격 흐름을 확인한 다음 거래 창을 여세요.",
+    "searchLabel": "종목 검색",
+    "searchHint": "미국과 한국 주식을 검색할 수 있어요.",
+    "discoveryTitle": "검색하고, 확인하고, 결정하세요",
+    "discoveryBody": "거래는 버튼보다 정보 확인이 먼저예요. 회사를 찾아 가격과 시장 정보를 검토한 뒤 행동을 선택하세요.",
+    "discoveryStepSearch": "회사 찾기",
+    "discoveryStepReview": "가격 흐름 확인",
+    "discoveryStepTrade": "거래 창 열기",
+    "openTicket": "거래 창 열기"
   },
   "trade": {
     "buySuccess": "매수 완료",
@@ -233,8 +244,10 @@
     "username": "사용자 이름",
     "password": "비밀번호",
     "confirmPassword": "비밀번호 확인",
-    "loginTitle": "계정에 로그인하세요",
-    "registerTitle": "새 계정을 만드세요",
+    "loginTitle": "다시 오신 것을 환영해요",
+    "loginSubtitle": "도전을 이어가거나 지난 선택에서 무엇을 배웠는지 확인하세요.",
+    "registerTitle": "연습을 시작하세요",
+    "registerSubtitle": "독립적인 모의투자 도전을 위한 계정을 만드세요.",
     "noAccount": "계정이 없으신가요?",
     "hasAccount": "이미 계정이 있으신가요?",
     "fillAllFields": "모든 항목을 입력해 주세요",
@@ -244,7 +257,17 @@
     "coldStartHint": "서버를 깨우는 중입니다… 무료 플랜 백엔드는 첫 요청 시 최대 1분 정도 걸릴 수 있습니다.",
     "demoHint": "데모 계정 — 아이디: demo · 비밀번호: demo1234",
     "invalidCredentials": "아이디 또는 비밀번호가 올바르지 않아요",
-    "usernameTaken": "이미 사용 중인 아이디예요"
+    "usernameTaken": "이미 사용 중인 아이디예요",
+    "showcaseEyebrow": "목적이 있는 모의투자",
+    "showcaseTitle": "시장을 연습하고, 배움을 남기세요.",
+    "showcaseKicker": "가상 자금. 실제 시장 맥락.",
+    "showcaseBody": "미국과 한국 주식으로 집중된 투자 도전을 실행하고 내 선택을 시장과 비교하세요.",
+    "showcaseGameTitle": "독립적인 게임",
+    "showcaseGameBody": "기존 기록을 덮어쓰지 않고 전략을 시험하세요.",
+    "showcaseBenchmarkTitle": "벤치마크 맥락",
+    "showcaseBenchmarkBody": "S&P 500과 KOSPI 대비 수익률을 확인하세요.",
+    "showcaseReviewTitle": "다시 보는 결과",
+    "showcaseReviewBody": "종료된 게임을 선택의 기록으로 남겨두세요."
   },
   "game": {
     "title": "현재 게임",
@@ -301,7 +324,12 @@
     "myPortfolio": "내 포트폴리오",
     "vsBenchmark": "내 포트폴리오 vs 벤치마크",
     "buysSellsSummary": "매수 {{buys}} · 매도 {{sells}}",
-    "winLossSummary": "{{wins}}승 / {{losses}}패"
+    "winLossSummary": "{{wins}}승 / {{losses}}패",
+    "overviewEyebrow": "포트폴리오 도전",
+    "tradeNow": "종목 거래",
+    "viewPortfolio": "포트폴리오 보기",
+    "progressLabel": "게임 진행률",
+    "progressComplete": "{{percent}}% 진행"
   },
   "games": {
     "title": "내 게임",
@@ -381,12 +409,22 @@
     "notFoundTitle": "게임을 찾을 수 없어요",
     "notFoundBody": "이 게임이 삭제되었거나 접근할 수 없어요.",
     "archiveConfirmTitle": "이 게임을 보관할까요?",
-    "archiveConfirmBody": "{{title}} 게임을 지난 게임으로 보관하려고 해요. 보관하면 이 게임에서 매매·환전을 더 이상 할 수 없어요. 관심종목과 다른 게임에는 영향이 없어요."
+    "archiveConfirmBody": "{{title}} 게임을 지난 게임으로 보관하려고 해요. 보관하면 이 게임에서 매매·환전을 더 이상 할 수 없어요. 관심종목과 다른 게임에는 영향이 없어요.",
+    "workspaceEyebrow": "트레이딩 워크스페이스",
+    "activeCount": "진행 중 {{count}}개",
+    "historyCount": "지난 기록 {{count}}개",
+    "progressLabel": "게임 진행률",
+    "progressComplete": "{{percent}}% 진행"
   },
   "portfolio": {
     "emptyTitle": "아직 보유한 종목이 없어요",
     "emptyBody": "관심 있는 종목을 찾아 첫 매수를 연습해 보세요.",
     "emptyAction": "종목 찾기",
-    "stocksCount": "{{count}}개 종목"
+    "stocksCount": "{{count}}개 종목",
+    "eyebrow": "포지션 리뷰",
+    "title": "포트폴리오",
+    "subtitle": "총 자산, 현금, 배분과 모든 보유 포지션을 한곳에서 확인하세요.",
+    "tradeAction": "종목 찾기",
+    "analysisAction": "분석 보기"
   }
 }

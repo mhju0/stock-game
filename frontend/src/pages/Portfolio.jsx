@@ -117,6 +117,22 @@ function Portfolio() {
 
   return (
     <div>
+      <div className="page-header portfolio-page-header">
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('portfolio.eyebrow')}</div>
+          <h1 className="page-title">{t('portfolio.title')}</h1>
+          <p className="page-subtitle">{t('portfolio.subtitle')}</p>
+        </div>
+        <div className="page-actions">
+          <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'search'))}>
+            {t('portfolio.tradeAction')}
+          </button>
+          <button type="button" className="btn" onClick={() => navigate(gamePath(sessionId, 'analytics'))}>
+            {t('portfolio.analysisAction')}
+          </button>
+        </div>
+      </div>
+
       {(() => {
         const rate = account?.exchange_rate || 1350
         const krxData = totalByMarket['KRX'] || { value: 0 }

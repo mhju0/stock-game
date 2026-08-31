@@ -94,6 +94,9 @@ function Game() {
   }, [benchmarkData, portfolioData])
   const latestChartPoint = mergedChartData[mergedChartData.length - 1]
   const chartPercent = value => Number.isFinite(value) ? `${value.toFixed(2)}%` : t('common.unavailable')
+  const progressPercent = status?.duration_days
+    ? Math.round(Math.min(100, Math.max(0, ((status.days_elapsed || 0) / status.duration_days) * 100)))
+    : 0
 
   const formatKRW = (v) => formatMoney(v, 'KRW')
   const isKo = i18n.language === 'ko'
@@ -413,50 +416,64 @@ function Game() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
+      <div className="page-header overview-page-header">
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('game.overviewEyebrow')}</div>
           <h1 className="page-title">{t('game.title')}</h1>
           <p className="page-subtitle">{t('game.subtitle')}</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn" onClick={() => navigate(gamePath(sessionId, 'dashboard'))}>
-            {t('nav.dashboard')}
+          <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'search'))}>
+            {t('game.tradeNow')}
           </button>
-          <button type="button" className="btn" onClick={() => navigate('/games')}>
-            {t('nav.myGames')}
+          <button type="button" className="btn" onClick={() => navigate(gamePath(sessionId, 'portfolio'))}>
+            {t('game.viewPortfolio')}
           </button>
         </div>
       </div>
 
-      {/* Game Status */}
-      <div className="metric-grid">
-        <div className="metric-card">
-          <div className="metric-label">{t('game.startingBalance')}</div>
-          <div className="metric-value">{formatKRW(status.starting_balance_krw)}</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">{t('game.currentValue')}</div>
-          <div className="metric-value">{formatKRW(status.current_value_krw)}</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">{t('game.return')}</div>
-          <div className={`metric-value ${status.current_return_pct >= 0 ? 'positive' : 'negative'}`}>
-            {status.current_return_pct >= 0 ? '+' : ''}{status.current_return_pct}%
+      <section className="overview-hero" aria-labelledby="overview-value-title">
+        <div className="overview-hero-main">
+          <div id="overview-value-title" className="metric-label">{t('game.currentValue')}</div>
+          <div className="overview-hero-value">{formatKRW(status.current_value_krw)}</div>
+          <div className={`overview-return ${status.current_return_pct >= 0 ? 'positive' : 'negative'}`}>
+            <span>{status.current_return_pct >= 0 ? '+' : ''}{status.current_return_pct}%</span>
+            <small>{t('game.return')}</small>
+          </div>
+          <div className="overview-progress-copy">
+            <span>{t('game.progressLabel')}</span>
+            <strong>{t('game.progressComplete', { percent: progressPercent })}</strong>
+          </div>
+          <div
+            className="overview-progress-track"
+            role="progressbar"
+            aria-label={t('game.progressLabel')}
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={progressPercent}
+          >
+            <span style={{ transform: `scaleX(${progressPercent / 100})` }} />
           </div>
         </div>
-        <div className="metric-card">
-          <div className="metric-label">{t('game.daysLeft')}</div>
-          <div className="metric-value">{!active ? (t('game.done')) : `${Math.round(status.days_remaining)}${isKo ? '일' : 'd'}`}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{Math.round(status.days_elapsed)}{isKo ? '일' : 'd'} / {status.duration_days}{isKo ? '일' : 'd'}</div>
+        <div className="overview-hero-side">
+          <div className="overview-side-stat">
+            <span>{t('game.startingBalance')}</span>
+            <strong>{formatKRW(status.starting_balance_krw)}</strong>
+          </div>
+          <div className="overview-side-stat">
+            <span>{t('game.daysLeft')}</span>
+            <strong>{!active ? t('game.done') : `${Math.round(status.days_remaining)}${isKo ? '일' : 'd'}`}</strong>
+            <small>{Math.round(status.days_elapsed)}{isKo ? '일' : 'd'} / {status.duration_days}{isKo ? '일' : 'd'}</small>
+          </div>
         </div>
-      </div>
+      </section>
 
       <div className={`game-status-bar ${!active ? 'game-expired' : 'game-active'}`}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>
+          <div className="game-status-title">
           {!active ? (t('game.endedTitle')) : (t('game.gameActive'))}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+          <div className="game-status-dates">
             {!active ? t('game.endedBody') : `${new Date(status.start_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')} → ${new Date(status.end_date).toLocaleDateString(i18n.language === 'ko' ? 'ko-KR' : 'en-US')}`}
           </div>
           {!active && (
@@ -465,10 +482,10 @@ function Game() {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}
+        <div className="game-status-actions">
+          <button className="btn"
             onClick={() => setShowSummary(true)}>{t('game.summary')}</button>
-          <button className="btn" style={{ fontSize: 13, border: '1px solid var(--border)' }}
+          <button className="btn"
             onClick={() => navigate('/games')}>{t('nav.myGames')}</button>
         </div>
       </div>

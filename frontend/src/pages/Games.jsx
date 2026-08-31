@@ -58,6 +58,17 @@ function isPresetValue(presets, value) {
   return presets.some((preset) => preset.value === value)
 }
 
+function gameProgressPercent(session) {
+  if (session.status !== 'active') return 100
+
+  const start = new Date(session.start_date).getTime()
+  const end = new Date(session.end_date).getTime()
+  const checkpoint = new Date(session.last_updated_at || session.start_date).getTime()
+  if (![start, end, checkpoint].every(Number.isFinite) || end <= start) return 0
+
+  return Math.round(Math.min(1, Math.max(0, (checkpoint - start) / (end - start))) * 100)
+}
+
 function PageState({ title, body, actionLabel, onAction, loading = false, children }) {
   return (
     <div className="card page-state-card">
@@ -322,9 +333,10 @@ function CreateGameModal({ t, initialSetup, onClose, onCreate, onCreated }) {
 
 function GameSessionCard({ session, locale, onOpen, onManage, t }) {
   const isPlayable = session.status === 'active'
+  const progress = gameProgressPercent(session)
 
   return (
-    <div className="card game-session-card">
+    <article className={`card game-session-card ${isPlayable ? 'game-session-card-active' : 'game-session-card-history'}`}>
       <div className="game-card-topline">
         <div className="game-card-title-group">
           <div className="game-card-title">
@@ -375,10 +387,30 @@ function GameSessionCard({ session, locale, onOpen, onManage, t }) {
         </div>
       </div>
 
+      <div className="game-progress-row">
+        <div className="game-progress-copy">
+          <span>{t('games.progressLabel')}</span>
+          <strong>{t('games.progressComplete', { percent: progress })}</strong>
+        </div>
+        <div
+          className="game-progress-track"
+          role="progressbar"
+          aria-label={t('games.progressLabel')}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow={progress}
+        >
+          <span style={{ transform: `scaleX(${progress / 100})` }} />
+        </div>
+      </div>
+
       <button type="button" className="btn btn-primary game-open-btn" onClick={onOpen}>
-        {isPlayable ? t('games.continue') : t('games.view')}
+        <span>{isPlayable ? t('games.continue') : t('games.view')}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
       </button>
-    </div>
+    </article>
   )
 }
 
@@ -697,19 +729,27 @@ function Games({ startSetup = false }) {
   return (
     <div>
       <div className="page-header games-page-header">
-        <div>
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('games.workspaceEyebrow')}</div>
           <h1 className="page-title">
             {t('games.title')}
           </h1>
           <p className="page-subtitle">
             {t('games.selectBody')}
           </p>
+          <div className="page-header-meta" aria-label={`${activeSessions.length} / ${otherSessions.length}`}>
+            <span><span className="status-dot status-dot-active" />{t('games.activeCount', { count: activeSessions.length })}</span>
+            <span>{t('games.historyCount', { count: otherSessions.length })}</span>
+          </div>
         </div>
         <button type="button" className="btn btn-primary games-create-btn" onClick={() => {
           setSetupDefaults(null)
           setShowSetup(true)
         }}>
-          {t('games.create')}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span>{t('games.create')}</span>
         </button>
       </div>
 
@@ -727,7 +767,10 @@ function Games({ startSetup = false }) {
 
       {activeSessions.length > 0 && (
         <section className="games-section" aria-labelledby="active-games-title">
-          <div id="active-games-title" className="summary-title">{t('games.activeTitle')}</div>
+          <div className="section-heading">
+            <h2 id="active-games-title" className="summary-title">{t('games.activeTitle')}</h2>
+            <span>{activeSessions.length}</span>
+          </div>
           <div className="games-grid">
             {activeSessions.map((session) => (
               <GameSessionCard
@@ -745,7 +788,10 @@ function Games({ startSetup = false }) {
 
       {otherSessions.length > 0 && (
         <section className="games-section" aria-labelledby="past-games-title">
-          <div id="past-games-title" className="summary-title">{t('games.pastTitle')}</div>
+          <div className="section-heading">
+            <h2 id="past-games-title" className="summary-title">{t('games.pastTitle')}</h2>
+            <span>{otherSessions.length}</span>
+          </div>
           <div className="games-grid">
             {otherSessions.map((session) => (
               <GameSessionCard

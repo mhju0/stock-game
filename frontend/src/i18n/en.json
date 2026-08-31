@@ -114,7 +114,18 @@
     "loadingDetails": "Loading stock details...",
     "noSearchResults": "No matching stocks. Try another ticker or company name.",
     "intradayDataLimited": "Not enough intraday data yet.",
-    "chartDataLimited": "Not enough chart data yet."
+    "chartDataLimited": "Not enough chart data yet.",
+    "tradeEyebrow": "Trade desk",
+    "tradeTitle": "Find your next trade",
+    "tradeSubtitle": "Search by company or ticker, review the price context, then open a trade ticket.",
+    "searchLabel": "Search stocks",
+    "searchHint": "US and Korean equities are supported.",
+    "discoveryTitle": "Search, review, decide",
+    "discoveryBody": "A trade starts with context, not a button. Look up a company to review its price and market details before choosing an action.",
+    "discoveryStepSearch": "Find a company",
+    "discoveryStepReview": "Review price context",
+    "discoveryStepTrade": "Open a trade ticket",
+    "openTicket": "Open trade ticket"
   },
   "trade": {
     "buySuccess": "Purchase complete",
@@ -233,8 +244,10 @@
     "username": "Username",
     "password": "Password",
     "confirmPassword": "Confirm Password",
-    "loginTitle": "Sign in to your account",
-    "registerTitle": "Create a new account",
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Continue a challenge or review what your last decisions taught you.",
+    "registerTitle": "Start practicing",
+    "registerSubtitle": "Create an account for independent paper-trading challenges.",
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "fillAllFields": "Please fill in all fields",
@@ -244,7 +257,17 @@
     "coldStartHint": "Waking up the server… the free-tier backend can take up to a minute on the first request.",
     "demoHint": "Demo account — username: demo · password: demo1234",
     "invalidCredentials": "Invalid username or password",
-    "usernameTaken": "This username is already taken"
+    "usernameTaken": "This username is already taken",
+    "showcaseEyebrow": "Paper trading, made purposeful",
+    "showcaseTitle": "Practice the market. Keep the lesson.",
+    "showcaseKicker": "Virtual cash. Real market context.",
+    "showcaseBody": "Run focused investing challenges across US and Korean equities, then compare your choices with the market.",
+    "showcaseGameTitle": "Independent games",
+    "showcaseGameBody": "Test a strategy without overwriting your history.",
+    "showcaseBenchmarkTitle": "Benchmark context",
+    "showcaseBenchmarkBody": "Compare returns with the S&P 500 and KOSPI.",
+    "showcaseReviewTitle": "Reviewable results",
+    "showcaseReviewBody": "Keep ended games as a record of each decision."
   },
   "game": {
     "title": "Current Game",
@@ -301,7 +324,12 @@
     "myPortfolio": "My Portfolio",
     "vsBenchmark": "My Portfolio vs Benchmark",
     "buysSellsSummary": "{{buys}} buys · {{sells}} sells",
-    "winLossSummary": "{{wins}}W / {{losses}}L"
+    "winLossSummary": "{{wins}}W / {{losses}}L",
+    "overviewEyebrow": "Portfolio challenge",
+    "tradeNow": "Trade stocks",
+    "viewPortfolio": "View portfolio",
+    "progressLabel": "Game progress",
+    "progressComplete": "{{percent}}% complete"
   },
   "games": {
     "title": "My Games",
@@ -381,12 +409,22 @@
     "notFoundTitle": "Game not found",
     "notFoundBody": "This game was removed or is not available to your account.",
     "archiveConfirmTitle": "Archive this game?",
-    "archiveConfirmBody": "You are about to archive {{title}} into your past games. Trading and exchange will no longer be available for this game. Your watchlist and other games are unaffected."
+    "archiveConfirmBody": "You are about to archive {{title}} into your past games. Trading and exchange will no longer be available for this game. Your watchlist and other games are unaffected.",
+    "workspaceEyebrow": "Trading workspace",
+    "activeCount": "{{count}} active",
+    "historyCount": "{{count}} in history",
+    "progressLabel": "Game progress",
+    "progressComplete": "{{percent}}% complete"
   },
   "portfolio": {
     "emptyTitle": "No holdings yet",
     "emptyBody": "Find a stock you are interested in and practice your first buy.",
     "emptyAction": "Find Stocks",
-    "stocksCount": "{{count}} stocks"
+    "stocksCount": "{{count}} stocks",
+    "eyebrow": "Position review",
+    "title": "Portfolio",
+    "subtitle": "Review total value, cash, allocation, and every open position in one place.",
+    "tradeAction": "Find stocks",
+    "analysisAction": "View analysis"
   }
 }
