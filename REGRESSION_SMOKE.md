@@ -8,7 +8,9 @@ Run this from the repository root before commit/push:
 
 The command uses the existing backend pytest setup with an in-memory database and mocked market data, then runs a dependency-free frontend navigation source check. It does not need production credentials, Supabase access, or live market prices.
 
-This is a fast subset, not the whole suite. `venv/bin/pytest` runs 273 backend tests, including the security regressions (rate limiting, CORS, docs gating, ticker and quantity validation, dependency pinning) that this smoke deliberately skips. Run both before pushing.
+This is a fast subset, not the whole suite. `venv/bin/pytest` runs 275 backend tests, including the security regressions (rate limiting, CORS, docs gating, ticker and quantity validation, dependency pinning) that this smoke deliberately skips. Run both before pushing.
+
+The frontend also has 23 unit/config tests and 2 rendered Chromium flows. Run `npm test` and `npm run test:e2e` separately; they are intentionally not part of this fast smoke command.
 
 ## Covered
 

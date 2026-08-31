@@ -2,6 +2,8 @@
 
 Stock Game entered maintenance mode with v1.0.0 on 2026-08-31. The planned product is feature complete.
 
+v1.0.1 is the current maintenance release. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified deployment, test, security, GitHub, and deliberately open decision snapshot.
+
 ## Accepted maintenance
 
 - Security patches and credential-independent hardening.
@@ -18,5 +20,7 @@ Stock Game entered maintenance mode with v1.0.0 on 2026-08-31. The planned produ
 - Reopening a completed or archived game as active.
 
 Maintenance releases are made when needed; there is no fixed release cadence or support SLA. The live demo may cold-start because it uses free hosting.
+
+Routine dependency maintenance stays within compatible minor/patch releases. Semver-major framework or tooling upgrades require a separate compatibility review rather than an automatic Dependabot merge.
 
 The GitHub repository remains writable so security automation and maintenance releases can continue. “Maintenance mode” is the project status; it does not mean the repository is GitHub-archived or that the live demo is intentionally shut down.

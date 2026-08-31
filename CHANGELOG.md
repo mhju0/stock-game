@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.1 - 2026-08-31
+
+Maintenance release for dependency compatibility, repository governance, and
+current-state documentation.
+
+### Maintenance
+
+- Refreshes all compatible direct backend and frontend dependency pins while
+  keeping semver-major upgrades out of this maintenance slice.
+- Consolidates the routine Dependabot queue into one fully tested deployment.
+- Protects `main` with pull-request, backend/frontend check, and conversation
+  resolution requirements; force-push and branch deletion remain blocked.
+
+### Audit and documentation
+
+- Records the verified release, production, test, security, and deliberately
+  open decision state in `PROJECT_STATUS.md`.
+- Corrects the frontend test inventory to 23 unit/config tests and keeps the
+  historical local audit reports clearly separated from current state.
+- Confirms 0 npm and GitHub security alerts. The one no-fix Python `ecdsa`
+  advisory is documented with the application's HS256-only reachability limit.
+
 ## 1.0.0 - 2026-08-31
 
 Stock Game v1.0.0 closes the planned product scope and begins maintenance mode.
