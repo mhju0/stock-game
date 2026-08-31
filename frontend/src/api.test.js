@@ -71,4 +71,42 @@ describe('throwing API requests', () => {
       retryable: true,
     })
   })
+
+  it('logs response paths as structured data instead of format strings', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn().mockReturnValue(null),
+      removeItem: vi.fn(),
+    })
+    const data = { detail: 'Upstream unavailable' }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: vi.fn().mockResolvedValue(data),
+    }))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const path = '/stock/%s%s'
+
+    await expect(apiFetch(path)).resolves.toBeNull()
+
+    expect(consoleError).toHaveBeenCalledWith('API response error', {
+      path,
+      status: 503,
+      data,
+    })
+  })
+
+  it('logs network errors without using the request path as a format string', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn().mockReturnValue(null),
+      removeItem: vi.fn(),
+    })
+    const error = new Error('offline')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const path = '/stock/%c%s'
+
+    await expect(apiFetch(path)).resolves.toBeNull()
+
+    expect(consoleError).toHaveBeenCalledWith('API error', { path, error })
+  })
 })

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.2 - 2026-08-31
+
+Security automation follow-up from the first CodeQL audit of v1.0.1.
+
+### Security
+
+- Enables GitHub CodeQL default setup for Actions, JavaScript/TypeScript, and
+  Python on a weekly schedule.
+- Gives CI an explicit read-only contents permission and gives the credential-
+  free keepalive workflow no `GITHUB_TOKEN` permissions.
+- Logs request paths as structured console data instead of allowing them to
+  become externally controlled format strings.
+
+### Verification
+
+- Adds three discriminating regression tests for both logging paths and both
+  workflow permission policies, bringing the frontend suite to 26 tests.
+- Resolves all five findings from the initial CodeQL scan.
+
 ## 1.0.1 - 2026-08-31
 
 Maintenance release for dependency compatibility, repository governance, and

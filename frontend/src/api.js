@@ -86,7 +86,7 @@ export async function apiFetch(path, options = {}, onError = null) {
       const data = await res.json().catch(() => ({}))
       const message = getResponseErrorMessage(data, res.status, path)
       if (import.meta.env.DEV) {
-        console.error(`API response error [${path}]`, { status: res.status, data })
+        console.error('API response error', { path, status: res.status, data })
       }
       if (onError) {
         onError(message, {
@@ -101,7 +101,7 @@ export async function apiFetch(path, options = {}, onError = null) {
   } catch (err) {
     const message = getConnectionErrorMessage()
     if (onError) onError(message, { status: null, retryable: true })
-    console.error(`API error [${path}]:`, err)
+    console.error('API error', { path, error: err })
     return null
   }
 }

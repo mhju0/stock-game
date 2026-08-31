@@ -4,7 +4,7 @@ Stock Game is a full-stack paper-trading simulator for US and Korean equities. I
 
 **[Open the live app](https://stock-game-gray.vercel.app)** · API base `https://stock-game-6411.onrender.com`
 
-> **v1.0.1 · Feature complete · Maintenance mode**
+> **v1.0.2 · Feature complete · Maintenance mode**
 >
 > The planned product scope is complete. New feature development is paused; maintenance is limited to security and dependency updates, production compatibility, regressions against the documented v1.0 behavior, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
 
@@ -88,7 +88,7 @@ The account budget is charged only after credentials are checked and only when t
 - Market-data misses are cached too, so a loop over unknown symbols cannot force an outbound call per request.
 
 Backend dependencies are pinned, and a test enforces the `react-router` floor so a reinstall cannot resolve backwards past a fixed advisory.
-The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnerability alerts and automated security fixes are enabled, and Dependabot checks npm, pip, and GitHub Actions dependencies weekly. The protected `main` branch requires the backend and frontend CI checks through a pull request.
+The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnerability alerts and automated security fixes are enabled, and Dependabot checks npm, pip, and GitHub Actions dependencies weekly. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
 
 ## Tech stack
 
@@ -150,7 +150,7 @@ cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
 
 Install the Playwright Chromium runtime once with `cd frontend && npx playwright install chromium` before running the browser tests locally.
 
-That is 275 backend tests, 23 frontend unit/config tests, and 2 rendered Chromium flows. GitHub Actions runs the same gates on every push and pull request.
+That is 275 backend tests, 26 frontend unit/config tests, and 2 rendered Chromium flows. GitHub Actions runs the same gates on every push and pull request.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 

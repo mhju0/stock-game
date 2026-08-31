@@ -14,6 +14,13 @@ function dependabotUpdateBlocks() {
     .filter((block) => block.startsWith('  - package-ecosystem:'))
 }
 
+function workflow(name) {
+  return readFileSync(
+    join(process.cwd(), '..', '.github', 'workflows', name),
+    'utf8',
+  )
+}
+
 describe('maintenance dependency policy', () => {
   it('keeps unattended version updates within the current major versions', () => {
     const updateBlocks = dependabotUpdateBlocks()
@@ -24,5 +31,10 @@ describe('maintenance dependency policy', () => {
         / {4}ignore:\n {6}- dependency-name: "\*"\n {8}update-types:\n {10}- "version-update:semver-major"/,
       )
     }
+  })
+
+  it('declares least-privilege workflow token permissions', () => {
+    expect(workflow('ci.yml')).toMatch(/\npermissions:\n {2}contents: read\n/)
+    expect(workflow('keepalive.yml')).toMatch(/\npermissions: \{\}\n/)
   })
 })

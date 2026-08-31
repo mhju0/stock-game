@@ -10,7 +10,7 @@ The command uses the existing backend pytest setup with an in-memory database an
 
 This is a fast subset, not the whole suite. `venv/bin/pytest` runs 275 backend tests, including the security regressions (rate limiting, CORS, docs gating, ticker and quantity validation, dependency pinning) that this smoke deliberately skips. Run both before pushing.
 
-The frontend also has 23 unit/config tests and 2 rendered Chromium flows. Run `npm test` and `npm run test:e2e` separately; they are intentionally not part of this fast smoke command.
+The frontend also has 26 unit/config tests and 2 rendered Chromium flows. Run `npm test` and `npm run test:e2e` separately; they are intentionally not part of this fast smoke command.
 
 ## Covered
 
