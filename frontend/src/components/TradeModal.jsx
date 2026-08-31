@@ -303,7 +303,7 @@ function TradeModal({
             <p>{t("stock.loadingDetails")}</p>
           </div>
         ) : !stock || stock.error ? (
-          <p style={{ color: message ? 'var(--negative)' : 'var(--text-secondary)' }}>
+          <p role={message ? "alert" : undefined} style={{ color: message ? 'var(--negative)' : 'var(--text-secondary)' }}>
             {message || t("stock.notFound")}
           </p>
         ) : (
@@ -461,6 +461,7 @@ function TradeModal({
 
             {message && (
               <p
+                role={isSuccess ? "status" : "alert"}
                 style={{
                   marginTop: 12,
                   textAlign: "center",

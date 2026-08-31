@@ -60,11 +60,15 @@ function isPresetValue(presets, value) {
 }
 
 function gameProgressPercent(session) {
-  if (session.status !== 'active') return 100
-
   const start = new Date(session.start_date).getTime()
   const end = new Date(session.end_date).getTime()
-  const checkpoint = new Date(session.last_updated_at || session.start_date).getTime()
+  const checkpoint = session.status === 'active'
+    ? Date.now()
+    : session.status === 'expired'
+      ? end
+      : new Date(
+        session.completed_at || session.updated_at || session.last_updated_at || session.end_date
+      ).getTime()
   if (![start, end, checkpoint].every(Number.isFinite) || end <= start) return 0
 
   return Math.round(Math.min(1, Math.max(0, (checkpoint - start) / (end - start))) * 100)

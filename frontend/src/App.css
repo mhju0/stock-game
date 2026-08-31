@@ -234,7 +234,7 @@ body {
 
 .auth-story-kicker {
   margin-top: 26px;
-  color: var(--positive);
+  color: #8299ff;
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 700;
@@ -544,8 +544,8 @@ body {
 }
 
 .status-dot-active {
-  background: var(--positive);
-  box-shadow: 0 0 0 3px var(--positive-bg);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .nav-link {
@@ -1804,12 +1804,12 @@ body {
 }
 
 .game-active {
-  background: var(--positive-bg);
-  border-color: rgba(74, 222, 128, 0.15);
+  background: var(--accent-bg);
+  border-color: rgba(111, 140, 255, 0.2);
 }
 
 .game-active div:first-child > div:first-child {
-  color: var(--positive);
+  color: var(--accent);
   font-family: var(--font-display);
   font-weight: 600;
 }
@@ -2002,8 +2002,8 @@ body {
 }
 
 .game-status-pill-active {
-  color: var(--positive);
-  background: var(--positive-bg);
+  color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .game-manage-btn {
@@ -2569,7 +2569,7 @@ body {
 @keyframes modal-in {
   from {
     opacity: 0;
-    transform: scale(0.92) translateY(20px);
+    transform: scale(0.92) translateY(12px);
   }
   to {
     opacity: 1;

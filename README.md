@@ -4,9 +4,9 @@ Stock Game is a full-stack paper-trading simulator for US and Korean equities. I
 
 **[Open the live app](https://stock-game-gray.vercel.app)** · API base `https://stock-game-6411.onrender.com`
 
-> **v1.1.0 · Feature complete · Maintenance mode**
+> **v1.0.2 current · v1.1.0 release candidate · Maintenance mode**
 >
-> The planned product scope is complete. v1.1.0 is the explicitly approved showcase-interface release; feature development is paused again. Maintenance is limited to security and dependency updates, production compatibility, regressions, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
+> The planned product scope is complete. This branch prepares the explicitly approved v1.1.0 showcase-interface release without adding product scope. After release, maintenance remains limited to security and dependency updates, production compatibility, regressions, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
 
 The verified release, deployment, security, test, and remaining-decision snapshot is recorded in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 

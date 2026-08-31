@@ -6,6 +6,7 @@ import { isAuthenticated } from "./auth";
 import { useSessionDetailQuery, useSessionListQuery } from "./query/queries";
 import { gamePath, getSessionIdFromPath, sessionStatusLabelKey } from "./sessionRoutes";
 import ErrorBoundary from "./components/ErrorBoundary";
+import BrandMark from "./components/BrandMark";
 import ThemeToggle from "./components/ThemeToggle";
 import "./App.css";
 
@@ -166,11 +167,7 @@ function AppLayout() {
 
       <aside className="app-sidebar">
         <NavLink to="/games" className="sidebar-brand" aria-label={t("common.appName")}>
-          <span className="nav-logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
-            </svg>
-          </span>
+          <BrandMark className="nav-logo" />
           <span>{t("common.appName")}</span>
         </NavLink>
 
@@ -220,11 +217,7 @@ function AppLayout() {
       <div className="app-workspace">
         <header className="mobile-header">
           <NavLink to="/games" className="sidebar-brand" aria-label={t("common.appName")}>
-            <span className="nav-logo" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
-              </svg>
-            </span>
+            <BrandMark className="nav-logo" />
             <span>{t("common.appName")}</span>
           </NavLink>
           <div className="mobile-header-actions">

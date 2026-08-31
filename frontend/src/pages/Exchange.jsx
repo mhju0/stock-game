@@ -202,7 +202,7 @@ function Exchange() {
         </button>
 
         {message && (
-          <p style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? 'var(--positive)' : 'var(--negative)' }}>
+          <p role={isSuccess ? 'status' : 'alert'} style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? 'var(--positive)' : 'var(--negative)' }}>
             {message}
           </p>
         )}

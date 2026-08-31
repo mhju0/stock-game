@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import BrandMark from './BrandMark'
 import ThemeToggle from './ThemeToggle'
 
 const FEATURE_KEYS = [
@@ -6,17 +7,6 @@ const FEATURE_KEYS = [
   ['showcaseBenchmarkTitle', 'showcaseBenchmarkBody'],
   ['showcaseReviewTitle', 'showcaseReviewBody'],
 ]
-
-function BrandMark() {
-  return (
-    <span className="auth-brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 17l6-6 4 4 8-8" />
-        <path d="M21 7v5M16 7h5" />
-      </svg>
-    </span>
-  )
-}
 
 function AuthShell({ title, subtitle, children, footer }) {
   const { t, i18n } = useTranslation()

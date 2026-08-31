@@ -22,6 +22,7 @@ const archivedSession = {
   current_value_krw: 10_800_000,
   current_return_pct: 8,
   last_updated_at: '2026-06-01T12:00:00Z',
+  completed_at: '2026-05-16T00:00:00Z',
 }
 
 const account = {
@@ -192,6 +193,12 @@ async function installApiFixture(page) {
       purchaseComplete = true
       return respond({ status: 'success', balance: { krw: 5_000_000, usd: 4_815 } })
     }
+    if (pathname === '/game/sessions/101/trade/exchange' && request.method() === 'POST') {
+      return respond({
+        exchange: { from: 'KRW', to: 'USD', amount: 10_000, converted: 7.4074 },
+        balance: { krw: 4_990_000, usd: 5_007.4074 },
+      })
+    }
 
     return respond({ detail: `Unhandled test request: ${request.method()} ${url.pathname}${url.search}` }, 500)
   })
@@ -214,11 +221,12 @@ async function expectDialogFocusTrap(page, dialog) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await seedAuthenticatedUser(page)
+  await page.clock.setFixedTime(new Date('2026-08-31T00:00:00Z'))
   await installApiFixture(page)
 })
 
 test('completes the core trading review flow', async ({ page }, testInfo) => {
+  await seedAuthenticatedUser(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/games')
   await expect(page.getByRole('heading', { name: 'My Games' })).toBeVisible()
@@ -243,6 +251,7 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
 
   const activeCard = page.locator('.game-session-card').filter({ hasText: 'Active Strategy' })
   await expect(activeCard.getByRole('progressbar', { name: 'Game progress' })).toBeVisible()
+  await expect(activeCard).toContainText('50% complete')
   await activeCard.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
   await expect(page.locator('.sidebar-game-context')).toContainText('Active Strategy')
@@ -263,7 +272,9 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await expectDialogFocusTrap(page, tradeDialog)
   await tradeDialog.getByRole('button', { name: 'Buy', exact: true }).click()
   await tradeDialog.getByRole('button', { name: 'Confirm' }).click()
-  await expect(tradeDialog.getByText('Purchase complete')).toBeVisible()
+  const tradeSuccess = tradeDialog.getByText('Purchase complete')
+  await expect(tradeSuccess).toBeVisible()
+  await expect(tradeSuccess).toHaveAttribute('role', 'status')
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Portfolio' }).click()
   await expect(page.getByRole('heading', { name: 'Portfolio' })).toBeVisible()
@@ -272,6 +283,7 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'My Games' }).click()
   const archivedCard = page.locator('.game-session-card').filter({ hasText: 'Archived Review' })
+  await expect(archivedCard).toContainText('48% complete')
   await archivedCard.getByRole('button', { name: 'View', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Archived Review' })).toBeVisible()
   await expect(page.getByText('Ending Value')).toBeVisible()
@@ -279,6 +291,7 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
 })
 
 test('keeps the authenticated shell usable on a narrow screen', async ({ page }, testInfo) => {
+  await seedAuthenticatedUser(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/games/101')
 
@@ -310,6 +323,7 @@ test('keeps the authenticated shell usable on a narrow screen', async ({ page },
 })
 
 test('respects reduced motion in the authenticated route stage', async ({ page }) => {
+  await seedAuthenticatedUser(page)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.setViewportSize({ width: 1024, height: 768 })
   await page.goto('/games/101')
@@ -324,9 +338,11 @@ test('respects reduced motion in the authenticated route stage', async ({ page }
 })
 
 test('presents the simulator clearly before sign in', async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('lang', 'en'))
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/login')
 
+  expect(await page.evaluate(() => localStorage.getItem('stockGameToken'))).toBeNull()
   await expect(page.getByRole('heading', { name: 'Practice the market. Keep the lesson.' })).toBeVisible()
   await expect(page.getByText('Virtual cash. Real market context.')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
@@ -348,6 +364,7 @@ test('presents the simulator clearly before sign in', async ({ page }, testInfo)
 })
 
 test('keeps secondary workspaces clear and connected', async ({ page }, testInfo) => {
+  await seedAuthenticatedUser(page)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/games/101/analytics')
 
@@ -362,6 +379,11 @@ test('keeps secondary workspaces clear and connected', async ({ page }, testInfo
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'FX Exchange' }).click()
   await expect(page.getByRole('heading', { name: 'Currency Exchange' })).toBeVisible()
+  await page.getByRole('spinbutton', { name: 'Amount' }).fill('10000')
+  await page.getByRole('button', { name: 'Exchange', exact: true }).click()
+  const exchangeSuccess = page.getByText('Exchanged ₩10,000 → $7.41')
+  await expect(exchangeSuccess).toBeVisible()
+  await expect(exchangeSuccess).toHaveAttribute('role', 'status')
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Transactions' }).click()
   await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
