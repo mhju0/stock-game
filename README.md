@@ -4,9 +4,9 @@ Stock Game is a full-stack paper-trading simulator for US and Korean equities. I
 
 **[Open the live app](https://stock-game-gray.vercel.app)** · API base `https://stock-game-6411.onrender.com`
 
-> **v1.0.2 · Feature complete · Maintenance mode**
+> **v1.1.0 · Feature complete · Maintenance mode**
 >
-> The planned product scope is complete. New feature development is paused; maintenance is limited to security and dependency updates, production compatibility, regressions against the documented v1.0 behavior, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
+> The planned product scope is complete. v1.1.0 is the explicitly approved showcase-interface release; feature development is paused again. Maintenance is limited to security and dependency updates, production compatibility, regressions, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
 
 The verified release, deployment, security, test, and remaining-decision snapshot is recorded in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
@@ -18,7 +18,11 @@ Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Rende
 
 ## Screenshots
 
-These v1.0.0 captures use deterministic demo data exercised through the automated browser core flow; they do not contain production user data.
+These v1.1.0 captures use deterministic demo data exercised through the automated browser flows; they do not contain production user data.
+
+### Sign in
+
+<img src="docs/screenshots/auth-showcase.png" alt="Dark Stock Game sign-in experience with product story and focused form" width="1280">
 
 ### Game overview
 
@@ -32,6 +36,10 @@ These v1.0.0 captures use deterministic demo data exercised through the automate
 
 <img src="docs/screenshots/portfolio-summary.png" alt="Demo portfolio holdings and allocation" width="1440">
 
+### Mobile game overview
+
+<img src="docs/screenshots/mobile-game-status.png" alt="Responsive active game overview with bottom navigation" width="390">
+
 ## Highlights
 
 - Session-scoped games with configurable capital and duration; completed games remain available as read-only results.
@@ -40,7 +48,7 @@ These v1.0.0 captures use deterministic demo data exercised through the automate
 - Korean and English UI, a global user-level watchlist, and market browsing for US and Korean stocks.
 - Ownership checks at every session-scoped API boundary; cross-user resources return 404.
 - Rate limiting, bounded request validation, and hardened response headers on the API — see [Security](#security).
-- An adaptive desktop sidebar/mobile tab bar, keyboard skip link, reduced-motion support, and a rendered browser test for the complete review flow.
+- A dark-first showcase interface with an explicit light theme, contextual desktop sidebar, mobile tab bar, keyboard focus containment, and reduced-motion support. The interface contract is documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Architecture
 
@@ -150,7 +158,7 @@ cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
 
 Install the Playwright Chromium runtime once with `cd frontend && npx playwright install chromium` before running the browser tests locally.
 
-That is 275 backend tests, 26 frontend unit/config tests, and 2 rendered Chromium flows. GitHub Actions runs the same gates on every push and pull request.
+That is 275 backend tests, 26 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates on every push and pull request.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 

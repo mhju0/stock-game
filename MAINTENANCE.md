@@ -2,7 +2,7 @@
 
 Stock Game entered maintenance mode with v1.0.0 on 2026-08-31. The planned product is feature complete.
 
-v1.0.2 is the current maintenance release. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified deployment, test, security, GitHub, and deliberately open decision snapshot.
+v1.1.0 is the current maintenance release. It closes the separately approved showcase-interface phase without changing product scope, trading rules, auth, or data ownership. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified deployment, test, security, GitHub, and deliberately open decision snapshot.
 
 ## Accepted maintenance
 

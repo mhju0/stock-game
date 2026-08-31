@@ -1,7 +1,7 @@
 # Project Status
 
 - Last verified: 2026-08-31
-- Current release: [v1.0.2](https://github.com/mhju0/stock-game/releases/tag/v1.0.2)
+- Current release: [v1.1.0](https://github.com/mhju0/stock-game/releases/tag/v1.1.0)
 - Lifecycle: feature complete, maintenance mode
 
 This is the authoritative point-in-time record for the maintained project.
@@ -13,11 +13,12 @@ code before being acted on.
 
 | Area | Verified state |
 |---|---|
-| Product | `[Verified]` The v1 product loop is create game -> trade/search/watchlist -> portfolio/analytics -> ended result -> play again. New feature work is frozen by [MAINTENANCE.md](MAINTENANCE.md). |
-| Frontend | `[Verified]` React/Vite is deployed at `https://stock-game-gray.vercel.app`; the audited response was HTTP 200 with the repository CSP and security headers. |
+| Product | `[Verified]` The product loop is create game -> trade/search/watchlist -> portfolio/analytics -> ended result -> play again. v1.1.0 changes presentation and navigation only; feature work is frozen again by [MAINTENANCE.md](MAINTENANCE.md). |
+| Frontend | `[Verified]` React/Vite is deployed at `https://stock-game-gray.vercel.app`; the audited response was HTTP 200 with the repository CSP and security headers. v1.1.0 adds the dark-first showcase interface, persisted light theme, contextual navigation, and responsive product-story authentication. |
+| Interface verification | `[Verified]` Deterministic captures were directly reviewed at 1440px, 1280px, and 390px in dark and light themes. Playwright verifies keyboard dialog containment, route navigation, narrow-screen overflow, and reduced motion. `[Unknown]` A separate in-app browser session was unavailable during the release-candidate audit, so no additional live-browser visual claim is made. |
 | Backend | `[Verified]` FastAPI is deployed at `https://stock-game-6411.onrender.com`; `/health/db` returned HTTP 200 and production API docs returned 404. |
 | Data boundary | `[Verified]` Game sessions own cash, holdings, transactions, and snapshots. Watchlist data remains user-level. Session routes use ownership helpers and cross-user access is covered by 404 regression tests. |
-| Test inventory | `[Verified]` 275 backend tests, 26 frontend unit/config tests, and 2 rendered Chromium flows pass on the v1.0.2 release tree. |
+| Test inventory | `[Verified]` 275 backend tests, 26 frontend unit/config tests, and 5 rendered Chromium flows pass on the v1.1.0 release tree. |
 | Dependency audit | `[Verified]` `npm audit` reports 0 vulnerabilities. `pip-audit` reports one no-fix `ecdsa` P-256 timing advisory; application JWT encode/decode paths pin HS256 and contain no ECDSA use. `[Inferred]` The advisory is not reachable through the current authentication path. |
 | GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, push protection, and CodeQL default setup are enabled; the audit found 0 open Dependabot, CodeQL, or secret-scanning alerts. |
 | GitHub workflow | `[Verified]` `main` requires a pull request, up-to-date `backend` and `frontend` checks, and resolved conversations. Force-push and branch deletion are blocked; administrators retain recovery bypass. |
@@ -25,7 +26,7 @@ code before being acted on.
 
 ## Release verification
 
-The v1.0.2 candidate passed these credential-independent gates before release:
+The v1.1.0 candidate passed these credential-independent gates before release:
 
 ```bash
 ./scripts/regression-smoke.sh
