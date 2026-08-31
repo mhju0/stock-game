@@ -139,7 +139,8 @@ function Dashboard() {
   return (
     <div>
       <div className="page-header">
-        <div>
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('game.overviewEyebrow')}</div>
           <h1 className="page-title">{t('dashboard.title')}</h1>
           <p className="page-subtitle">{t('dashboard.subtitle')}</p>
         </div>

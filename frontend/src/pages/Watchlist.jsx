@@ -125,6 +125,25 @@ function Watchlist() {
 
   const usStocks = useMemo(() => watchlist.filter(w => w.market === 'US'), [watchlist])
   const krStocks = useMemo(() => watchlist.filter(w => w.market !== 'US'), [watchlist])
+  const searchPath = sessionId ? gamePath(sessionId, 'search') : '/search'
+  const watchlistHeader = (
+    <div className="page-header utility-page-header">
+      <div className="page-header-copy">
+        <div className="page-eyebrow">{t('watchlist.eyebrow')}</div>
+        <h1 className="page-title">{t('watchlist.title')}</h1>
+        <p className="page-subtitle">{t('watchlist.subtitle')}</p>
+        <div className="page-header-meta">
+          <span>{t('watchlist.savedCount', { count: watchlist.length })}</span>
+          <span>{t('watchlist.delayed')}</span>
+        </div>
+      </div>
+      <div className="page-actions">
+        <button type="button" className="btn btn-primary" onClick={() => navigate(searchPath)}>
+          {t('watchlist.findAction')}
+        </button>
+      </div>
+    </div>
+  )
 
   if (loading) return <p>{t("common.loading")}</p>;
 
@@ -139,26 +158,24 @@ function Watchlist() {
 
   if (watchlist.length === 0) {
     return (
-      <div className="empty-state">
-        <h2 style={{ fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>
-          {t("watchlist.emptyTitle")}
-        </h2>
-        <p style={{ marginBottom: 18 }}>{t("watchlist.emptyBody")}</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate(sessionId ? gamePath(sessionId, 'search') : '/search')}>
-          {t("nav.search")}
-        </button>
+      <div>
+        {watchlistHeader}
+        <div className="empty-state">
+          <h2 style={{ fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>
+            {t("watchlist.emptyTitle")}
+          </h2>
+          <p style={{ marginBottom: 18 }}>{t("watchlist.emptyBody")}</p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate(searchPath)}>
+            {t("nav.search")}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>{t("watchlist.title")}</div>
-        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-          {t('watchlist.delayed')}
-        </span>
-      </div>
+      {watchlistHeader}
 
       <WatchlistSection
         title={t('watchlist.koreaSection')}

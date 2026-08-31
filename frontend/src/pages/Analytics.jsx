@@ -225,8 +225,9 @@ function Analytics() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
+      <div className="page-header utility-page-header">
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('analytics.eyebrow')}</div>
           <h1 className="page-title">{t('analytics.title')}</h1>
           <p className="page-subtitle">{t('analytics.subtitle')}</p>
         </div>

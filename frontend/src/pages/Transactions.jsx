@@ -28,6 +28,18 @@ function Transactions() {
     { key: 'SELL', label: t('transactions.sell') },
     { key: 'EXCHANGE', label: t('exchange.title') },
   ]
+  const transactionsHeader = (
+    <div className="page-header utility-page-header">
+      <div className="page-header-copy">
+        <div className="page-eyebrow">{t('transactions.eyebrow')}</div>
+        <h1 className="page-title">{t('transactions.title')}</h1>
+        <p className="page-subtitle">{t('transactions.subtitle')}</p>
+        <div className="page-header-meta">
+          <span>{t('transactions.recordedCount', { count: transactions.length })}</span>
+        </div>
+      </div>
+    </div>
+  )
 
   if (
     transactionsQuery.isLoading ||
@@ -45,21 +57,26 @@ function Transactions() {
   }
   if (transactions.length === 0) {
     return (
-      <div className="empty-state">
-        <h2 style={{ fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>
-          {t('transactions.emptyTitle')}
-        </h2>
-        <p style={{ marginBottom: 18 }}>{t('transactions.emptyBody')}</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'search'))}>
-          {t('nav.search')}
-        </button>
+      <div>
+        {transactionsHeader}
+        <div className="empty-state">
+          <h2 style={{ fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>
+            {t('transactions.emptyTitle')}
+          </h2>
+          <p style={{ marginBottom: 18 }}>{t('transactions.emptyBody')}</p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate(gamePath(sessionId, 'search'))}>
+            {t('nav.search')}
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      {transactionsHeader}
+
+      <div className="segmented-control transaction-filters">
         {filters.map(f => (
           <button
             key={f.key}

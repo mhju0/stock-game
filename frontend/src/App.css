@@ -844,6 +844,29 @@ body {
   flex-wrap: wrap;
 }
 
+.utility-page-header {
+  align-items: center;
+}
+
+.market-region-toggle {
+  flex-wrap: nowrap;
+}
+
+.market-region-toggle .btn {
+  min-width: 92px;
+}
+
+.exchange-workbench {
+  width: min(100%, 760px);
+  margin-right: auto;
+  margin-left: auto;
+  padding: clamp(20px, 3vw, 28px);
+}
+
+.transaction-filters {
+  margin-bottom: 16px;
+}
+
 .summary-card {
   background: var(--accent-bg);
   border: 1px solid var(--glass-border);
@@ -2815,6 +2838,11 @@ body {
   .price-hero-value { font-size: 24px; }
   .page-actions { width: 100%; }
   .page-actions .btn { flex: 1; }
+  .utility-page-header { align-items: flex-start; }
+  .market-region-toggle { width: 100%; }
+  .market-region-toggle .btn { flex: 1; }
+  .transaction-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .transaction-filters .btn { flex: 0 0 auto; }
   .overview-hero-main { padding: 24px 20px; }
   .overview-hero-value { font-size: 36px; }
   .overview-progress-copy { margin-top: 28px; }

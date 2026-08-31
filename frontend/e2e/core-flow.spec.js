@@ -118,11 +118,23 @@ async function installApiFixture(page) {
     if (pathname === '/game/sessions/101/analytics/performance') {
       return respond({
         starting_value: 10_000_000,
+        current_value: 10_250_000,
+        total_return: 250_000,
+        total_return_pct: 2.5,
         snapshots: [
-          { date: '2026-08-01T00:00:00Z', value: 10_000_000 },
-          { date: '2026-08-30T00:00:00Z', value: 10_250_000 },
+          { date: '2026-08-01T00:00:00Z', value: 10_000_000, holdings_value: 0 },
+          { date: '2026-08-30T00:00:00Z', value: 10_250_000, holdings_value: 249_750 },
         ],
       })
+    }
+    if (pathname === '/game/sessions/101/analytics/by-stock') {
+      return respond([{ ...appleHolding, total_value_krw: 249_750, unrealized_pnl_pct: 2.78 }])
+    }
+    if (pathname === '/game/sessions/101/analytics/by-sector') {
+      return respond([{ sector: 'Technology', allocation_pct: 100 }])
+    }
+    if (pathname === '/game/sessions/101/analytics/realized') {
+      return respond({ total_realized_pnl: 0 })
     }
     if (pathname.startsWith('/game/benchmark/')) {
       return respond([
@@ -154,7 +166,28 @@ async function installApiFixture(page) {
     if (pathname === '/game/sessions/101/portfolio/holdings') {
       return respond(purchaseComplete ? [appleHolding] : [])
     }
+    if (pathname === '/game/sessions/101/portfolio/transactions') {
+      return respond([{
+        id: 1,
+        transaction_type: 'BUY',
+        ticker: 'AAPL',
+        name: 'Apple Inc.',
+        currency: 'USD',
+        quantity: 1,
+        price: 185,
+        total_amount: 185,
+        realized_pnl: 0,
+        created_at: '2026-08-30T12:00:00Z',
+      }])
+    }
+    if (pathname === '/watchlist/') {
+      return respond([{ ...appleHolding, price: 185 }])
+    }
     if (pathname === '/watchlist/contains') return respond({ in_watchlist: false })
+    if (pathname === '/market/top30/US') {
+      return respond([{ ...appleHolding, price: 185, change: 2.5, change_pct: 1.37 }])
+    }
+    if (pathname === '/exchange-rate') return respond({ usd_to_krw: 1_350 })
     if (pathname === '/game/sessions/101/trade/buy' && request.method() === 'POST') {
       purchaseComplete = true
       return respond({ status: 'success', balance: { krw: 5_000_000, usd: 4_815 } })
@@ -276,4 +309,27 @@ test('presents the simulator clearly before sign in', async ({ page }, testInfo)
   await expect(page.getByText('Demo account — username: demo · password: demo1234')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Use light theme' })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('auth-showcase.png'), fullPage: true, animations: 'disabled' })
+})
+
+test('keeps secondary workspaces clear and connected', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/games/101/analytics')
+
+  await expect(page.getByRole('heading', { name: 'Analysis' })).toBeVisible()
+  await expect(page.getByText('Decision review', { exact: true })).toBeVisible()
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'Watchlist' }).click()
+  await expect(page.getByRole('heading', { name: 'Watchlist' })).toBeVisible()
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'Market' }).click()
+  await expect(page.getByRole('heading', { name: 'Market' })).toBeVisible()
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'FX Exchange' }).click()
+  await expect(page.getByRole('heading', { name: 'Currency Exchange' })).toBeVisible()
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'Transactions' }).click()
+  await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
+  await expect(page.getByText('1 recorded action')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('secondary-workspace.png'), fullPage: true, animations: 'disabled' })
 })

@@ -149,7 +149,9 @@
     "insufficientBalanceHave": "{{currency}} 잔고가 부족해요. 보유 금액 {{have}}"
   },
   "exchange": {
+    "eyebrow": "현금 관리",
     "title": "환전",
+    "subtitle": "거래하기 전에 가상 현금을 원화와 달러 사이에서 이동하세요.",
     "from": "보내는 통화",
     "to": "받는 통화",
     "amount": "금액",
@@ -163,7 +165,12 @@
     "insufficientFunds": "환전 가능 금액을 초과했어요."
   },
   "watchlist": {
+    "eyebrow": "리서치 목록",
     "title": "관심종목",
+    "subtitle": "궁금한 회사를 모아두고, 검토하거나 거래할 준비가 되면 다시 확인하세요.",
+    "findAction": "종목 찾기",
+    "savedCount_one": "저장한 종목 {{count}}개",
+    "savedCount_other": "저장한 종목 {{count}}개",
     "empty": "관심종목이 없습니다",
     "emptyTitle": "아직 관심종목이 없어요",
     "emptyBody": "눈여겨보는 종목을 담아두면 나중에 빠르게 확인할 수 있어요.",
@@ -175,7 +182,11 @@
     "usSection": "🇺🇸 미국"
   },
   "transactions": {
+    "eyebrow": "활동 원장",
     "title": "거래내역",
+    "subtitle": "이 게임에 기록된 모든 매수, 매도, 환전을 확인하세요.",
+    "recordedCount_one": "기록된 활동 {{count}}개",
+    "recordedCount_other": "기록된 활동 {{count}}개",
     "filterAll": "전체",
     "empty": "거래내역이 없습니다",
     "emptyTitle": "아직 거래내역이 없어요",
@@ -188,6 +199,7 @@
     "amount": "금액"
   },
   "analytics": {
+    "eyebrow": "의사결정 리뷰",
     "title": "분석",
     "subtitle": "게임 결과를 이해하기 위한 참고 정보예요. 수익률, 분산, 현금 비중을 먼저 살펴보세요.",
     "summaryTitle": "지금 볼 것",
@@ -232,6 +244,9 @@
     "activityActive": "거래 기록이 쌓여 흐름을 볼 수 있어요."
   },
   "market": {
+    "eyebrow": "시장 흐름",
+    "title": "시장",
+    "subtitle": "미국과 한국의 주요 종목을 살펴보고 회사를 열어 더 자세히 확인하세요.",
     "loadingData": "시세 데이터 로딩 중... 잠시만 기다려주세요",
     "empty": "지금은 표시할 시세 데이터가 없어요.",
     "us": "미국",

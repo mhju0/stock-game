@@ -149,7 +149,9 @@
     "insufficientBalanceHave": "Insufficient {{currency}}. Have {{have}}"
   },
   "exchange": {
+    "eyebrow": "Cash management",
     "title": "Currency Exchange",
+    "subtitle": "Move virtual cash between KRW and USD before placing a trade.",
     "from": "From",
     "to": "To",
     "amount": "Amount",
@@ -163,7 +165,12 @@
     "insufficientFunds": "This is above your available balance."
   },
   "watchlist": {
+    "eyebrow": "Research queue",
     "title": "Watchlist",
+    "subtitle": "Keep interesting companies close, then return when you are ready to review or trade.",
+    "findAction": "Find stocks",
+    "savedCount_one": "{{count}} saved stock",
+    "savedCount_other": "{{count}} saved stocks",
     "empty": "No stocks in watchlist",
     "emptyTitle": "No stocks in your watchlist",
     "emptyBody": "Save stocks you are curious about so you can check them quickly later.",
@@ -175,7 +182,11 @@
     "usSection": "🇺🇸 US"
   },
   "transactions": {
+    "eyebrow": "Activity ledger",
     "title": "Transactions",
+    "subtitle": "Review every buy, sell, and currency exchange recorded in this game.",
+    "recordedCount_one": "{{count}} recorded action",
+    "recordedCount_other": "{{count}} recorded actions",
     "filterAll": "All",
     "empty": "No transactions yet",
     "emptyTitle": "No transactions yet",
@@ -188,6 +199,7 @@
     "amount": "Amount"
   },
   "analytics": {
+    "eyebrow": "Decision review",
     "title": "Analysis",
     "subtitle": "Reference information for understanding your game result. Start with return, diversification, and cash share.",
     "summaryTitle": "What to check now",
@@ -232,6 +244,9 @@
     "activityActive": "Your trading history is growing enough to review patterns."
   },
   "market": {
+    "eyebrow": "Market pulse",
+    "title": "Market",
+    "subtitle": "Scan leading US and Korean equities, then open a company for more context.",
     "loadingData": "Loading market data... Please wait",
     "empty": "There is no market data to show right now.",
     "us": "US",
