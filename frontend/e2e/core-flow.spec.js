@@ -22,6 +22,7 @@ const archivedSession = {
   current_value_krw: 10_800_000,
   current_return_pct: 8,
   last_updated_at: '2026-06-01T12:00:00Z',
+  completed_at: '2026-05-16T00:00:00Z',
 }
 
 const account = {
@@ -118,11 +119,23 @@ async function installApiFixture(page) {
     if (pathname === '/game/sessions/101/analytics/performance') {
       return respond({
         starting_value: 10_000_000,
+        current_value: 10_250_000,
+        total_return: 250_000,
+        total_return_pct: 2.5,
         snapshots: [
-          { date: '2026-08-01T00:00:00Z', value: 10_000_000 },
-          { date: '2026-08-30T00:00:00Z', value: 10_250_000 },
+          { date: '2026-08-01T00:00:00Z', value: 10_000_000, holdings_value: 0 },
+          { date: '2026-08-30T00:00:00Z', value: 10_250_000, holdings_value: 249_750 },
         ],
       })
+    }
+    if (pathname === '/game/sessions/101/analytics/by-stock') {
+      return respond([{ ...appleHolding, total_value_krw: 249_750, unrealized_pnl_pct: 2.78 }])
+    }
+    if (pathname === '/game/sessions/101/analytics/by-sector') {
+      return respond([{ sector: 'Technology', allocation_pct: 100 }])
+    }
+    if (pathname === '/game/sessions/101/analytics/realized') {
+      return respond({ total_realized_pnl: 0 })
     }
     if (pathname.startsWith('/game/benchmark/')) {
       return respond([
@@ -154,51 +167,141 @@ async function installApiFixture(page) {
     if (pathname === '/game/sessions/101/portfolio/holdings') {
       return respond(purchaseComplete ? [appleHolding] : [])
     }
+    if (pathname === '/game/sessions/101/portfolio/transactions') {
+      return respond([{
+        id: 1,
+        transaction_type: 'BUY',
+        ticker: 'AAPL',
+        name: 'Apple Inc.',
+        currency: 'USD',
+        quantity: 1,
+        price: 185,
+        total_amount: 185,
+        realized_pnl: 0,
+        created_at: '2026-08-30T12:00:00Z',
+      }])
+    }
+    if (pathname === '/watchlist/') {
+      return respond([{ ...appleHolding, price: 185 }])
+    }
+    if (pathname === '/watchlist/add' && request.method() === 'POST') {
+      return respond({ status: 'added' })
+    }
     if (pathname === '/watchlist/contains') return respond({ in_watchlist: false })
+    if (pathname === '/market/top30/US') {
+      return respond([{ ...appleHolding, price: 185, change: 2.5, change_pct: 1.37 }])
+    }
+    if (pathname === '/exchange-rate') return respond({ usd_to_krw: 1_350 })
     if (pathname === '/game/sessions/101/trade/buy' && request.method() === 'POST') {
       purchaseComplete = true
       return respond({ status: 'success', balance: { krw: 5_000_000, usd: 4_815 } })
+    }
+    if (pathname === '/game/sessions/101/trade/exchange' && request.method() === 'POST') {
+      return respond({
+        exchange: { from: 'KRW', to: 'USD', amount: 10_000, converted: 7.4074 },
+        balance: { krw: 4_990_000, usd: 5_007.4074 },
+      })
     }
 
     return respond({ detail: `Unhandled test request: ${request.method()} ${url.pathname}${url.search}` }, 500)
   })
 }
 
+async function expectDialogFocusTrap(page, dialog) {
+  const focusable = dialog.locator(
+    'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+  )
+  const first = focusable.first()
+  const last = focusable.last()
+
+  await last.focus()
+  await page.keyboard.press('Tab')
+  await expect(first).toBeFocused()
+
+  await first.focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(last).toBeFocused()
+}
+
 test.beforeEach(async ({ page }) => {
-  await seedAuthenticatedUser(page)
+  await page.clock.setFixedTime(new Date('2026-08-31T00:00:00Z'))
   await installApiFixture(page)
 })
 
 test('completes the core trading review flow', async ({ page }, testInfo) => {
+  await seedAuthenticatedUser(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/games')
   await expect(page.getByRole('heading', { name: 'My Games' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+  const desktopThemeToggle = page.locator('.app-sidebar').getByRole('button', { name: 'Use light theme' })
+  await desktopThemeToggle.click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('stockGameTheme'))).toBe('light')
+  await page.locator('.app-sidebar').getByRole('button', { name: 'Use dark theme' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
   await expect(page.locator('#main-content')).toHaveCSS('outline-style', 'none')
   await page.screenshot({ path: testInfo.outputPath('games-overview.png'), fullPage: true, animations: 'disabled' })
 
+  await page.getByRole('button', { name: 'Create new game' }).click()
+  const setupDialog = page.getByRole('dialog')
+  await expect(setupDialog).toBeVisible()
+  await expectDialogFocusTrap(page, setupDialog)
+  await page.keyboard.press('Escape')
+  await expect(setupDialog).toBeHidden()
+
   const activeCard = page.locator('.game-session-card').filter({ hasText: 'Active Strategy' })
+  await expect(activeCard.getByRole('progressbar', { name: 'Game progress' })).toBeVisible()
+  await expect(activeCard).toContainText('50% complete')
   await activeCard.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
+  await expect(page.locator('.sidebar-game-context')).toContainText('Active Strategy')
+  await expect(page.locator('.app-sidebar').getByRole('link', { name: 'Overview' })).toBeVisible()
+  await expect(page.locator('.overview-hero')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Trade stocks' })).toBeVisible()
   await expect(page.getByRole('img', { name: /My Portfolio: 2\.50%.*S&P 500: 1\.40%/ })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('desktop-game-status.png'), fullPage: true, animations: 'disabled' })
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Trade' }).click()
+  await expect(page.getByRole('heading', { name: 'Find your next trade' })).toBeVisible()
   const search = page.getByRole('textbox', { name: 'Search' })
   await search.fill('Apple')
   await page.getByRole('button', { name: /Apple.*View details/ }).click()
-  await page.getByRole('button', { name: 'Buy / Sell' }).click()
+  await page.getByRole('button', { name: '+ Watchlist', exact: true }).click()
+  const watchlistSuccess = page.getByRole('status').filter({ hasText: 'Apple Inc. → Watchlist' })
+  await expect(watchlistSuccess).toBeVisible()
+  const { watchlistFeedbackColor, accentColor } = await watchlistSuccess.evaluate((element) => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--accent)'
+    element.appendChild(probe)
+    const colors = {
+      watchlistFeedbackColor: getComputedStyle(element).color,
+      accentColor: getComputedStyle(probe).color,
+    }
+    probe.remove()
+    return colors
+  })
+  expect(watchlistFeedbackColor).toBe(accentColor)
+  await page.getByRole('button', { name: 'Open trade ticket' }).click()
 
   const tradeDialog = page.getByRole('dialog', { name: 'Apple' })
+  await expectDialogFocusTrap(page, tradeDialog)
   await tradeDialog.getByRole('button', { name: 'Buy', exact: true }).click()
   await tradeDialog.getByRole('button', { name: 'Confirm' }).click()
-  await expect(tradeDialog.getByText('Purchase complete')).toBeVisible()
+  const tradeSuccess = tradeDialog.getByText('Purchase complete')
+  await expect(tradeSuccess).toBeVisible()
+  await expect(tradeSuccess).toHaveAttribute('role', 'status')
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Portfolio' }).click()
+  await expect(page.getByRole('heading', { name: 'Portfolio' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Apple.*Trade/ })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('portfolio-summary.png'), fullPage: true, animations: 'disabled' })
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'My Games' }).click()
   const archivedCard = page.locator('.game-session-card').filter({ hasText: 'Archived Review' })
+  await expect(archivedCard).toContainText('48% complete')
   await archivedCard.getByRole('button', { name: 'View', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Archived Review' })).toBeVisible()
   await expect(page.getByText('Ending Value')).toBeVisible()
@@ -206,6 +309,7 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
 })
 
 test('keeps the authenticated shell usable on a narrow screen', async ({ page }, testInfo) => {
+  await seedAuthenticatedUser(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/games/101')
 
@@ -215,6 +319,8 @@ test('keeps the authenticated shell usable on a narrow screen', async ({ page },
   await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
 
   const tabs = page.locator('.mobile-tabbar .mobile-tab')
+  await expect(tabs).toHaveCount(5)
+  await expect(tabs.nth(1)).toContainText('Overview')
   for (const box of await tabs.evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect()
     return { width: rect.width, height: rect.height }
@@ -232,4 +338,74 @@ test('keeps the authenticated shell usable on a narrow screen', async ({ page },
   const skipLink = page.getByRole('link', { name: 'Skip to main content' })
   await skipLink.focus()
   await expect(skipLink).toBeVisible()
+})
+
+test('respects reduced motion in the authenticated route stage', async ({ page }) => {
+  await seedAuthenticatedUser(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await page.goto('/games/101')
+
+  const routeStage = page.locator('.route-stage')
+  await expect(routeStage).toBeVisible()
+  expect(await routeStage.evaluate((element) => {
+    const value = getComputedStyle(element).animationDuration
+    return value.endsWith('ms') ? Number.parseFloat(value) / 1000 : Number.parseFloat(value)
+  })).toBeLessThanOrEqual(0.001)
+  await expect(page.getByRole('heading', { name: 'Current Game' })).toBeVisible()
+})
+
+test('presents the simulator clearly before sign in', async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('lang', 'en'))
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/login')
+
+  expect(await page.evaluate(() => localStorage.getItem('stockGameToken'))).toBeNull()
+  await expect(page.getByRole('heading', { name: 'Practice the market. Keep the lesson.' })).toBeVisible()
+  await expect(page.getByText('Virtual cash. Real market context.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  await expect(page.getByText('Demo account — username: demo · password: demo1234')).toBeVisible()
+  const authThemeToggle = page.getByRole('button', { name: 'Use light theme' })
+  await expect(authThemeToggle).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('auth-showcase.png'), fullPage: true, animations: 'disabled' })
+
+  await authThemeToggle.click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('.auth-story')).toHaveCSS('color', 'rgb(244, 247, 251)')
+  await page.screenshot({ path: testInfo.outputPath('auth-showcase-light.png'), fullPage: true, animations: 'disabled' })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('.auth-story')).toBeHidden()
+  await expect(page.locator('.auth-mobile-brand')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('auth-mobile.png'), fullPage: true, animations: 'disabled' })
+})
+
+test('keeps secondary workspaces clear and connected', async ({ page }, testInfo) => {
+  await seedAuthenticatedUser(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/games/101/analytics')
+
+  await expect(page.getByRole('heading', { name: 'Analysis' })).toBeVisible()
+  await expect(page.getByText('Decision review', { exact: true })).toBeVisible()
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'Watchlist' }).click()
+  await expect(page.getByRole('heading', { name: 'Watchlist' })).toBeVisible()
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'Market' }).click()
+  await expect(page.getByRole('heading', { name: 'Market' })).toBeVisible()
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'FX Exchange' }).click()
+  await expect(page.getByRole('heading', { name: 'Currency Exchange' })).toBeVisible()
+  await page.getByRole('spinbutton', { name: 'Amount' }).fill('10000')
+  await page.getByRole('button', { name: 'Exchange', exact: true }).click()
+  const exchangeSuccess = page.getByText('Exchanged ₩10,000 → $7.41')
+  await expect(exchangeSuccess).toBeVisible()
+  await expect(exchangeSuccess).toHaveAttribute('role', 'status')
+
+  await page.locator('.app-sidebar').getByRole('link', { name: 'Transactions' }).click()
+  await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
+  await expect(page.getByText('1 recorded action')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('secondary-workspace.png'), fullPage: true, animations: 'disabled' })
 })

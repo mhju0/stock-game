@@ -135,16 +135,32 @@ function SearchStock() {
 
   return (
     <div>
-      <div className="card">
-        <input
-          className="input"
-          placeholder="Apple, 삼성전자, TSLA..."
-          aria-label={t('common.search')}
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          style={{ fontSize: 16 }}
-          autoFocus
-        />
+      <div className="page-header trade-page-header">
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('stock.tradeEyebrow')}</div>
+          <h1 className="page-title">{t('stock.tradeTitle')}</h1>
+          <p className="page-subtitle">{t('stock.tradeSubtitle')}</p>
+        </div>
+      </div>
+
+      <div className="card trade-search-card">
+        <label className="trade-search-label" htmlFor="stock-search">{t('stock.searchLabel')}</label>
+        <div className="trade-search-input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="6" />
+            <path d="m16 16 5 5" />
+          </svg>
+          <input
+            id="stock-search"
+            className="input"
+            placeholder="Apple, 삼성전자, TSLA..."
+            aria-label={t('common.search')}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <p className="trade-search-hint">{t('stock.searchHint')}</p>
 
         {searching && <p style={{ padding: '12px 0', color: 'var(--text-secondary)', fontSize: 13 }}>{t('common.loading')}</p>}
 
@@ -184,8 +200,26 @@ function SearchStock() {
         )}
       </div>
 
+      {!stock && !loadingStock && !stockLoadError && !query.trim() && (
+        <section className="trade-discovery" aria-labelledby="trade-discovery-title">
+          <div className="trade-discovery-copy">
+            <div className="page-eyebrow">01 — 03</div>
+            <h2 id="trade-discovery-title">{t('stock.discoveryTitle')}</h2>
+            <p>{t('stock.discoveryBody')}</p>
+          </div>
+          <ol className="trade-discovery-steps">
+            {[t('stock.discoveryStepSearch'), t('stock.discoveryStepReview'), t('stock.discoveryStepTrade')].map((step, index) => (
+              <li key={step}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <strong>{step}</strong>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {message && (
-        <div className="card" style={{ color: 'var(--positive)', fontSize: 14 }}>{message}</div>
+        <div className="card trade-feedback" role="status">{message}</div>
       )}
 
       {loadingStock && showDelayedStockLoading && (
@@ -201,7 +235,7 @@ function SearchStock() {
       )}
 
       {stock && (
-        <div className="card">
+        <div className="card stock-detail-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <h2 style={{ fontSize: 20, fontWeight: 700 }}>{displayName}</h2>
@@ -267,9 +301,9 @@ function SearchStock() {
             </div>}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn btn-buy" style={{ flex: 1 }}
-              onClick={() => setTradeTicker(stock.ticker)}>{t('stock.buy')} / {t('stock.sell')}</button>
+          <div className="stock-ticket-action">
+            <button className="btn btn-primary"
+              onClick={() => setTradeTicker(stock.ticker)}>{t('stock.openTicket')}</button>
           </div>
         </div>
       )}

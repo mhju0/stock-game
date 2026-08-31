@@ -35,19 +35,23 @@ function Market() {
 
   return (
     <div>
-      <div className="segmented-control" style={{ marginBottom: 16 }}>
-        {["US", "KR"].map((m) => (
-          <button
-            key={m}
-            className={`btn segmented-button ${market === m ? 'segmented-button-selected' : ''}`}
-            onClick={() => setMarket(m)}
-            style={{
-              minWidth: 80,
-            }}
-          >
-            {m === "US" ? t("market.us") : t("market.kr")}
-          </button>
-        ))}
+      <div className="page-header utility-page-header">
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('market.eyebrow')}</div>
+          <h1 className="page-title">{t('market.title')}</h1>
+          <p className="page-subtitle">{t('market.subtitle')}</p>
+        </div>
+        <div className="segmented-control market-region-toggle" aria-label={t('market.title')}>
+          {["US", "KR"].map((m) => (
+            <button
+              key={m}
+              className={`btn segmented-button ${market === m ? 'segmented-button-selected' : ''}`}
+              onClick={() => setMarket(m)}
+            >
+              {m === "US" ? t("market.us") : t("market.kr")}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (

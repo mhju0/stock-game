@@ -122,6 +122,14 @@ function Exchange() {
 
   return (
     <div>
+      <div className="page-header utility-page-header">
+        <div className="page-header-copy">
+          <div className="page-eyebrow">{t('exchange.eyebrow')}</div>
+          <h1 className="page-title">{t('exchange.title')}</h1>
+          <p className="page-subtitle">{t('exchange.subtitle')}</p>
+        </div>
+      </div>
+
       <div className="metric-grid">
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashKRW')}</div>
@@ -138,7 +146,7 @@ function Exchange() {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card exchange-workbench">
         <div className="card-title">{t('exchange.title')}</div>
 
         <div className="segmented-control" style={{ marginBottom: 16 }}>
@@ -194,7 +202,7 @@ function Exchange() {
         </button>
 
         {message && (
-          <p style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? 'var(--positive)' : 'var(--negative)' }}>
+          <p role={isSuccess ? 'status' : 'alert'} style={{ marginTop: 12, textAlign: 'center', color: isSuccess ? 'var(--positive)' : 'var(--negative)' }}>
             {message}
           </p>
         )}

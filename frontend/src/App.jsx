@@ -6,6 +6,8 @@ import { isAuthenticated } from "./auth";
 import { useSessionDetailQuery, useSessionListQuery } from "./query/queries";
 import { gamePath, getSessionIdFromPath, sessionStatusLabelKey } from "./sessionRoutes";
 import ErrorBoundary from "./components/ErrorBoundary";
+import BrandMark from "./components/BrandMark";
+import ThemeToggle from "./components/ThemeToggle";
 import "./App.css";
 
 const Login = lazy(() => import("./pages/Login"));
@@ -23,7 +25,13 @@ const Games = lazy(() => import("./pages/Games"));
 
 function RouteLoading() {
   const { t } = useTranslation();
-  return <p>{t("common.loading")}</p>;
+  return (
+    <div className="route-loading" role="status" aria-label={t("common.loading")}>
+      <span className="route-loading-line route-loading-line-short" />
+      <span className="route-loading-line" />
+      <span className="route-loading-panel" />
+    </div>
+  );
 }
 
 function RequireAuth({ children }) {
@@ -73,36 +81,7 @@ function SessionGuard() {
     );
   }
 
-  return (
-    <>
-      <div className="card" style={{ padding: "12px 16px", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 2 }}>
-              {t("games.currentGame")}
-            </div>
-            <div style={{ fontWeight: 700 }}>
-              {session.title || t("games.cardTitle")}
-            </div>
-          </div>
-          <span
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 999,
-              padding: "5px 10px",
-              color: session.status === "active" ? "var(--positive)" : "var(--text-secondary)",
-              background: session.status === "active" ? "var(--positive-bg)" : "var(--bg-secondary)",
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            {t(sessionStatusLabelKey(session))}
-          </span>
-        </div>
-      </div>
-      <Outlet context={{ session, sessionId }} />
-    </>
-  );
+  return <Outlet context={{ session, sessionId }} />;
 }
 
 function NavGlyph({ name }) {
@@ -116,7 +95,6 @@ function NavGlyph({ name }) {
     market: <><path d="M3 18h18M5 15l4-4 3 2 6-7" /><path d="M15 6h3v3" /></>,
     exchange: <><path d="M5 7h13l-3-3M19 17H6l3 3" /></>,
     transactions: <><path d="M6 4h12v16H6z" /><path d="M9 8h6M9 12h6M9 16h4" /></>,
-    dashboard: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
     more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
   };
 
@@ -129,10 +107,12 @@ function NavGlyph({ name }) {
 
 function AppLayout() {
   const { t, i18n } = useTranslation();
-  const { logout } = useContext(UserContext);
+  const { currentUserId, logout } = useContext(UserContext);
   const location = useLocation();
   const sessionId = getSessionIdFromPath(location.pathname);
   const selectedGameBase = sessionId ? `/games/${sessionId}` : null;
+  const selectedSessionQuery = useSessionDetailQuery(currentUserId, sessionId);
+  const selectedSession = selectedSessionQuery.data?.session || null;
 
   useEffect(() => {
     document.getElementById("main-content")?.focus({ preventScroll: true });
@@ -159,14 +139,12 @@ function AppLayout() {
         { to: `${selectedGameBase}/market`, label: t("nav.market"), icon: "market" },
         { to: `${selectedGameBase}/exchange`, label: t("nav.exchange"), icon: "exchange" },
         { to: `${selectedGameBase}/transactions`, label: t("nav.transactions"), icon: "transactions" },
-        { to: `${selectedGameBase}/dashboard`, label: t("nav.dashboard"), icon: "dashboard" },
       ]
     : [
         { to: "/watchlist", label: t("nav.watchlist"), icon: "watchlist" },
         { to: "/market", label: t("nav.market"), icon: "market" },
         { to: "/exchange", label: t("nav.exchange"), icon: "exchange" },
         { to: "/transactions", label: t("nav.transactions"), icon: "transactions" },
-        { to: "/dashboard", label: t("nav.dashboard"), icon: "dashboard" },
       ];
 
   const toggleLanguage = () => {
@@ -189,13 +167,20 @@ function AppLayout() {
 
       <aside className="app-sidebar">
         <NavLink to="/games" className="sidebar-brand" aria-label={t("common.appName")}>
-          <span className="nav-logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
-            </svg>
-          </span>
+          <BrandMark className="nav-logo" />
           <span>{t("common.appName")}</span>
         </NavLink>
+
+        {selectedSession && (
+          <NavLink to={selectedGameBase} className="sidebar-game-context">
+            <span className="sidebar-game-eyebrow">{t("games.currentGame")}</span>
+            <strong>{selectedSession.title || t("games.cardTitle")}</strong>
+            <span className="sidebar-game-status">
+              <span className={`status-dot ${selectedSession.status === "active" ? "status-dot-active" : ""}`} />
+              {t(sessionStatusLabelKey(selectedSession))}
+            </span>
+          </NavLink>
+        )}
 
         <nav className="sidebar-nav" aria-label={t("common.mainNavigation")}>
           <div className="sidebar-section">
@@ -219,9 +204,12 @@ function AppLayout() {
         </nav>
 
         <div className="sidebar-actions">
-          <button className="lang-toggle" onClick={toggleLanguage}>
-            {i18n.language === "ko" ? "EN" : "한국어"}
-          </button>
+          <div className="sidebar-preferences">
+            <ThemeToggle />
+            <button className="lang-toggle" onClick={toggleLanguage}>
+              {i18n.language === "ko" ? "EN" : "한국어"}
+            </button>
+          </div>
           <button className="btn sidebar-logout" onClick={logout}>{t("auth.logout")}</button>
         </div>
       </aside>
@@ -229,22 +217,22 @@ function AppLayout() {
       <div className="app-workspace">
         <header className="mobile-header">
           <NavLink to="/games" className="sidebar-brand" aria-label={t("common.appName")}>
-            <span className="nav-logo" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v5" /><path d="M16 7h5" />
-              </svg>
-            </span>
+            <BrandMark className="nav-logo" />
             <span>{t("common.appName")}</span>
           </NavLink>
-          <button className="lang-toggle" onClick={toggleLanguage}>
-            {i18n.language === "ko" ? "EN" : "한국어"}
-          </button>
+          <div className="mobile-header-actions">
+            <ThemeToggle compact />
+            <button className="lang-toggle" onClick={toggleLanguage}>
+              {i18n.language === "ko" ? "EN" : "한국어"}
+            </button>
+          </div>
         </header>
 
         <main id="main-content" className="main" tabIndex={-1}>
           <ErrorBoundary>
             <Suspense fallback={<RouteLoading />}>
-              <Routes>
+              <div className="route-stage" key={location.pathname}>
+                <Routes>
                 <Route path="/watchlist" element={<ResolveGameRedirect section="watchlist" />} />
                 <Route path="/market" element={<Market />} />
                 <Route path="/games" element={<Games />} />
@@ -268,7 +256,8 @@ function AppLayout() {
                 <Route path="/transactions" element={<ResolveGameRedirect section="transactions" />} />
                 <Route path="/" element={<ResolveGameRedirect section="status" />} />
                 <Route path="*" element={<Navigate to="/games" replace />} />
-              </Routes>
+                </Routes>
+              </div>
             </Suspense>
           </ErrorBoundary>
         </main>

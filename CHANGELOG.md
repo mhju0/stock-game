@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased - 1.1.0 candidate
+
+Explicitly approved showcase-interface release. Product scope and trading rules
+remain unchanged, and the project returns to maintenance mode after release.
+
+### Interface
+
+- Introduces the dark-first Midnight Market visual system with a persisted light
+  theme, bilingual product-story authentication, and a contextual game shell.
+- Clarifies the create -> overview -> trade -> portfolio -> result journey with
+  stronger page hierarchy, primary actions, game progress, and decision context.
+- Unifies Analysis, Watchlist, Market, Currency Exchange, and Transactions under
+  the same responsive page and state patterns.
+- Adds purposeful route, card, modal, and progress motion while honoring the
+  operating-system reduced-motion preference.
+
+### Accessibility and verification
+
+- Contains keyboard focus inside Create Game and Trade Ticket dialogs while
+  preserving Escape-to-close and focus restoration.
+- Expands Playwright coverage to five rendered flows spanning the complete trade
+  journey, secondary navigation, desktop and 390px layouts, dark and light
+  themes, reduced motion, and dialog keyboard behavior.
+- Refreshes all tracked README captures from deterministic fixtures and records
+  the interface contract in `docs/UI_DESIGN.md`.
+
 ## 1.0.2 - 2026-08-31
 
 Security automation follow-up from the first CodeQL audit of v1.0.1.

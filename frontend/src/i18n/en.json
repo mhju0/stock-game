@@ -19,7 +19,11 @@
     "back": "Back",
     "close": "Close",
     "delete": "Delete",
-    "unavailable": "Unavailable"
+    "unavailable": "Unavailable",
+    "useLightTheme": "Use light theme",
+    "useDarkTheme": "Use dark theme",
+    "lightTheme": "Light",
+    "darkTheme": "Dark"
   },
   "nav": {
     "dashboard": "Overview",
@@ -30,11 +34,11 @@
     "transactions": "Transactions",
     "market": "Market",
     "analytics": "Analysis",
-    "game": "Game Status",
+    "game": "Overview",
     "myGames": "My Games",
     "trade": "Trade",
-    "primary": "Play",
-    "tools": "Tools",
+    "primary": "Game",
+    "tools": "Utilities",
     "more": "More"
   },
   "dashboard": {
@@ -110,7 +114,18 @@
     "loadingDetails": "Loading stock details...",
     "noSearchResults": "No matching stocks. Try another ticker or company name.",
     "intradayDataLimited": "Not enough intraday data yet.",
-    "chartDataLimited": "Not enough chart data yet."
+    "chartDataLimited": "Not enough chart data yet.",
+    "tradeEyebrow": "Trade desk",
+    "tradeTitle": "Find your next trade",
+    "tradeSubtitle": "Search by company or ticker, review the price context, then open a trade ticket.",
+    "searchLabel": "Search stocks",
+    "searchHint": "US and Korean equities are supported.",
+    "discoveryTitle": "Search, review, decide",
+    "discoveryBody": "A trade starts with context, not a button. Look up a company to review its price and market details before choosing an action.",
+    "discoveryStepSearch": "Find a company",
+    "discoveryStepReview": "Review price context",
+    "discoveryStepTrade": "Open a trade ticket",
+    "openTicket": "Open trade ticket"
   },
   "trade": {
     "buySuccess": "Purchase complete",
@@ -134,7 +149,9 @@
     "insufficientBalanceHave": "Insufficient {{currency}}. Have {{have}}"
   },
   "exchange": {
+    "eyebrow": "Cash management",
     "title": "Currency Exchange",
+    "subtitle": "Move virtual cash between KRW and USD before placing a trade.",
     "from": "From",
     "to": "To",
     "amount": "Amount",
@@ -148,7 +165,12 @@
     "insufficientFunds": "This is above your available balance."
   },
   "watchlist": {
+    "eyebrow": "Research queue",
     "title": "Watchlist",
+    "subtitle": "Keep interesting companies close, then return when you are ready to review or trade.",
+    "findAction": "Find stocks",
+    "savedCount_one": "{{count}} saved stock",
+    "savedCount_other": "{{count}} saved stocks",
     "empty": "No stocks in watchlist",
     "emptyTitle": "No stocks in your watchlist",
     "emptyBody": "Save stocks you are curious about so you can check them quickly later.",
@@ -160,7 +182,11 @@
     "usSection": "🇺🇸 US"
   },
   "transactions": {
+    "eyebrow": "Activity ledger",
     "title": "Transactions",
+    "subtitle": "Review every buy, sell, and currency exchange recorded in this game.",
+    "recordedCount_one": "{{count}} recorded action",
+    "recordedCount_other": "{{count}} recorded actions",
     "filterAll": "All",
     "empty": "No transactions yet",
     "emptyTitle": "No transactions yet",
@@ -173,6 +199,7 @@
     "amount": "Amount"
   },
   "analytics": {
+    "eyebrow": "Decision review",
     "title": "Analysis",
     "subtitle": "Reference information for understanding your game result. Start with return, diversification, and cash share.",
     "summaryTitle": "What to check now",
@@ -217,6 +244,9 @@
     "activityActive": "Your trading history is growing enough to review patterns."
   },
   "market": {
+    "eyebrow": "Market pulse",
+    "title": "Market",
+    "subtitle": "Scan leading US and Korean equities, then open a company for more context.",
     "loadingData": "Loading market data... Please wait",
     "empty": "There is no market data to show right now.",
     "us": "US",
@@ -229,8 +259,10 @@
     "username": "Username",
     "password": "Password",
     "confirmPassword": "Confirm Password",
-    "loginTitle": "Sign in to your account",
-    "registerTitle": "Create a new account",
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Continue a challenge or review what your last decisions taught you.",
+    "registerTitle": "Start practicing",
+    "registerSubtitle": "Create an account for independent paper-trading challenges.",
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "fillAllFields": "Please fill in all fields",
@@ -240,7 +272,17 @@
     "coldStartHint": "Waking up the server… the free-tier backend can take up to a minute on the first request.",
     "demoHint": "Demo account — username: demo · password: demo1234",
     "invalidCredentials": "Invalid username or password",
-    "usernameTaken": "This username is already taken"
+    "usernameTaken": "This username is already taken",
+    "showcaseEyebrow": "Paper trading, made purposeful",
+    "showcaseTitle": "Practice the market. Keep the lesson.",
+    "showcaseKicker": "Virtual cash. Real market context.",
+    "showcaseBody": "Run focused investing challenges across US and Korean equities, then compare your choices with the market.",
+    "showcaseGameTitle": "Independent games",
+    "showcaseGameBody": "Test a strategy without overwriting your history.",
+    "showcaseBenchmarkTitle": "Benchmark context",
+    "showcaseBenchmarkBody": "Compare returns with the S&P 500 and KOSPI.",
+    "showcaseReviewTitle": "Reviewable results",
+    "showcaseReviewBody": "Keep ended games as a record of each decision."
   },
   "game": {
     "title": "Current Game",
@@ -297,7 +339,12 @@
     "myPortfolio": "My Portfolio",
     "vsBenchmark": "My Portfolio vs Benchmark",
     "buysSellsSummary": "{{buys}} buys · {{sells}} sells",
-    "winLossSummary": "{{wins}}W / {{losses}}L"
+    "winLossSummary": "{{wins}}W / {{losses}}L",
+    "overviewEyebrow": "Portfolio challenge",
+    "tradeNow": "Trade stocks",
+    "viewPortfolio": "View portfolio",
+    "progressLabel": "Game progress",
+    "progressComplete": "{{percent}}% complete"
   },
   "games": {
     "title": "My Games",
@@ -377,12 +424,22 @@
     "notFoundTitle": "Game not found",
     "notFoundBody": "This game was removed or is not available to your account.",
     "archiveConfirmTitle": "Archive this game?",
-    "archiveConfirmBody": "You are about to archive {{title}} into your past games. Trading and exchange will no longer be available for this game. Your watchlist and other games are unaffected."
+    "archiveConfirmBody": "You are about to archive {{title}} into your past games. Trading and exchange will no longer be available for this game. Your watchlist and other games are unaffected.",
+    "workspaceEyebrow": "Trading workspace",
+    "activeCount": "{{count}} active",
+    "historyCount": "{{count}} in history",
+    "progressLabel": "Game progress",
+    "progressComplete": "{{percent}}% complete"
   },
   "portfolio": {
     "emptyTitle": "No holdings yet",
     "emptyBody": "Find a stock you are interested in and practice your first buy.",
     "emptyAction": "Find Stocks",
-    "stocksCount": "{{count}} stocks"
+    "stocksCount": "{{count}} stocks",
+    "eyebrow": "Position review",
+    "title": "Portfolio",
+    "subtitle": "Review total value, cash, allocation, and every open position in one place.",
+    "tradeAction": "Find stocks",
+    "analysisAction": "View analysis"
   }
 }
