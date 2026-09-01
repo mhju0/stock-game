@@ -2,14 +2,13 @@ import { apiPost } from '../api'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
 import { UserContext } from '../context/userContext'
-import { useAccountQuery, useHoldingsQuery, queryKeys } from '../query/queries'
+import { useAccountQuery, useHoldingsQuery } from '../query/queries'
 import { gamePath, isSessionEnded } from '../sessionRoutes'
 
 
@@ -20,7 +19,6 @@ function Dashboard() {
   const { session } = useOutletContext() || {}
   const { currentUserId } = useContext(UserContext)
   const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
-  const queryClient = useQueryClient()
   const enableDevTools = import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true'
 
   const [showDevTools, setShowDevTools] = useState(false)
@@ -33,8 +31,10 @@ function Dashboard() {
   const [filterMarket, setFilterMarket] = useState('ALL')
   const [error, setError] = useState('')
 
-  const { data: account, isLoading: accountLoading, isError: accountError } = useAccountQuery(currentUserId, sessionId)
-  const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = useHoldingsQuery(currentUserId, sessionId)
+  const accountQuery = useAccountQuery()
+  const holdingsQuery = useHoldingsQuery()
+  const { data: account, isLoading: accountLoading, isError: accountError } = accountQuery
+  const { data: holdings, isLoading: holdingsLoading, isError: holdingsError } = holdingsQuery
   const holdingsSafe = useMemo(() => Array.isArray(holdings) ? holdings : [], [holdings])
 
   // Stock values split by market (KRW-converted). `total` is the single weight%
@@ -53,8 +53,8 @@ function Dashboard() {
 
   const fetchData = () => {
     setError('')
-    queryClient.invalidateQueries({ queryKey: queryKeys.account(currentUserId, sessionId) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.holdings(currentUserId, sessionId) })
+    accountQuery.refetch()
+    holdingsQuery.refetch()
   }
 
   useEffect(() => { setError('') }, [currentUserId, sessionId])

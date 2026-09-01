@@ -4,6 +4,7 @@ import { lazy, Suspense, useContext, useEffect } from "react";
 import { UserContext } from "./context/userContext";
 import { isAuthenticated } from "./auth";
 import { useSessionDetailQuery, useSessionListQuery } from "./query/queries";
+import { SessionPortfolioScope } from "./query/portfolioScope";
 import { gamePath, getSessionIdFromPath, sessionStatusLabelKey } from "./sessionRoutes";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BrandMark from "./components/BrandMark";
@@ -81,7 +82,11 @@ function SessionGuard() {
     );
   }
 
-  return <Outlet context={{ session, sessionId }} />;
+  return (
+    <SessionPortfolioScope userId={currentUserId} sessionId={sessionId}>
+      <Outlet context={{ session, sessionId }} />
+    </SessionPortfolioScope>
+  );
 }
 
 function NavGlyph({ name }) {

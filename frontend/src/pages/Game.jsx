@@ -6,12 +6,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import { getStockName } from '../utils/stockNames'
 import { formatDateTime, formatMoney } from '../utils/formatters'
 import { UserContext } from '../context/userContext'
-import {
-  useAnalyticsPerformanceQuery,
-  useSessionResultQuery,
-  useSessionStatusQuery,
-  useSessionSummaryQuery,
-} from '../query/queries'
+import { useGameSessionLifecycle } from '../game/useGameSessionLifecycle'
 import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
 
 function ResultMetric({ label, children, tone = '' }) {
@@ -31,33 +26,18 @@ function Game() {
   
   const [benchmarkData, setBenchmarkData] = useState([])
   const [benchmarkIndex, setBenchmarkIndex] = useState('SP500')
-  const [showSummary, setShowSummary] = useState(false)
-  const statusQuery = useSessionStatusQuery(currentUserId, sessionId)
-  const summaryQuery = useSessionSummaryQuery(currentUserId, sessionId)
-  const resultQuery = useSessionResultQuery(currentUserId, sessionId)
-  const status = statusQuery.data || null
-  const summary = summaryQuery.data || null
-  const result = resultQuery.data || null
-  const active = status?.status === 'active'
-  const performanceQuery = useAnalyticsPerformanceQuery(
-    currentUserId,
-    sessionId,
-    { enabled: active },
-  )
-  const performance = performanceQuery.data
-  const primaryQueries = [statusQuery, summaryQuery, resultQuery]
-  const loading = primaryQueries.some((query) => (
-    query.isLoading || (query.isFetching && query.data === undefined)
-  ))
-  const performanceLoading = performanceQuery.isLoading || (
-    performanceQuery.isFetching && performanceQuery.data === undefined
-  )
-  const fetchData = () => {
-    statusQuery.refetch()
-    summaryQuery.refetch()
-    resultQuery.refetch()
-    if (active) performanceQuery.refetch()
-  }
+  const {
+    active,
+    actions,
+    errors,
+    performance,
+    performanceError,
+    performanceLoading,
+    result,
+    screen,
+    status,
+    summary,
+  } = useGameSessionLifecycle(currentUserId, sessionId)
   const portfolioData = useMemo(() => {
     if (!Array.isArray(performance?.snapshots)) return []
     const startVal = performance.starting_value
@@ -113,36 +93,36 @@ function Game() {
     })
   }
 
-  if (loading) return <p>{t('common.loading')}</p>
-  if (!status) return (
+  if (screen === 'loading') return <p>{t('common.loading')}</p>
+  if (screen === 'status-error') return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
       <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
-        {statusQuery.error?.message || t('common.loadError')}
+        {errors.status?.message || t('common.loadError')}
       </p>
-      <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
+      <button className="btn btn-primary" onClick={actions.refresh}>{t('common.retry')}</button>
     </div>
   )
 
-  if (showSummary && summaryQuery.isError) return (
+  if (screen === 'summary-error') return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
       <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
-        {summaryQuery.error?.message || t('common.loadError')}
+        {errors.summary?.message || t('common.loadError')}
       </p>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-        <button className="btn" onClick={() => setShowSummary(false)}>{t('common.back')}</button>
-        <button className="btn btn-primary" onClick={() => summaryQuery.refetch()}>{t('common.retry')}</button>
+        <button className="btn" onClick={actions.closeSummary}>{t('common.back')}</button>
+        <button className="btn btn-primary" onClick={actions.retrySummary}>{t('common.retry')}</button>
       </div>
     </div>
   )
 
-  if (status.status !== 'active') {
-    if (!result) {
+  if (screen === 'ended-result' || screen === 'ended-result-error') {
+    if (screen === 'ended-result-error') {
       return (
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>
           <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
-            {resultQuery.error?.message || t('common.loadError')}
+            {errors.result?.message || t('common.loadError')}
           </p>
-          <button className="btn btn-primary" onClick={fetchData}>{t('common.retry')}</button>
+          <button className="btn btn-primary" onClick={actions.refresh}>{t('common.retry')}</button>
         </div>
       )
     }
@@ -326,7 +306,7 @@ function Game() {
   }
 
   // Summary view
-  if (showSummary && summary) {
+  if (screen === 'active-summary') {
     const isPositive = summary.total_return >= 0
     return (
       <div>
@@ -406,7 +386,7 @@ function Game() {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button className="btn" style={{ flex: 1, border: '1px solid var(--border)' }}
-            onClick={() => setShowSummary(false)}>{t('common.back')}</button>
+            onClick={actions.closeSummary}>{t('common.back')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }}
             onClick={() => navigate('/games')}>{t('nav.myGames')}</button>
         </div>
@@ -484,7 +464,7 @@ function Game() {
         </div>
         <div className="game-status-actions">
           <button className="btn"
-            onClick={() => setShowSummary(true)}>{t('game.summary')}</button>
+            onClick={actions.openSummary}>{t('game.summary')}</button>
           <button className="btn"
             onClick={() => navigate('/games')}>{t('nav.myGames')}</button>
         </div>
@@ -507,12 +487,12 @@ function Game() {
           <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
             {t('common.loading')}
           </div>
-        ) : performanceQuery.isError ? (
+        ) : performanceError ? (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
             <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
-              {performanceQuery.error?.message || t('common.loadError')}
+              {errors.performance?.message || t('common.loadError')}
             </p>
-            <button className="btn btn-primary" onClick={() => performanceQuery.refetch()}>
+            <button className="btn btn-primary" onClick={actions.retryPerformance}>
               {t('common.retry')}
             </button>
           </div>

@@ -1,7 +1,6 @@
-import { useState, useContext } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { UserContext } from '../context/userContext'
 import { useTransactionsQuery } from '../query/queries'
 import { getStockName } from '../utils/stockNames'
 import { formatMoney, formatDateTime } from '../utils/formatters'
@@ -12,10 +11,9 @@ function Transactions() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { sessionId } = useParams()
-  const { currentUserId } = useContext(UserContext)
 
   const [filter, setFilter] = useState('ALL')
-  const transactionsQuery = useTransactionsQuery(currentUserId, sessionId)
+  const transactionsQuery = useTransactionsQuery()
   const transactions = Array.isArray(transactionsQuery.data) ? transactionsQuery.data : []
 
   const filtered = filter === 'ALL'
