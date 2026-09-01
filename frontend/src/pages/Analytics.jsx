@@ -345,7 +345,7 @@ function Analytics() {
                   labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                   contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
                 />
-                <Line type="linear" dataKey="total_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="total_pct" />
+                <Line type="linear" dataKey="total_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="total_pct" isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -383,9 +383,9 @@ function Analytics() {
                   labelStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                   contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--card-bg)' }}
                 />
-                <Line type="monotone" dataKey="stocks_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="stocks_pct" />
+                <Line type="monotone" dataKey="stocks_pct" stroke="var(--accent)" strokeWidth={2} dot={false} name="stocks_pct" isAnimationActive={false} />
                 <Line type="monotone" dataKey="cash_pct" stroke="var(--text-secondary)" strokeWidth={1.5} dot={false}
-                  strokeDasharray="4 4" name="cash_pct" />
+                  strokeDasharray="4 4" name="cash_pct" isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>

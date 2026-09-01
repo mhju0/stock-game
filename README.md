@@ -14,11 +14,11 @@ Interactive API docs are a developer-environment feature and are disabled on the
 
 ## Demo
 
-Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. The Render API uses free hosting, so the first request can take 30–60 seconds while the service starts.
+Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. This is a shared public account: visitors can change its state while the backend remains running, and the baseline is rebuilt on the next backend start. The Render API uses free hosting, so the first request can take 30–60 seconds while the service starts.
 
 ## Screenshots
 
-These v1.1.0 captures use deterministic demo data exercised through the automated browser flows; they do not contain production user data.
+These v1.1.0 captures use fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
 
 ### Sign in
 
@@ -67,14 +67,14 @@ flowchart LR
 
 ## Security
 
-The API is public and unmetered, so the controls below assume an anonymous caller with a script.
+The deployed API is internet-accessible. Authentication and market-data routes accept callers without an API key, so the controls below account for anonymous scripted traffic.
 
 **Authentication and access**
 
 - Custom JWT (HS256) with bcrypt password hashing. The server refuses to start without `JWT_SECRET_KEY`.
 - Every session-scoped route resolves ownership through shared helpers; another user's session is a 404, not a 403.
 - Interactive docs (`/docs`, `/redoc`, `/openapi.json`) are served only where `ENABLE_DEV_TOOLS=true`, matching the gate on the `/admin` fund routes. They fail closed on any other value.
-- CORS allows exactly one origin per environment and disables credentialed requests, since the API reads a Bearer header and never a cookie.
+- Production CORS allows the single configured `FRONTEND_URL`; local development allows the two documented localhost Vite origins. Credentialed requests are disabled because the API reads a Bearer header and never a cookie.
 - Every response carries `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`.
 
 **Rate limits** — all return `429` with a `Retry-After` header.
@@ -93,7 +93,7 @@ The account budget is charged only after credentials are checked and only when t
 - Ticker parameters must match a Yahoo symbol shape before they reach the upstream provider.
 - Trade quantities are whole shares in `1 … 1,000,000,000`; money fields reject `Infinity` and `NaN`.
 - The benchmark lookback is capped at 10 years, and an account may hold at most 20 active games.
-- Market-data misses are cached too, so a loop over unknown symbols cannot force an outbound call per request.
+- Price and metadata lookup misses are cached briefly, so repeated requests for the same unknown symbol do not force an outbound call each time. Search, history, and other upstream-backed routes remain protected by the market-data rate limit.
 
 Backend dependencies are pinned, and a test enforces the `react-router` floor so a reinstall cannot resolve backwards past a fixed advisory.
 The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnerability alerts and automated security fixes are enabled, and Dependabot checks npm, pip, and GitHub Actions dependencies weekly. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
@@ -142,10 +142,10 @@ The app starts at `http://localhost:5173`.
 | Location | Variable | Required | Purpose |
 |---|---|---|---|
 | backend | `JWT_SECRET_KEY` | Yes | Signs access tokens; the server refuses to start without it. |
-| backend | `DATABASE_URL` | No | Supabase Postgres connection URL; unset uses local SQLite. |
-| backend | `FRONTEND_URL` | No | Sole allowed CORS origin. Unset means local dev, where the localhost dev servers are allowed instead. |
+| backend | `DATABASE_URL` | Production | Supabase Postgres connection URL; unset uses local SQLite for development. |
+| backend | `FRONTEND_URL` | Production | Sole production CORS origin. Unset selects the documented localhost development origins. |
 | backend | `ENABLE_DEV_TOOLS` | No | Enables the local-only balance adjustment endpoints and the interactive API docs. Keep unset in production. |
-| frontend | `VITE_API_URL` | No | Backend API base URL. |
+| frontend | `VITE_API_URL` | Production | Backend API base URL; development defaults to `http://127.0.0.1:8000`. |
 | frontend | `VITE_ENABLE_DEV_TOOLS` | No | Exposes local-only developer controls. Keep unset in production. |
 
 ## Verification
@@ -158,7 +158,7 @@ cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
 
 Install the Playwright Chromium runtime once with `cd frontend && npx playwright install chromium` before running the browser tests locally.
 
-That is 275 backend tests, 26 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates on every push and pull request.
+That is 275 backend tests, 26 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates for pull requests, pushes to `main`, and manual dispatches.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 

@@ -137,10 +137,10 @@ def ensure_session_cash_initialized(session: GameSession, user: User) -> GameSes
 
 
 def sync_legacy_user_balance(user: User, session: GameSession) -> User:
-    """Mirror selected session cash back to User.balance_* during migration.
+    """Mirror selected session cash to legacy User.balance_* fields.
 
-    Remove this helper once all runtime paths read and write GameSession.cash_*
-    directly and the legacy user-level cash fields are no longer needed.
+    Compatibility routes still read those user-level fields. Remove this helper
+    only as part of an explicitly approved legacy-contract retirement.
     """
     if session.cash_krw is not None:
         user.balance_krw = session.cash_krw

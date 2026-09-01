@@ -212,7 +212,7 @@ class TestMarketBatch:
             "AAPL": (100.0, 90.0)
         }
 
-    def test_market_service_preserves_rank_and_response_shape(self, provider_fake):
+    def test_market_service_preserves_candidate_order_and_response_shape(self, provider_fake):
         provider_fake.download_result = batch_frame(
             {"MSFT": [200.0, 220.0], "AAPL": [100.0, 110.0]}
         )

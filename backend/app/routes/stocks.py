@@ -40,6 +40,11 @@ def exchange_rate():
 
 @router.get("/market/top30/{market}")
 def top_30(market: str):
+    """Return quoted symbols from the point-in-time large-cap discovery set.
+
+    The route name is retained for client compatibility; it is not a live
+    market-cap ranking.
+    """
     if market.upper() not in ("US", "KR"):
         return {"error": "Market must be US or KR"}
     return get_top_30(market.upper())

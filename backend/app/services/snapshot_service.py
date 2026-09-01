@@ -117,7 +117,7 @@ def take_snapshot(db: Session, user_id: int) -> PortfolioSnapshot:
     If the user's active/current session has fully scoped holdings, this writes
     a session-scoped snapshot. If no current session exists, or if old runtime
     paths have created unscoped holdings, it preserves the legacy user-level
-    snapshot behavior so existing routes remain compatible during migration.
+    snapshot behavior for compatibility.
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

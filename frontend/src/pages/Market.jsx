@@ -67,7 +67,7 @@ function Market() {
         </div>
       ) : (
         <div className="card">
-          {stocks.map((s, i) => {
+          {stocks.map((s) => {
             const name = getStockName(s.ticker, s.name, i18n.language);
             return (
               <button
@@ -86,23 +86,6 @@ function Market() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      background: 'var(--border-light)',
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: 'var(--text-secondary)',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {i + 1}
-                  </span>
                   <div>
                     <strong style={{ fontSize: 14 }}>{name}</strong>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>

@@ -1,11 +1,11 @@
 # ── Static Sector & Industry Map ────────────────────────────────────
-# Primary source for sector/industry data.
-# Yahoo Finance .info is unreliable — this dictionary is the truth.
+# Application fallback for consistent sector/industry labels when Yahoo's
+# metadata is missing or inconsistent.
 # Format: "TICKER": ("Sector", "Industry")
 #
 # To add a new stock, just add a line here.
-# Sector changes are extremely rare (only during major restructuring),
-# so this data stays accurate for years.
+# Static classifications can drift after reorganizations and need periodic
+# review when a displayed company changes its reporting structure.
 
 STATIC_FUNDAMENTALS: dict[str, tuple[str, str]] = {
     # ════════════════════════════════════════════════════════════════

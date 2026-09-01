@@ -36,18 +36,16 @@ STARTING_BALANCE_KRW = 10_000_000.0
 DURATION_DAYS = 90
 PRIMARY_START = datetime(2026, 7, 2, tzinfo=timezone.utc)
 BACKDATE_DAYS = 12          # fixed July 2–14 showcase snapshot window
-SEED_RATE = 1500.0          # fixed FX rate, anchored to the live USD/KRW
-                            # (~1498.7 on 2026-07-11) so snapshot valuations
-                            # match the live-rate header
+SEED_RATE = 1500.0          # fixed point-in-time FX anchor for the synthetic
+                            # July 2026 showcase history
 
 # Timeline of demo trades. day = offset from game start.
 # ("EXCHANGE", day, amount_krw) — KRW -> USD at SEED_RATE
 # ("BUY"/"SELL", day, ticker, market, currency, quantity, price)
 #
-# Cost bases are anchored to live closes as of 2026-07-11 (within a few
-# percent), so the live-priced header, the snapshot-driven charts, and the
-# daily-change chip all tell one consistent story: a modest, mixed-P/L
-# portfolio. If the demo ages badly as markets move, re-anchor these prices.
+# Cost bases are a fixed July 2026 point-in-time anchor. Current live valuations
+# can diverge as markets move; re-anchor only in an explicitly reviewed demo
+# refresh.
 _TIMELINE = [
     ("EXCHANGE", 0, 4_000_000.0),
     ("BUY", 0, "005930.KS", "KRX", "KRW", 8, 272_000.0),   # Samsung — Technology
