@@ -27,10 +27,10 @@ const archivedSession = {
 
 const account = {
   balance_krw: 5_000_000,
-  balance_usd: 5_000,
-  total_value_krw: 11_750_000,
+  balance_usd: 3_888.8888888888887,
+  total_value_krw: 10_250_000,
   daily_change_krw: 125_000,
-  daily_change_pct: 1.08,
+  daily_change_pct: 1.23,
   exchange_rate: 1_350,
 }
 
@@ -46,6 +46,11 @@ const appleHolding = {
   total_value: 185,
   unrealized_pnl: 5,
   market_cap: 2_900_000_000_000,
+}
+
+const postTradeAccount = {
+  ...account,
+  balance_usd: account.balance_usd - appleHolding.current_price,
 }
 
 async function seedAuthenticatedUser(page) {
@@ -163,7 +168,9 @@ async function installApiFixture(page) {
         { date: '2026-08-30T00:00:00Z', close: 185 },
       ])
     }
-    if (pathname === '/game/sessions/101/portfolio/account') return respond(account)
+    if (pathname === '/game/sessions/101/portfolio/account') {
+      return respond(purchaseComplete ? postTradeAccount : account)
+    }
     if (pathname === '/game/sessions/101/portfolio/holdings') {
       return respond(purchaseComplete ? [appleHolding] : [])
     }
@@ -194,7 +201,13 @@ async function installApiFixture(page) {
     if (pathname === '/exchange-rate') return respond({ usd_to_krw: 1_350 })
     if (pathname === '/game/sessions/101/trade/buy' && request.method() === 'POST') {
       purchaseComplete = true
-      return respond({ status: 'success', balance: { krw: 5_000_000, usd: 4_815 } })
+      return respond({
+        status: 'success',
+        balance: {
+          krw: postTradeAccount.balance_krw,
+          usd: postTradeAccount.balance_usd,
+        },
+      })
     }
     if (pathname === '/game/sessions/101/trade/exchange' && request.method() === 'POST') {
       return respond({
@@ -315,6 +328,11 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await page.locator('.app-sidebar').getByRole('link', { name: 'Portfolio' }).click()
   await expect(page.getByRole('heading', { name: 'Portfolio' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Apple.*Trade/ })).toBeVisible()
+  const assetHero = page.locator('.asset-hero')
+  await expect(assetHero.getByText('₩10,250,000', { exact: true })).toBeVisible()
+  await expect(assetHero.getByText('₩249,750', { exact: true })).toBeVisible()
+  await expect(assetHero.getByText('₩5,000,000', { exact: true })).toBeVisible()
+  await expect(assetHero.getByText('₩5,000,250', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('portfolio-summary.png'), fullPage: true, animations: 'disabled' })
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'My Games' }).click()

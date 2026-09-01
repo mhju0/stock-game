@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Architecture maintenance
+
+- Centralizes Create Game and Trade Ticket focus, Escape, backdrop, and keyboard
+  containment behavior behind one tested dialog-mechanics hook.
+- Gives selected-game routes an explicit Session Portfolio access scope for API
+  paths, query identity, and trade invalidation while retaining Legacy Portfolio
+  support behind a separate compatibility adapter.
+- Isolates Game Session query and screen orchestration in a lifecycle controller
+  while preserving eager status/summary/result requests, active-only performance
+  requests, saved ended results, navigation, and replay defaults.
+- Expands the frontend unit/config suite from 26 to 36 tests without changing
+  backend, authentication, database, ownership, or trading contracts.
+
 ### Maintenance audit
 
 - Aligns the README, environment examples, runtime comments, and project status
@@ -11,6 +24,11 @@
   shape.
 - Disables nonessential chart-line animation, adds a capture-stability
   regression, and refreshes the README screenshots from fixed test fixtures.
+- Reconciles the Portfolio fixture's displayed total with its visible holding
+  and cash breakdown, then asserts the evidence before capture.
+- Refreshes the transitive Browserslist database/tooling packages to clear the
+  current high-severity `browserslist` advisories and moves the lint toolchain
+  to supported ESLint 10; production dependency ranges remain unchanged.
 
 ## 1.1.0 - 2026-09-01
 
