@@ -64,10 +64,10 @@ DEV_ORIGINS = [
 def resolve_allowed_origins(env) -> list[str]:
     """CORS origins for this environment.
 
-    FRONTEND_URL is set only on the deployed backend (render.yaml declares it
-    sync:false), so its absence means local dev. Keeping the dev-server origins
-    out of the deployed allowlist stops a page on a developer's own machine
-    from calling production.
+    Production sets FRONTEND_URL through Render (render.yaml declares it
+    sync:false); its absence selects the documented local-development origins.
+    Keeping those dev-server origins out of the deployed allowlist stops a page
+    on a developer's own machine from calling production.
     """
     frontend_url = env.get("FRONTEND_URL")
     if frontend_url:
@@ -106,9 +106,9 @@ async def lifespan(app: FastAPI):
     # brief DB outage doesn't crash the worker before it can even boot.
     _init_db_with_retry()
 
-    # Create-or-reset the public demo account to its baseline on every boot,
-    # so reviewers always land on a pristine portfolio regardless of what a
-    # previous visitor did. Wrapped so a seed failure can never block startup.
+    # Create-or-reset the shared public demo account on every boot. Visitors can
+    # change it between boots; the next successful start restores the baseline.
+    # Wrapped so a seed failure can never block startup.
     db = SessionLocal()
     try:
         seed_demo(db)

@@ -21,7 +21,7 @@ A Game Session whose Lifecycle State permits trading and exchange.
 _Avoid_: Current account, live portfolio
 
 **Ended Session**:
-A Game Session whose Lifecycle State is expired, completed, or archived and is available only for review and replay.
+A Game Session whose Lifecycle State is expired, completed, or archived and is available only for review. Playing again creates a new Game Session.
 _Avoid_: Deleted game, inactive account
 
 ## Portfolio history

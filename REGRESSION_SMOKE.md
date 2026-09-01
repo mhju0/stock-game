@@ -10,7 +10,7 @@ The command uses the existing backend pytest setup with an in-memory database an
 
 This is a fast subset, not the whole suite. `venv/bin/pytest` runs 275 backend tests, including the security regressions (rate limiting, CORS, docs gating, ticker and quantity validation, dependency pinning) that this smoke deliberately skips. Run both before pushing.
 
-The frontend also has 26 unit/config tests and 5 rendered Chromium flows. Run `npm test` and `npm run test:e2e` separately; they are intentionally not part of this fast smoke command. The rendered flows cover the complete trade/review journey, secondary workspace navigation, 390px layout, dark/light themes, reduced motion, and dialog keyboard focus containment.
+The frontend also has 26 unit/config tests and 5 rendered Chromium flows. Run `npm test` and `npm run test:e2e` separately; they are intentionally not part of this fast smoke command. The rendered flows cover the complete trade/review journey, secondary workspace navigation, a 390px viewport plus a 375px overflow check, dark/light themes, reduced motion, and dialog keyboard focus containment.
 
 ## Covered
 
@@ -29,7 +29,7 @@ The frontend also has 26 unit/config tests and 5 rendered Chromium flows. Run `n
 ## Known Limitations
 
 - This is not a browser E2E test. It does not click the real DOM, verify rendered charts, or exercise Vercel/Render/Supabase integration.
-- Prices, FX, market ranking, and stock search are mocked in the backend smoke for repeatability.
+- Prices, FX, the market discovery list, and stock search are mocked in the backend smoke for repeatability.
 - The frontend navigation check is source-level. If the implementation is rewritten while preserving behavior, update the check with the new stable pattern.
 
 ## Manual QA Checklist

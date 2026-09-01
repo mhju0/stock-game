@@ -122,7 +122,8 @@ landscape viewport and scroll internally when necessary.
 - Dialogs close with Escape, return focus, and keep keyboard focus inside.
 - Dynamic success/error text uses an appropriate live region.
 - Charts retain text summaries and never communicate change by color alone.
-- Keyboard, 200% zoom, reduced motion, and 375px overflow are release checks.
+- Keyboard dialog containment, reduced motion, and 375px overflow are automated
+  release checks. A 200% zoom review remains a manual UI-release check.
 
 ## Showcase acceptance
 
@@ -133,5 +134,5 @@ landscape viewport and scroll internally when necessary.
 - Trade reads as a search-to-decision flow rather than an empty search field.
 - Portfolio makes total value, daily movement, allocation, and positions easy to
   scan without repeating labels.
-- Desktop and mobile screenshots are captured from deterministic demo fixtures
+- Desktop and mobile screenshots are captured from fixed test fixtures
   and contain no production user data.

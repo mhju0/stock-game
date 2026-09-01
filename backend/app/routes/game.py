@@ -139,7 +139,7 @@ def _create_session(
     )
     db.add(session)
 
-    # Legacy mirror for old routes that still read User.balance_* during migration.
+    # Legacy mirror retained for compatibility routes that still read User.balance_*.
     user.balance_krw = starting_balance_krw
     user.balance_usd = starting_balance_usd
 
@@ -511,9 +511,8 @@ def game_sessions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Backward compatibility: the current frontend treats this endpoint as the
-    # playable sessions list. Full session history is opt-in until the frontend
-    # is session-routed and can represent completed/archived/imported sessions.
+    # Backward compatibility: callers that omit both flags still receive only
+    # playable sessions. The current frontend opts into full session history.
     sessions = (
         db.query(GameSession)
         .filter(GameSession.user_id == current_user.id)
@@ -658,8 +657,8 @@ def start_new_game(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Compatibility alias for the current frontend. It no longer resets data;
-    # frontend copy should be updated before presenting it as a restart action.
+    # Compatibility alias for legacy clients. It creates a separate session and
+    # no longer resets existing game data.
     session = _create_session(
         db,
         current_user,

@@ -1,8 +1,9 @@
-"""The public market-data routes proxy straight to Yahoo.
+"""The public market-data routes proxy to Yahoo.
 
-Their caches only populate on success, so a miss always costs an outbound call.
-Unthrottled and unauthenticated, one client can burn the deployment's upstream
-quota and take market data down for every user.
+Some lookups have positive and negative caches, while search and history can
+still reach upstream on every call. Unthrottled and unauthenticated, one client
+can burn the deployment's upstream quota and take market data down for every
+user.
 """
 
 import pandas as pd

@@ -246,7 +246,7 @@
   "market": {
     "eyebrow": "Market pulse",
     "title": "Market",
-    "subtitle": "Scan leading US and Korean equities, then open a company for more context.",
+    "subtitle": "Browse a curated set of large-cap US and Korean equities, then open a company for more context.",
     "loadingData": "Loading market data... Please wait",
     "empty": "There is no market data to show right now.",
     "us": "US",

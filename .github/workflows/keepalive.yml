@@ -1,7 +1,8 @@
 name: keepalive
 
-# Prevents Supabase free-tier 7-day inactivity pause (and warms the Render
-# instance) by hitting an endpoint that runs a real DB query. Runs every 3 days.
+# Adds periodic database activity during Supabase's Free Plan low-activity
+# window (and warms Render) by running a real query every 3 days. This reduces
+# idle time but does not guarantee that the free project cannot be paused.
 on:
   schedule:
     - cron: "0 6 */3 * *"

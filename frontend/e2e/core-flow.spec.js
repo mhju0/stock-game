@@ -223,6 +223,15 @@ async function expectDialogFocusTrap(page, dialog) {
   await expect(last).toBeFocused()
 }
 
+async function expectChartCaptureToBeStable(page) {
+  const chart = page.locator('.chart-visual')
+  const firstCapture = await chart.screenshot({ animations: 'disabled' })
+  await page.waitForTimeout(100)
+  const secondCapture = await chart.screenshot({ animations: 'disabled' })
+
+  expect(secondCapture.equals(firstCapture)).toBe(true)
+}
+
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-08-31T00:00:00Z'))
   await installApiFixture(page)
@@ -262,7 +271,16 @@ test('completes the core trading review flow', async ({ page }, testInfo) => {
   await expect(page.locator('.overview-hero')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Trade stocks' })).toBeVisible()
   await expect(page.getByRole('img', { name: /My Portfolio: 2\.50%.*S&P 500: 1\.40%/ })).toBeVisible()
-  await page.screenshot({ path: testInfo.outputPath('desktop-game-status.png'), fullPage: true, animations: 'disabled' })
+  await expectChartCaptureToBeStable(page)
+  await page.setViewportSize({ width: 1440, height: 1044 })
+  const skipLinkState = await page.locator('.skip-link').evaluate((element) => ({
+    active: document.activeElement === element,
+    top: element.getBoundingClientRect().top,
+  }))
+  expect(skipLinkState.active).toBe(false)
+  expect(skipLinkState.top).toBeLessThan(0)
+  await page.screenshot({ path: testInfo.outputPath('performance-benchmark.png'), animations: 'disabled' })
+  await page.setViewportSize({ width: 1440, height: 900 })
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Trade' }).click()
   await expect(page.getByRole('heading', { name: 'Find your next trade' })).toBeVisible()
@@ -329,8 +347,10 @@ test('keeps the authenticated shell usable on a narrow screen', async ({ page },
     expect(box.height).toBeGreaterThanOrEqual(44)
   }
 
+  await page.setViewportSize({ width: 375, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('mobile-game-status.png'), fullPage: true, animations: 'disabled' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({ path: testInfo.outputPath('mobile-game-status.png'), animations: 'disabled' })
   await page.getByText('More', { exact: true }).click()
   await expect(page.locator('.mobile-more-menu').getByRole('link', { name: 'Analysis' })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('mobile-more-menu.png'), fullPage: true, animations: 'disabled' })
@@ -394,6 +414,8 @@ test('keeps secondary workspaces clear and connected', async ({ page }, testInfo
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'Market' }).click()
   await expect(page.getByRole('heading', { name: 'Market' })).toBeVisible()
+  const marketRow = page.getByRole('button', { name: /Apple.*View details/ })
+  await expect(marketRow.getByText('1', { exact: true })).toHaveCount(0)
 
   await page.locator('.app-sidebar').getByRole('link', { name: 'FX Exchange' }).click()
   await expect(page.getByRole('heading', { name: 'Currency Exchange' })).toBeVisible()

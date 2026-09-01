@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Maintenance audit
+
+- Aligns the README, environment examples, runtime comments, and project status
+  with the deployed configuration and current compatibility behavior.
+- Describes the Market page as a curated large-cap discovery set instead of a
+  live market-cap ranking, while retaining the legacy API route and response
+  shape.
+- Disables nonessential chart-line animation, adds a capture-stability
+  regression, and refreshes the README screenshots from fixed test fixtures.
+
 ## 1.1.0 - 2026-09-01
 
 Explicitly approved showcase-interface release. Product scope and trading rules
@@ -23,7 +35,7 @@ remain unchanged, and the project returns to maintenance mode with this release.
 - Expands Playwright coverage to five rendered flows spanning the complete trade
   journey, secondary navigation, desktop and 390px layouts, dark and light
   themes, reduced motion, and dialog keyboard behavior.
-- Refreshes all tracked README captures from deterministic fixtures and records
+- Refreshes all tracked README captures from fixed fixtures and records
   the interface contract in `docs/UI_DESIGN.md`.
 
 ## 1.0.2 - 2026-08-31

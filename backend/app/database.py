@@ -19,8 +19,9 @@ if DATABASE_URL.startswith("sqlite"):
     # check_same_thread is a SQLite-only flag; invalid on Postgres.
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    # Always-on server behind the session pooler: keep a small pool and verify
-    # connections before use so recycled/dead pooled conns don't surface errors.
+    # Long-lived web process behind the session pooler: keep a small pool and
+    # verify connections before use so recycled/dead pooled conns don't surface
+    # errors after an idle period or platform restart.
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,

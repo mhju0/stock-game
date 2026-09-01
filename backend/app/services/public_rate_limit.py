@@ -1,9 +1,10 @@
 """Throttles for routes that are cheap to call and expensive to serve.
 
-Market data proxies to Yahoo and only populates its caches on success, so a
-miss always costs an outbound call; without a ceiling one client can exhaust
-the deployment's upstream quota. Trades are cheap for the caller too but each
-writes a transaction and a snapshot row.
+Market data proxies to Yahoo. Price and metadata misses are cached briefly,
+while search and history requests can still reach upstream on every call;
+without a ceiling one client can exhaust the deployment's upstream quota.
+Trades are cheap for the caller too but each writes a transaction and a
+snapshot row.
 
 Both limits are keyed per caller rather than process-wide for the same reason
 the auth limiter is: a shared counter lets one client deny the route to all.

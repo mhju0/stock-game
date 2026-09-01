@@ -280,7 +280,7 @@ function SearchStock() {
                     contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'var(--font-body)', background: 'var(--card-bg)' }}
                   />
                   <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? 'var(--positive)' : 'var(--negative)'}
-                    strokeWidth={2} dot={false} />
+                    strokeWidth={2} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (

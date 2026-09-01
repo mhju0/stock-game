@@ -556,11 +556,11 @@ function Game() {
                   <Legend />
                   <Line type="monotone" dataKey="portfolio" stroke="var(--accent)" strokeWidth={2}
                     dot={mergedChartData.length <= 2 ? { r: 5, fill: 'var(--accent)', stroke: '#fff', strokeWidth: 2 } : false}
-                    name={t('game.myPortfolio')} connectNulls />
+                    name={t('game.myPortfolio')} connectNulls isAnimationActive={false} />
                   <Line type="monotone" dataKey="benchmark" stroke="var(--text-secondary)" strokeWidth={1.5}
                     dot={mergedChartData.length <= 2 ? { r: 4, fill: 'var(--text-secondary)', stroke: '#fff', strokeWidth: 2 } : false}
                     strokeDasharray="4 4"
-                    name={benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'} connectNulls />
+                    name={benchmarkIndex === 'SP500' ? 'S&P 500' : 'KOSPI'} connectNulls isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

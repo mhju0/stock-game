@@ -5,12 +5,6 @@ import { describe, expect, it } from 'vitest'
 
 // react-router below 7.18.0 carries an open-redirect and a route-matching DoS.
 // This floor keeps a reinstall from resolving backwards past those fixes.
-//
-// `npm audit` still reports GHSA-qwww-vcr4-c8h2 (RSC-mode CSRF) against every
-// 7.12+ release, and its only offered remedy is a breaking downgrade to 7.11.0.
-// That is declined on purpose: the app is a client-only SPA (BrowserRouter, no
-// hydrateRoot/renderToString anywhere), so RSC mode never runs, and downgrading
-// would trade two reachable fixes for one unreachable advisory.
 const MINIMUM = [7, 18, 0]
 
 function installedVersion(pkg) {

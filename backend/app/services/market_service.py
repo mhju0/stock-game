@@ -7,13 +7,13 @@ from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
 
 logger = logging.getLogger(__name__)
 
-# ── Static ranking by market cap (updated periodically) ─────────
-# These are pre-sorted by approximate market cap, largest first.
-# The rank order is what matters, not the exact cap number.
-# Update this list every few months if major changes happen.
+# ── Point-in-time large-cap discovery sets ───────────────────────
+# These lists preserve the approximate market-cap order captured on the dates
+# below. They choose which symbols the legacy /market/top30 route attempts to
+# quote; they are not a live market-cap ranking.
 
 US_TOP_50 = [
-    # Verified March 24, 2026 — finhacker.cz/largest-us-companies-by-market-cap
+    # Snapshot captured March 24, 2026.
     "NVDA", "AAPL", "GOOGL", "MSFT", "AMZN", "AVGO", "META", "TSLA",
     "BRK-B", "WMT", "LLY", "JPM", "XOM", "V", "JNJ", "MU",
     "MA", "COST", "ORCL", "CVX", "NFLX", "PLTR", "ABBV", "AMD",
@@ -24,7 +24,7 @@ US_TOP_50 = [
 ]
 
 KR_TOP_50 = [
-    # Verified March 2026 — companiesmarketcap.com, disfold.com
+    # Snapshot captured March 2026.
     "005930.KS", "000660.KS", "207940.KS", "005380.KS", "000270.KS",
     "012450.KS", "105560.KS", "055550.KS", "006400.KS", "267260.KS",
     "068270.KS", "035420.KS", "138040.KS", "086790.KS", "015760.KS",
@@ -103,7 +103,11 @@ def _format_top_30(
 
 
 def fetch_top_30(market: str) -> list:
-    """Download prices in batch, rank by static market cap order."""
+    """Download prices for the first available large-cap candidates.
+
+    The legacy ``rank`` response field is the candidate's point-in-time display
+    order, not a current market-cap rank.
+    """
     candidates, _ = _market_inputs(market)
     return _format_top_30(market, market_data_provider.fetch_market_closes(candidates))
 
