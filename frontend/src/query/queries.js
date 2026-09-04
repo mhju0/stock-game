@@ -53,10 +53,6 @@ export const sessionQueryKeys = {
     userId,
     sessionId,
   ).queryKey('transactions'),
-  analytics: (userId, sessionId) => [
-    ...sessionScope(userId, sessionId),
-    'analytics',
-  ],
   analyticsPerformance: (userId, sessionId) => [
     ...compatibilityPortfolioAccess(userId, sessionId).queryKey('performance'),
   ],
@@ -72,11 +68,8 @@ export const sessionQueryKeys = {
 }
 
 export const queryKeys = {
-  account: sessionQueryKeys.account,
-  holdings: sessionQueryKeys.holdings,
   watchlist: (userId) => ['watchlist', userId],
   watchlistContains: (userId, ticker) => ['watchlist-contains', userId, ticker],
-  analyticsPerformance: sessionQueryKeys.analyticsPerformance,
 }
 
 function jsonRequest(path, method, body) {
