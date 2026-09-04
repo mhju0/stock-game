@@ -2,17 +2,7 @@ import { createContext, useContext } from 'react'
 
 export const PortfolioAccessContext = createContext(null)
 
-const RESOURCE_SUFFIXES = {
-  account: ['portfolio', 'account'],
-  holdings: ['portfolio', 'holdings'],
-  transactions: ['portfolio', 'transactions'],
-  performance: ['analytics', 'performance'],
-  'by-stock': ['analytics', 'by-stock'],
-  'by-sector': ['analytics', 'by-sector'],
-  realized: ['analytics', 'realized'],
-}
-
-const SESSION_PATHS = {
+const RESOURCE_PATHS = {
   account: 'portfolio/account',
   holdings: 'portfolio/holdings',
   transactions: 'portfolio/transactions',
@@ -22,24 +12,14 @@ const SESSION_PATHS = {
   realized: 'analytics/realized',
 }
 
-const LEGACY_PATHS = {
-  account: '/portfolio/account',
-  holdings: '/portfolio/holdings',
-  transactions: '/portfolio/transactions',
-  performance: '/analytics/performance',
-  'by-stock': '/analytics/by-stock',
-  'by-sector': '/analytics/by-sector',
-  realized: '/analytics/realized',
-}
-
 function userKey(userId) {
   return userId == null ? 'anonymous' : String(userId)
 }
 
-function resourceSuffix(resource) {
-  const suffix = RESOURCE_SUFFIXES[resource]
-  if (!suffix) throw new Error(`Unknown Portfolio resource: ${resource}`)
-  return suffix
+function resourcePath(resource) {
+  const path = RESOURCE_PATHS[resource]
+  if (!path) throw new Error(`Unknown Portfolio resource: ${resource}`)
+  return path
 }
 
 function createPortfolioAccess(kind, userId, sessionId = null) {
@@ -52,7 +32,10 @@ function createPortfolioAccess(kind, userId, sessionId = null) {
     ? [...root, 'session', String(sessionId)]
     : [...root, 'legacy']
 
-  const queryKey = (resource) => [...scope, ...resourceSuffix(resource)]
+  const queryKey = (resource) => [
+    ...scope,
+    ...resourcePath(resource).split('/'),
+  ]
   const lifecycleKey = (resource) => [...scope, resource]
 
   return Object.freeze({
@@ -62,10 +45,10 @@ function createPortfolioAccess(kind, userId, sessionId = null) {
     scope,
     queryKey,
     readPath(resource) {
-      resourceSuffix(resource)
+      const path = resourcePath(resource)
       return kind === 'session'
-        ? `/game/sessions/${sessionId}/${SESSION_PATHS[resource]}`
-        : LEGACY_PATHS[resource]
+        ? `/game/sessions/${sessionId}/${path}`
+        : `/${path}`
     },
     tradePath(type) {
       if (!['buy', 'sell', 'exchange'].includes(type)) {
