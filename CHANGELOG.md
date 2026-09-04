@@ -12,7 +12,7 @@
 - Isolates Game Session query and screen orchestration in a lifecycle controller
   while preserving eager status/summary/result requests, active-only performance
   requests, saved ended results, navigation, and replay defaults.
-- Expands the frontend unit/config suite from 26 to 36 tests without changing
+- Expands the frontend unit/config suite from 26 to 37 tests without changing
   backend, authentication, database, ownership, or trading contracts.
 
 ### Maintenance audit
@@ -26,9 +26,12 @@
   regression, and refreshes the README screenshots from fixed test fixtures.
 - Reconciles the Portfolio fixture's displayed total with its visible holding
   and cash breakdown, then asserts the evidence before capture.
+- Restores focus to the opener after an initially visible dialog closes and adds
+  a discriminating regression for the normal mount path.
 - Refreshes the transitive Browserslist database/tooling packages to clear the
   current high-severity `browserslist` advisories and moves the lint toolchain
-  to supported ESLint 10; production dependency ranges remain unchanged.
+  to supported ESLint 10, including `@humanfs/node` 0.16.8 for the corresponding
+  medium Dependabot alert; production dependency ranges remain unchanged.
 
 ## 1.1.0 - 2026-09-01
 

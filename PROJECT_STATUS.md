@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-02
+- Last verified: 2026-09-04
 - Current release: [v1.1.0](https://github.com/mhju0/stock-game/releases/tag/v1.1.0)
 - Release delivery: [PR #30](https://github.com/mhju0/stock-game/pull/30) merged to `main`; Vercel production deployment verified
 - Lifecycle: feature complete, maintenance mode
@@ -20,20 +20,20 @@ code before being acted on.
 | Interface verification | `[Verified]` Fixed-fixture captures were regenerated and directly reviewed at 1440px, 1280px, and a 390x844 mobile viewport in dark and light themes. The Portfolio evidence now has an asserted, fully reconciled total across visible holdings and cash. Playwright verifies chart capture stability, keyboard dialog containment, route navigation, 375px overflow, and reduced motion. `[Unknown]` An in-app browser session was unavailable during the current audit, so no additional live-browser visual claim is made. |
 | Backend | `[Verified]` FastAPI is deployed at `https://stock-game-6411.onrender.com`; `/health/db` returned HTTP 200 and production API docs returned 404. |
 | Data boundary | `[Verified]` Game sessions own cash, holdings, transactions, and snapshots. Watchlist data remains user-level. Session routes use ownership helpers and cross-user access is covered by 404 regression tests. |
-| Test inventory | `[Verified]` 275 backend tests, 36 frontend unit/config tests, and 5 rendered Chromium flows pass on the current maintenance tree. |
+| Test inventory | `[Verified]` 275 backend tests, 37 frontend unit/config tests, and 5 rendered Chromium flows pass on the current maintenance tree. |
 | Dependency audit | `[Verified]` `npm audit` reports 0 vulnerabilities. `pip-audit` reports one no-fix `ecdsa` P-256 timing advisory; application JWT encode/decode paths pin HS256 and contain no ECDSA use. `[Inferred]` The advisory is not reachable through the current authentication path. |
-| GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, push protection, and CodeQL default setup are enabled; the audit found 0 open Dependabot, CodeQL, or secret-scanning alerts. |
+| GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, push protection, and CodeQL default setup are enabled. On 2026-09-04, GitHub `main` reported one medium `@humanfs/node` Dependabot alert and 0 open CodeQL or secret-scanning alerts; this maintenance tree contains the patched 0.16.8 version and will clear the dependency finding when merged. |
 | GitHub workflow | `[Verified]` `main` requires a pull request, up-to-date `backend` and `frontend` checks, and resolved conversations. Force-push and branch deletion are blocked; administrators retain recovery bypass. |
 | Automation | `[Verified]` CI runs the complete backend/frontend gates, Dependabot checks npm/pip/Actions weekly, CodeQL scans Actions/JavaScript/TypeScript/Python weekly, and keepalive queries `/health/db` every three days. Workflow token permissions are explicit and least-privilege. |
 
-The 2026-09-02 repository truth audit also reconciled the public README,
+The 2026-09-04 repository truth audit also reconciled the public README,
 configuration examples, code comments, tracked screenshots, and GitHub metadata.
 It did not change product scope, trading rules, authentication, database schema,
 or session ownership.
 
 ## Verification
 
-The v1.1.0 release and the 2026-09-02 maintenance audit use these
+The v1.1.0 release and the 2026-09-04 maintenance audit use these
 credential-independent gates:
 
 ```bash

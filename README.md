@@ -111,7 +111,7 @@ The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnera
 
 ## Run locally
 
-Prerequisites: Python 3.11 and Node.js 20.19+ (or 22.12+).
+Prerequisites: Python 3.11 and Node.js 20.19+ (or 22.13+).
 
 ### Backend
 
@@ -160,7 +160,7 @@ cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
 
 Install the Playwright Chromium runtime once with `cd frontend && npx playwright install chromium` before running the browser tests locally.
 
-That is 275 backend tests, 36 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates for pull requests, pushes to `main`, and manual dispatches.
+That is 275 backend tests, 37 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates for pull requests, pushes to `main`, and manual dispatches.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 
