@@ -32,6 +32,10 @@
   current high-severity `browserslist` advisories and moves the lint toolchain
   to supported ESLint 10, including `@humanfs/node` 0.16.8 for the corresponding
   medium Dependabot alert; production dependency ranges remain unchanged.
+- Applies the current compatible `@types/react-dom` and
+  `eslint-plugin-react-refresh` patch releases.
+- Keeps CI installs independent of the npm advisory endpoint while retaining
+  explicit dependency audits and GitHub Dependabot monitoring.
 
 ## 1.1.0 - 2026-09-01
 

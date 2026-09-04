@@ -61,7 +61,7 @@ Overview, Trade, Portfolio, and More. Analysis and utilities live in More.
 | Surface | `#111824` | Cards and controls |
 | Raised surface | `#172131` | Dialogs and selected controls |
 | Primary text | `#f4f7fb` | Headings and key values |
-| Secondary text | `#9ba8bb` | Supporting copy |
+| Secondary text | `#a3aec0` | Supporting copy |
 | Border | `rgba(255, 255, 255, 0.09)` | Surface separation |
 | Cobalt | `#6f8cff` | Navigation and primary actions |
 | Mint | `#47d6a0` | Positive financial state |

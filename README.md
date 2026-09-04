@@ -18,7 +18,7 @@ Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. This is a
 
 ## Screenshots
 
-These current maintenance-tree captures use the v1.1 interface and fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
+These current `main` captures use the v1.1 interface and fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
 
 ### Sign in
 
