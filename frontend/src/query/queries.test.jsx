@@ -20,6 +20,7 @@ import {
   useTransactionsQuery,
   useUpdateSessionMutation,
 } from './queries'
+import { LegacyPortfolioScope, SessionPortfolioScope } from './portfolioScope'
 
 vi.mock('../api', () => {
   class MockApiRequestError extends Error {
@@ -47,11 +48,21 @@ function createQueryClient() {
   })
 }
 
-function createWrapper(queryClient) {
+function createWrapper(
+  queryClient,
+  { legacy = false, userId = 7, sessionId = 42 } = {},
+) {
   return function QueryWrapper({ children }) {
+    const scopedChildren = legacy ? (
+      <LegacyPortfolioScope userId={userId}>{children}</LegacyPortfolioScope>
+    ) : (
+      <SessionPortfolioScope userId={userId} sessionId={sessionId}>
+        {children}
+      </SessionPortfolioScope>
+    )
     return (
       <QueryClientProvider client={queryClient}>
-        {children}
+        {scopedChildren}
       </QueryClientProvider>
     )
   }
@@ -71,7 +82,7 @@ describe('session data queries', () => {
     const queryClient = createQueryClient()
 
     const { result } = renderHook(
-      () => useAccountQuery(7, 42),
+      () => useAccountQuery(),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -95,8 +106,10 @@ describe('session data queries', () => {
     const queryClient = createQueryClient()
 
     const { result } = renderHook(
-      () => useHoldingsQuery('7'),
-      { wrapper: createWrapper(queryClient) },
+      () => useHoldingsQuery(),
+      {
+        wrapper: createWrapper(queryClient, { legacy: true, userId: '7' }),
+      },
     )
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -118,7 +131,7 @@ describe('session data queries', () => {
     const queryClient = createQueryClient()
 
     const { result } = renderHook(
-      () => useAccountQuery(7, 42),
+      () => useAccountQuery(),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -156,7 +169,7 @@ describe('session data queries', () => {
     queryClient.setQueryData(otherSessionKey, { cached: true })
 
     const { result } = renderHook(
-      () => useTradeMutation(7, 42),
+      () => useTradeMutation(),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -231,15 +244,15 @@ describe('session data queries', () => {
     const queryClient = createQueryClient()
 
     const stock = renderHook(
-      () => useAnalyticsByStockQuery(7, 42),
+      () => useAnalyticsByStockQuery(),
       { wrapper: createWrapper(queryClient) },
     )
     const sector = renderHook(
-      () => useAnalyticsBySectorQuery(7, 42),
+      () => useAnalyticsBySectorQuery(),
       { wrapper: createWrapper(queryClient) },
     )
     const realized = renderHook(
-      () => useAnalyticsRealizedQuery(7, 42),
+      () => useAnalyticsRealizedQuery(),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -261,7 +274,7 @@ describe('session data queries', () => {
     const queryClient = createQueryClient()
 
     const { result } = renderHook(
-      () => useTransactionsQuery(7, 42),
+      () => useTransactionsQuery(),
       { wrapper: createWrapper(queryClient) },
     )
 

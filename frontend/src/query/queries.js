@@ -1,15 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiFetchOrThrow, apiDelete } from '../api'
+import {
+  compatibilityPortfolioAccess,
+  usePortfolioAccess,
+} from './portfolioAccess'
 
 function userKey(userId) {
   return userId == null ? 'anonymous' : String(userId)
 }
 
 function sessionScope(userId, sessionId) {
-  const root = ['session-data', userKey(userId)]
-  return sessionId == null
-    ? [...root, 'legacy']
-    : [...root, 'session', String(sessionId)]
+  return compatibilityPortfolioAccess(userId, sessionId).scope
 }
 
 const queryDefaults = {
@@ -42,48 +43,33 @@ export const sessionQueryKeys = {
     'result',
   ],
   account: (userId, sessionId) => [
-    ...sessionScope(userId, sessionId),
-    'portfolio',
-    'account',
+    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('account'),
   ],
-  holdings: (userId, sessionId) => [
-    ...sessionScope(userId, sessionId),
-    'portfolio',
-    'holdings',
-  ],
-  transactions: (userId, sessionId) => [
-    ...sessionScope(userId, sessionId),
-    'portfolio',
-    'transactions',
-  ],
-  analytics: (userId, sessionId) => [
-    ...sessionScope(userId, sessionId),
-    'analytics',
-  ],
+  holdings: (userId, sessionId) => compatibilityPortfolioAccess(
+    userId,
+    sessionId,
+  ).queryKey('holdings'),
+  transactions: (userId, sessionId) => compatibilityPortfolioAccess(
+    userId,
+    sessionId,
+  ).queryKey('transactions'),
   analyticsPerformance: (userId, sessionId) => [
-    ...sessionQueryKeys.analytics(userId, sessionId),
-    'performance',
+    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('performance'),
   ],
   analyticsByStock: (userId, sessionId) => [
-    ...sessionQueryKeys.analytics(userId, sessionId),
-    'by-stock',
+    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('by-stock'),
   ],
   analyticsBySector: (userId, sessionId) => [
-    ...sessionQueryKeys.analytics(userId, sessionId),
-    'by-sector',
+    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('by-sector'),
   ],
   analyticsRealized: (userId, sessionId) => [
-    ...sessionQueryKeys.analytics(userId, sessionId),
-    'realized',
+    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('realized'),
   ],
 }
 
 export const queryKeys = {
-  account: sessionQueryKeys.account,
-  holdings: sessionQueryKeys.holdings,
   watchlist: (userId) => ['watchlist', userId],
   watchlistContains: (userId, ticker) => ['watchlist-contains', userId, ticker],
-  analyticsPerformance: sessionQueryKeys.analyticsPerformance,
 }
 
 function jsonRequest(path, method, body) {
@@ -94,37 +80,14 @@ function jsonRequest(path, method, body) {
   })
 }
 
-function tradePath(userId, sessionId, type) {
-  if (sessionId != null) return `/game/sessions/${sessionId}/trade/${type}`
-  if (type === 'exchange') return '/trade/exchange'
-  return `/trade/${type}?user_id=${userId}`
-}
-
-function analyticsPath(sessionId, section) {
-  return sessionId != null
-    ? `/game/sessions/${sessionId}/analytics/${section}`
-    : `/analytics/${section}`
-}
-
-function invalidateTradeData(queryClient, userId, sessionId) {
-  const exactKeys = [
-    sessionQueryKeys.account(userId, sessionId),
-    sessionQueryKeys.holdings(userId, sessionId),
-    sessionQueryKeys.transactions(userId, sessionId),
-    sessionQueryKeys.analyticsPerformance(userId, sessionId),
-    sessionQueryKeys.analyticsByStock(userId, sessionId),
-    sessionQueryKeys.analyticsBySector(userId, sessionId),
-    sessionQueryKeys.analyticsRealized(userId, sessionId),
-    sessionQueryKeys.detail(userId, sessionId),
-    sessionQueryKeys.status(userId, sessionId),
-    sessionQueryKeys.summary(userId, sessionId),
-    sessionQueryKeys.result(userId, sessionId),
-  ]
-
-  for (const queryKey of exactKeys) {
+function invalidateTradeData(queryClient, access) {
+  const impact = access.tradeImpact()
+  for (const queryKey of impact.exact) {
     queryClient.invalidateQueries({ queryKey, exact: true })
   }
-  queryClient.invalidateQueries({ queryKey: sessionQueryKeys.lists(userId) })
+  for (const queryKey of impact.prefixes) {
+    queryClient.invalidateQueries({ queryKey })
+  }
 }
 
 function updateSessionList(current, updatedSession, includeAll) {
@@ -211,41 +174,32 @@ export function useSessionResultQuery(userId, sessionId) {
   )
 }
 
-export function useAccountQuery(userId, sessionId = null) {
+export function useAccountQuery() {
+  const access = usePortfolioAccess()
   return useQuery({
-    queryKey: queryKeys.account(userId, sessionId),
-    queryFn: () => apiFetchOrThrow(
-      sessionId
-        ? `/game/sessions/${sessionId}/portfolio/account`
-        : '/portfolio/account'
-    ),
-    enabled: !!userId,
+    queryKey: access.queryKey('account'),
+    queryFn: () => apiFetchOrThrow(access.readPath('account')),
+    enabled: !!access.userId,
     ...queryDefaults,
   })
 }
 
-export function useHoldingsQuery(userId, sessionId = null) {
+export function useHoldingsQuery() {
+  const access = usePortfolioAccess()
   return useQuery({
-    queryKey: queryKeys.holdings(userId, sessionId),
-    queryFn: () => apiFetchOrThrow(
-      sessionId
-        ? `/game/sessions/${sessionId}/portfolio/holdings`
-        : '/portfolio/holdings'
-    ),
-    enabled: !!userId,
+    queryKey: access.queryKey('holdings'),
+    queryFn: () => apiFetchOrThrow(access.readPath('holdings')),
+    enabled: !!access.userId,
     ...queryDefaults,
   })
 }
 
-export function useTransactionsQuery(userId, sessionId = null) {
+export function useTransactionsQuery() {
+  const access = usePortfolioAccess()
   return useQuery({
-    queryKey: sessionQueryKeys.transactions(userId, sessionId),
-    queryFn: () => apiFetchOrThrow(
-      sessionId != null
-        ? `/game/sessions/${sessionId}/portfolio/transactions`
-        : '/portfolio/transactions',
-    ),
-    enabled: !!userId,
+    queryKey: access.queryKey('transactions'),
+    queryFn: () => apiFetchOrThrow(access.readPath('transactions')),
+    enabled: !!access.userId,
     ...queryDefaults,
   })
 }
@@ -260,45 +214,43 @@ export function useWatchlistQuery(userId) {
 }
 
 export function useAnalyticsPerformanceQuery(
-  userId,
-  sessionId = null,
   { enabled = true } = {},
 ) {
+  const access = usePortfolioAccess()
   return useQuery({
-    queryKey: queryKeys.analyticsPerformance(userId, sessionId),
-    queryFn: () => apiFetchOrThrow(
-      sessionId
-        ? `/game/sessions/${sessionId}/analytics/performance`
-        : '/analytics/performance'
-    ),
-    enabled: !!userId && enabled,
+    queryKey: access.queryKey('performance'),
+    queryFn: () => apiFetchOrThrow(access.readPath('performance')),
+    enabled: !!access.userId && enabled,
     ...queryDefaults,
   })
 }
 
-export function useAnalyticsByStockQuery(userId, sessionId = null) {
+export function useAnalyticsByStockQuery() {
+  const access = usePortfolioAccess()
   return useQuery({
-    queryKey: sessionQueryKeys.analyticsByStock(userId, sessionId),
-    queryFn: () => apiFetchOrThrow(analyticsPath(sessionId, 'by-stock')),
-    enabled: !!userId,
+    queryKey: access.queryKey('by-stock'),
+    queryFn: () => apiFetchOrThrow(access.readPath('by-stock')),
+    enabled: !!access.userId,
     ...queryDefaults,
   })
 }
 
-export function useAnalyticsBySectorQuery(userId, sessionId = null) {
+export function useAnalyticsBySectorQuery() {
+  const access = usePortfolioAccess()
   return useQuery({
-    queryKey: sessionQueryKeys.analyticsBySector(userId, sessionId),
-    queryFn: () => apiFetchOrThrow(analyticsPath(sessionId, 'by-sector')),
-    enabled: !!userId,
+    queryKey: access.queryKey('by-sector'),
+    queryFn: () => apiFetchOrThrow(access.readPath('by-sector')),
+    enabled: !!access.userId,
     ...queryDefaults,
   })
 }
 
-export function useAnalyticsRealizedQuery(userId, sessionId = null) {
+export function useAnalyticsRealizedQuery() {
+  const access = usePortfolioAccess()
   return useQuery({
-    queryKey: sessionQueryKeys.analyticsRealized(userId, sessionId),
-    queryFn: () => apiFetchOrThrow(analyticsPath(sessionId, 'realized')),
-    enabled: !!userId,
+    queryKey: access.queryKey('realized'),
+    queryFn: () => apiFetchOrThrow(access.readPath('realized')),
+    enabled: !!access.userId,
     ...queryDefaults,
   })
 }
@@ -412,19 +364,20 @@ export function useDeleteSessionMutation(userId) {
   })
 }
 
-export function useTradeMutation(userId, sessionId = null) {
+export function useTradeMutation() {
   const queryClient = useQueryClient()
+  const access = usePortfolioAccess()
 
   return useMutation({
     mutationFn: ({ type, payload }) => jsonRequest(
-      tradePath(userId, sessionId, type),
+      access.tradePath(type),
       'POST',
       payload,
     ),
     onSuccess: (data) => {
       if (data?.balance) {
         queryClient.setQueryData(
-          sessionQueryKeys.account(userId, sessionId),
+          access.queryKey('account'),
           (current) => ({
             ...(current || {}),
             balance_krw: data.balance.krw,
@@ -432,7 +385,7 @@ export function useTradeMutation(userId, sessionId = null) {
           }),
         )
       }
-      invalidateTradeData(queryClient, userId, sessionId)
+      invalidateTradeData(queryClient, access)
     },
   })
 }

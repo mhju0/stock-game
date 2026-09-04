@@ -1,17 +1,14 @@
 import { apiFetch } from '../api'
-import { useState, useEffect, useContext, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useOutletContext, useParams } from 'react-router-dom'
-import { UserContext } from '../context/userContext'
+import { useOutletContext } from 'react-router-dom'
 import { useAccountQuery, useTradeMutation } from '../query/queries'
 import { isSessionEnded } from '../sessionRoutes'
 
 
 function Exchange() {
   const { t, i18n } = useTranslation()
-  const { sessionId } = useParams()
   const { session } = useOutletContext() || {}
-  const { currentUserId } = useContext(UserContext)
   const ended = isSessionEnded(session)
   
   const [rate, setRate] = useState(null)
@@ -22,8 +19,8 @@ function Exchange() {
   const [message, setMessage] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const accountQuery = useAccountQuery(currentUserId, sessionId)
-  const tradeMutation = useTradeMutation(currentUserId, sessionId)
+  const accountQuery = useAccountQuery()
+  const tradeMutation = useTradeMutation()
   const account = accountQuery.data || null
   const loading = rateLoading || accountQuery.isLoading || (
     accountQuery.isFetching && accountQuery.data === undefined

@@ -18,7 +18,7 @@ Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. This is a
 
 ## Screenshots
 
-These v1.1.0 captures use fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
+These current maintenance-tree captures use the v1.1 interface and fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
 
 ### Sign in
 
@@ -65,6 +65,8 @@ flowchart LR
 
 `GameSession` owns playable cash and state. Holdings, transactions, and portfolio snapshots are scoped by `game_session_id`; the watchlist is intentionally user-level. Routes authenticate with a custom JWT and use shared ownership helpers before reading or mutating a session.
 
+On the client, each selected-game route mounts an explicit Session Portfolio scope that owns its API paths, query keys, and trade invalidation boundary. Legacy user-level Portfolio access remains isolated behind a compatibility adapter. Game lifecycle query orchestration and shared dialog keyboard/dismissal mechanics live in dedicated frontend modules; page components retain the product-specific rendering and copy.
+
 ## Security
 
 The deployed API is internet-accessible. Authentication and market-data routes accept callers without an API key, so the controls below account for anonymous scripted traffic.
@@ -81,8 +83,8 @@ The deployed API is internet-accessible. Authentication and market-data routes a
 
 | Scope | Limit | Keyed on |
 |---|---|---|
-| Login | 20 / min, plus a 10 / min budget charged only on a failed attempt | Client address, then account |
-| Register | 5 per 10 min | Client address and requested username |
+| Login | 20 / min per address; 10 / min per account, charged only on failure; 600 / min process backstop | Client address, account, and process |
+| Register | 5 per 10 min per address and username; 100 per 10 min process backstop | Client address, requested username, and process |
 | Market data | 120 / min | Client address |
 | Trades | 60 / min | Account |
 
@@ -109,7 +111,7 @@ The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnera
 
 ## Run locally
 
-Prerequisites: Python 3.11 and Node.js 20.19+ (or 22.12+).
+Prerequisites: Python 3.11 and Node.js 20.19+ (or 22.13+).
 
 ### Backend
 
@@ -158,7 +160,7 @@ cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
 
 Install the Playwright Chromium runtime once with `cd frontend && npx playwright install chromium` before running the browser tests locally.
 
-That is 275 backend tests, 26 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates for pull requests, pushes to `main`, and manual dispatches.
+That is 275 backend tests, 37 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates for pull requests, pushes to `main`, and manual dispatches.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 

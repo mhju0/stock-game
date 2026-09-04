@@ -12,7 +12,7 @@ import {
   useWatchlistToggleMutation,
 } from '../query/queries'
 import { gamePath } from '../sessionRoutes'
-import { trapDialogFocus } from '../utils/dialogFocus'
+import { useDialogMechanics } from '../dialog/useDialogMechanics'
 
 
 function TradeModal({
@@ -38,36 +38,20 @@ function TradeModal({
   const [submitting, setSubmitting] = useState(false);
   const [showDelayedLoading, setShowDelayedLoading] = useState(false);
   const closeButtonRef = useRef(null);
-  const dialogRef = useRef(null);
-  const previousFocusRef = useRef(null);
-  const accountQuery = useAccountQuery(currentUserId, sessionId)
-  const holdingsQuery = useHoldingsQuery(currentUserId, sessionId)
+  const accountQuery = useAccountQuery()
+  const holdingsQuery = useHoldingsQuery()
   const account = accountQuery.data
   const { data: watchlistContains } = useWatchlistContainsQuery(currentUserId, ticker)
   const toggleWatchlistMutation = useWatchlistToggleMutation(currentUserId)
-  const tradeMutation = useTradeMutation(currentUserId, sessionId)
+  const tradeMutation = useTradeMutation()
   const isInWatchlist = !!watchlistContains?.in_watchlist
   const loading = stockLoading || accountQuery.isLoading || holdingsQuery.isLoading
   const sessionDataError = accountQuery.error || holdingsQuery.error
-
-  useEffect(() => {
-    previousFocusRef.current = document.activeElement;
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
-      trapDialogFocus(event, dialogRef.current);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      previousFocusRef.current?.focus?.();
-    };
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!loading || showDelayedLoading) closeButtonRef.current?.focus();
-  }, [loading, showDelayedLoading]);
+  const dialog = useDialogMechanics({
+    onDismiss: onClose,
+    initialFocusRef: closeButtonRef,
+    backdropEvent: 'click',
+  })
 
   useEffect(() => {
     if (!ticker) return;
@@ -222,7 +206,7 @@ function TradeModal({
     }
   };
   const openExchange = () => {
-    onClose();
+    dialog.dismiss();
     navigate(sessionId ? gamePath(sessionId, 'exchange') : '/exchange');
   };
 
@@ -231,18 +215,14 @@ function TradeModal({
   const modalTitle = loading ? t("stock.loadingDetails") : displayName;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" {...dialog.backdropProps}>
       <div
-        ref={dialogRef}
         className="modal-content trade-modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="trade-modal-title"
-        onClick={(e) => e.stopPropagation()}
+        {...dialog.surfaceProps}
       >
         <div className="trade-modal-header">
           <div className="trade-modal-heading">
-            <div id="trade-modal-title" className="trade-modal-title">
+            <div className="trade-modal-title" {...dialog.titleProps}>
               {modalTitle}
             </div>
             {!loading && stock && !stock.error && (
@@ -287,7 +267,7 @@ function TradeModal({
               type="button"
               ref={closeButtonRef}
               className="modal-close-btn"
-              onClick={onClose}
+              onClick={dialog.dismiss}
               aria-label={t("common.close")}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

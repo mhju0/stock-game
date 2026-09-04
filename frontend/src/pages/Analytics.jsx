@@ -1,4 +1,4 @@
-import { useState, useContext, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import {
@@ -9,7 +9,6 @@ import { getStockName } from '../utils/stockNames'
 import { formatMoney, formatDateTime } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import TradeModal from '../components/TradeModal'
-import { UserContext } from '../context/userContext'
 import {
   useAccountQuery,
   useAnalyticsBySectorQuery,
@@ -28,7 +27,6 @@ function Analytics() {
   const navigate = useNavigate()
   const { sessionId } = useParams()
   const { session } = useOutletContext() || {}
-  const { currentUserId } = useContext(UserContext)
   const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   
   const [timeRange, setTimeRange] = useState('ALL')
@@ -37,13 +35,13 @@ function Analytics() {
   const [tradeTicker, setTradeTicker] = useState(null)
   const [displayCurrency, setDisplayCurrency] = useState('KRW')
 
-  const { data: accountData } = useAccountQuery(currentUserId, sessionId)
+  const { data: accountData } = useAccountQuery()
   const exchangeRate = accountData?.exchange_rate || 1350
 
-  const performanceQuery = useAnalyticsPerformanceQuery(currentUserId, sessionId)
-  const byStockQuery = useAnalyticsByStockQuery(currentUserId, sessionId)
-  const bySectorQuery = useAnalyticsBySectorQuery(currentUserId, sessionId)
-  const realizedQuery = useAnalyticsRealizedQuery(currentUserId, sessionId)
+  const performanceQuery = useAnalyticsPerformanceQuery()
+  const byStockQuery = useAnalyticsByStockQuery()
+  const bySectorQuery = useAnalyticsBySectorQuery()
+  const realizedQuery = useAnalyticsRealizedQuery()
   const performance = performanceQuery.data
   const byStock = useMemo(
     () => Array.isArray(byStockQuery.data) ? byStockQuery.data : [],

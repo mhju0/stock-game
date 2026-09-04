@@ -1,4 +1,4 @@
-import { useState, useContext, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import TradeModal from '../components/TradeModal'
@@ -6,7 +6,6 @@ import { getStockName } from '../utils/stockNames'
 import { formatMoney } from '../utils/formatters'
 import SortSelect from '../components/SortSelect'
 import MarketFilter from '../components/MarketFilter'
-import { UserContext } from '../context/userContext'
 import { useAccountQuery, useHoldingsQuery } from '../query/queries'
 import { gamePath, isSessionEnded } from '../sessionRoutes'
 
@@ -16,7 +15,6 @@ function Portfolio() {
   const navigate = useNavigate()
   const { sessionId } = useParams()
   const { session } = useOutletContext() || {}
-  const { currentUserId } = useContext(UserContext)
   const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
   
   const [sortBy, setSortBy] = useState('alloc_desc')
@@ -25,8 +23,8 @@ function Portfolio() {
   const [displayCurrency, setDisplayCurrency] = useState('KRW')
   const [tradeTicker, setTradeTicker] = useState(null)
 
-  const accountQuery = useAccountQuery(currentUserId, sessionId)
-  const holdingsQuery = useHoldingsQuery(currentUserId, sessionId)
+  const accountQuery = useAccountQuery()
+  const holdingsQuery = useHoldingsQuery()
   const account = accountQuery.data || null
   const holdings = useMemo(
     () => Array.isArray(holdingsQuery.data) ? holdingsQuery.data : [],

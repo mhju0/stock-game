@@ -9,7 +9,7 @@ import {
   useUpdateSessionMutation,
 } from '../query/queries'
 import { formatDateTime, formatMoney } from '../utils/formatters'
-import { trapDialogFocus } from '../utils/dialogFocus'
+import { useDialogMechanics } from '../dialog/useDialogMechanics'
 import { gamePath, sessionStatusLabelKey } from '../sessionRoutes'
 
 const CASH_PRESETS = [
@@ -95,57 +95,34 @@ function PageState({ title, body, actionLabel, onAction, loading = false, childr
   )
 }
 
-function ModalShell({ titleId, title, descriptionId, description, closeLabel, onClose, children, maxWidth = 560 }) {
-  const dialogRef = useRef(null)
-
-  useEffect(() => {
-    const previousActiveElement = document.activeElement
-    const preferredFocusable = dialogRef.current?.querySelector('[data-autofocus="true"]')
-    const firstFocusable = preferredFocusable || dialogRef.current?.querySelector(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    firstFocusable?.focus()
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
-      trapDialogFocus(event, dialogRef.current)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      previousActiveElement?.focus?.()
-    }
-  }, [onClose])
+function ModalShell({ title, description, closeLabel, onClose, dismissible = true, children, maxWidth = 560 }) {
+  const dialog = useDialogMechanics({
+    onDismiss: onClose,
+    dismissible,
+    hasDescription: Boolean(description),
+  })
 
   return (
     <div
       className="modal-overlay"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
+      {...dialog.backdropProps}
     >
       <div
-        ref={dialogRef}
         className="modal-content game-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
         style={{ maxWidth }}
-        onMouseDown={(event) => event.stopPropagation()}
+        {...dialog.surfaceProps}
       >
         <div className="game-modal-header">
           <div>
-            <h2 id={titleId} className="game-modal-title">{title}</h2>
+            <h2 className="game-modal-title" {...dialog.titleProps}>{title}</h2>
             {description && (
-              <p id={descriptionId} className="game-modal-subtitle">{description}</p>
+              <p className="game-modal-subtitle" {...dialog.descriptionProps}>{description}</p>
             )}
           </div>
           <button
             type="button"
             className="modal-close-btn"
-            onClick={onClose}
+            onClick={dialog.dismiss}
             aria-label={closeLabel}
           >
             ×
@@ -220,12 +197,11 @@ function CreateGameModal({ t, initialSetup, onClose, onCreate, onCreated }) {
 
   return (
     <ModalShell
-      titleId="create-game-title"
       title={t('games.setupTitle')}
-      descriptionId="create-game-description"
       description={setupDefaults ? t('games.replaySetupHelper') : t('games.createModalHelper')}
       closeLabel={t('common.close')}
-      onClose={creating ? () => null : onClose}
+      onClose={onClose}
+      dismissible={!creating}
       maxWidth={640}
     >
       <form onSubmit={submit} className="game-create-form">
@@ -449,12 +425,11 @@ function ArchiveGameModal({ session, t, onClose, onArchive, onArchived }) {
 
   return (
     <ModalShell
-      titleId="archive-game-title"
       title={t('games.archiveConfirmTitle')}
-      descriptionId="archive-game-description"
       description={t('games.archiveConfirmBody', { title: session.title || t('games.cardTitle') })}
       closeLabel={t('common.close')}
-      onClose={submitting ? () => null : onClose}
+      onClose={onClose}
+      dismissible={!submitting}
       maxWidth={480}
     >
       <div className="delete-confirmation">
@@ -494,12 +469,11 @@ function GameManagementModal({ session, locale, t, onClose, onSave, onUpdated, o
 
   return (
     <ModalShell
-      titleId="game-management-title"
       title={t('games.settingsTitle')}
-      descriptionId="game-management-description"
       description={t('games.settingsSubtitle')}
       closeLabel={t('common.close')}
-      onClose={submitting ? () => null : onClose}
+      onClose={onClose}
+      dismissible={!submitting}
       maxWidth={620}
     >
       <div className="game-management">
@@ -605,12 +579,11 @@ function DeleteGameModal({ session, t, onClose, onDelete, onDeleted }) {
 
   return (
     <ModalShell
-      titleId="delete-game-title"
       title={t('games.deleteConfirmTitle')}
-      descriptionId="delete-game-description"
       description={t('games.deleteConfirmBody', { title: session.title || t('games.cardTitle') })}
       closeLabel={t('common.close')}
-      onClose={submitting ? () => null : onClose}
+      onClose={onClose}
+      dismissible={!submitting}
       maxWidth={520}
     >
       <div className="delete-confirmation">
