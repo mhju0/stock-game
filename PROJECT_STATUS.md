@@ -4,6 +4,7 @@
 - Current release: [v1.1.0](https://github.com/mhju0/stock-game/releases/tag/v1.1.0)
 - Release delivery: [PR #30](https://github.com/mhju0/stock-game/pull/30) merged to `main`; Vercel production deployment verified
 - Architecture and audit synchronization: [PR #34](https://github.com/mhju0/stock-game/pull/34) merged to `main`; Vercel production deployment verified
+- Post-merge security-state record: [PR #35](https://github.com/mhju0/stock-game/pull/35) merged to `main`; CI, CodeQL, and Vercel production deployment verified
 - Lifecycle: feature complete, maintenance mode
 
 This is the authoritative point-in-time record for the maintained project.
@@ -17,11 +18,11 @@ code before being acted on.
 |---|---|
 | Product | `[Verified]` The product loop is create game -> trade/search/watchlist -> portfolio/analytics -> ended result -> play again. v1.1.0 changes presentation and navigation only; feature work remains frozen by [MAINTENANCE.md](MAINTENANCE.md). |
 | Frontend | `[Verified]` v1.1.0 is deployed at `https://stock-game-gray.vercel.app`; the audited response was HTTP 200 with the repository CSP and security headers. The deployed bundle contains the dark-first showcase interface, persisted light theme, contextual navigation, and responsive product-story authentication. |
-| Frontend architecture | `[Verified]` The current maintenance tree mounts an explicit Session Portfolio access scope at the selected-game route, keeps Legacy Portfolio paths behind an explicit compatibility adapter, centralizes shared dialog keyboard/dismissal mechanics, and isolates Game Session query/screen orchestration without changing backend contracts or rendered product flows. |
+| Frontend architecture | `[Verified]` The current `main` branch mounts an explicit Session Portfolio access scope at the selected-game route, keeps Legacy Portfolio paths behind an explicit compatibility adapter, centralizes shared dialog keyboard/dismissal mechanics, and isolates Game Session query/screen orchestration without changing backend contracts or rendered product flows. |
 | Interface verification | `[Verified]` Fixed-fixture captures were regenerated and directly reviewed at 1440px, 1280px, and a 390x844 mobile viewport in dark and light themes. The Portfolio evidence now has an asserted, fully reconciled total across visible holdings and cash. Playwright verifies chart capture stability, keyboard dialog containment, route navigation, 375px overflow, and reduced motion. `[Unknown]` An in-app browser session was unavailable during the current audit, so no additional live-browser visual claim is made. |
 | Backend | `[Verified]` FastAPI is deployed at `https://stock-game-6411.onrender.com`; `/health/db` returned HTTP 200 and production API docs returned 404. |
 | Data boundary | `[Verified]` Game sessions own cash, holdings, transactions, and snapshots. Watchlist data remains user-level. Session routes use ownership helpers and cross-user access is covered by 404 regression tests. |
-| Test inventory | `[Verified]` 275 backend tests, 37 frontend unit/config tests, and 5 rendered Chromium flows pass on the current maintenance tree. |
+| Test inventory | `[Verified]` 275 backend tests, 37 frontend unit/config tests, and 5 rendered Chromium flows pass on the current `main`-based maintenance branch. |
 | Dependency audit | `[Verified]` `npm audit` reports 0 vulnerabilities. `pip-audit` reports one no-fix `ecdsa` P-256 timing advisory; application JWT encode/decode paths pin HS256 and contain no ECDSA use. `[Inferred]` The advisory is not reachable through the current authentication path. |
 | GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, push protection, and CodeQL default setup are enabled. PR #34 updated `@humanfs/node` to patched version 0.16.8; GitHub now reports 0 open Dependabot, CodeQL, or secret-scanning alerts. |
 | GitHub workflow | `[Verified]` `main` requires a pull request, up-to-date `backend` and `frontend` checks, and resolved conversations. Force-push and branch deletion are blocked; administrators retain recovery bypass. |
