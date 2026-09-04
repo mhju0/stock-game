@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef } from 'react'
+import { useCallback, useId, useLayoutEffect, useRef } from 'react'
 
 const FOCUSABLE_SELECTOR = [
   'button:not(:disabled)',
@@ -69,7 +69,7 @@ export function useDialogMechanics({
     surfaceRef.current = node
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     previousFocusRef.current = document.activeElement
     return () => {
       const previousFocus = previousFocusRef.current

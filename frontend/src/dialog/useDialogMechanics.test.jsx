@@ -113,6 +113,22 @@ describe('useDialogMechanics', () => {
     opener.remove()
   })
 
+  it('restores the opener when the dialog is visible on initial mount', () => {
+    const opener = document.createElement('button')
+    opener.textContent = 'Open dialog'
+    document.body.appendChild(opener)
+    opener.focus()
+
+    const view = render(<DialogHarness onDismiss={vi.fn()} />)
+    expect(document.activeElement).toBe(
+      screen.getByRole('textbox', { name: 'First field' }),
+    )
+
+    view.unmount()
+    expect(document.activeElement).toBe(opener)
+    opener.remove()
+  })
+
   it('preserves click-phase backdrop dismissal when requested', () => {
     const onDismiss = vi.fn()
     render(
