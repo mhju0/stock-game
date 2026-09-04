@@ -3,6 +3,7 @@
 - Last verified: 2026-09-04
 - Current release: [v1.1.0](https://github.com/mhju0/stock-game/releases/tag/v1.1.0)
 - Release delivery: [PR #30](https://github.com/mhju0/stock-game/pull/30) merged to `main`; Vercel production deployment verified
+- Architecture and audit synchronization: [PR #34](https://github.com/mhju0/stock-game/pull/34) merged to `main`; Vercel production deployment verified
 - Lifecycle: feature complete, maintenance mode
 
 This is the authoritative point-in-time record for the maintained project.
@@ -22,7 +23,7 @@ code before being acted on.
 | Data boundary | `[Verified]` Game sessions own cash, holdings, transactions, and snapshots. Watchlist data remains user-level. Session routes use ownership helpers and cross-user access is covered by 404 regression tests. |
 | Test inventory | `[Verified]` 275 backend tests, 37 frontend unit/config tests, and 5 rendered Chromium flows pass on the current maintenance tree. |
 | Dependency audit | `[Verified]` `npm audit` reports 0 vulnerabilities. `pip-audit` reports one no-fix `ecdsa` P-256 timing advisory; application JWT encode/decode paths pin HS256 and contain no ECDSA use. `[Inferred]` The advisory is not reachable through the current authentication path. |
-| GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, push protection, and CodeQL default setup are enabled. On 2026-09-04, GitHub `main` reported one medium `@humanfs/node` Dependabot alert and 0 open CodeQL or secret-scanning alerts; this maintenance tree contains the patched 0.16.8 version. `[Inferred]` GitHub should close the corresponding dependency finding after this branch reaches `main`. |
+| GitHub security | `[Verified]` Vulnerability alerts, Dependabot security updates, secret scanning, push protection, and CodeQL default setup are enabled. PR #34 updated `@humanfs/node` to patched version 0.16.8; GitHub now reports 0 open Dependabot, CodeQL, or secret-scanning alerts. |
 | GitHub workflow | `[Verified]` `main` requires a pull request, up-to-date `backend` and `frontend` checks, and resolved conversations. Force-push and branch deletion are blocked; administrators retain recovery bypass. |
 | Automation | `[Verified]` CI runs the complete backend/frontend gates, Dependabot checks npm/pip/Actions weekly, CodeQL scans Actions/JavaScript/TypeScript/Python weekly, and keepalive queries `/health/db` every three days. Workflow token permissions are explicit and least-privilege. |
 
