@@ -37,6 +37,8 @@ function SearchStock() {
 
   useEffect(() => {
     const normalizedQuery = query.trim()
+    let cancelled = false
+    setSearching(false)
     if (normalizedQuery.length < 1) {
       setResults([])
       setHasSearched(false)
@@ -51,13 +53,17 @@ function SearchStock() {
       const data = await apiFetch(
         `/stock/search/${encodeURIComponent(normalizedQuery)}`,
         {},
-        msg => setSearchError(msg),
+        msg => { if (!cancelled) setSearchError(msg) },
       )
+      if (cancelled) return
       setResults(Array.isArray(data) ? data : [])
       setHasSearched(true)
       setSearching(false)
     }, 300)
-    return () => clearTimeout(timer)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [query, retryNonce])
 
   useEffect(() => {

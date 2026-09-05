@@ -3,7 +3,7 @@ import logging
 import time
 
 from app.services import market_data_provider
-from app.services.stock_service import US_STOCK_NAMES_EN, KR_STOCK_NAMES_EN
+from app.services.stock_service import US_STOCK_NAMES_EN
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,6 @@ KR_TOP_50 = [
     "003490.KS", "377300.KS", "036570.KS", "097950.KS", "090430.KS",
 ]
 
-# Use imported name dicts from stock_service (single source of truth)
-US_NAMES = US_STOCK_NAMES_EN
-
 KR_NAMES = {
     "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "373220.KS": "LG에너지솔루션",
     "207940.KS": "삼성바이오로직스", "006400.KS": "삼성SDI", "005380.KS": "현대자동차",
@@ -63,12 +60,9 @@ KR_NAMES = {
     "042700.KS": "한미반도체",
 }
 
-cache = market_data_provider._market_cache
-
-
 def _market_inputs(market: str) -> tuple[list[str], dict[str, str]]:
     return (
-        (US_TOP_50, US_NAMES)
+        (US_TOP_50, US_STOCK_NAMES_EN)
         if market == "US"
         else (KR_TOP_50, KR_NAMES)
     )
@@ -98,18 +92,7 @@ def _format_top_30(
             })
         except Exception as exc:
             logger.warning("Skipping ticker %s: %s", ticker, exc)
-    stocks.sort(key=lambda stock: stock["rank"])
     return stocks[:30]
-
-
-def fetch_top_30(market: str) -> list:
-    """Download prices for the first available large-cap candidates.
-
-    The legacy ``rank`` response field is the candidate's point-in-time display
-    order, not a current market-cap rank.
-    """
-    candidates, _ = _market_inputs(market)
-    return _format_top_30(market, market_data_provider.fetch_market_closes(candidates))
 
 
 def refresh_cache(market: str):

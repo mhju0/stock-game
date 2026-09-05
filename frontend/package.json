@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "smoke:navigation": "node scripts/check-session-navigation.mjs",
+    "smoke:navigation": "playwright test --grep \"session stock navigation\"",
     "preview": "vite preview"
   },
   "dependencies": {

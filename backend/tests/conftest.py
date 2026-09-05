@@ -2,9 +2,10 @@ import os
 import pytest
 
 # Must be set before any app module is imported (auth.py raises RuntimeError otherwise)
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-pytest-do-not-use-in-prod")
+os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-pytest-do-not-use-in-prod"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -78,7 +79,6 @@ def client(db_session):
          patch("app.services.trading_service.get_stock_info", return_value=MOCK_STOCK_INFO), \
          patch("app.services.trading_service.get_stock_price", return_value=100.0), \
          patch("app.services.trading_service.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
-         patch("app.services.snapshot_service.get_stock_price", return_value=100.0), \
          patch("app.services.snapshot_service.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
          patch("app.routes.analytics.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
          patch("app.routes.game.get_exchange_rate", return_value=MOCK_EXCHANGE_RATE), \
@@ -88,12 +88,26 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(scope="session")
+def test_password_hash():
+    from app.auth import hash_password
+    return hash_password("testpass123")
+
+
 @pytest.fixture(scope="function")
-def registered_user(client):
-    """Register a user and return the response body."""
-    resp = client.post("/auth/register", json={"username": "testuser", "password": "testpass123"})
-    assert resp.status_code == 201
-    return resp.json()
+def registered_user(db_session, test_password_hash):
+    """Seed an authenticated user; registration itself is covered by auth/smoke tests."""
+    from app.auth import create_access_token
+    from app.models import User
+    user = User(username="testuser", hashed_password=test_password_hash)
+    db_session.add(user)
+    db_session.commit()
+    return {
+        "user_id": user.id,
+        "username": user.username,
+        "access_token": create_access_token(user.id, user.username),
+        "token_type": "bearer",
+    }
 
 
 @pytest.fixture(scope="function")

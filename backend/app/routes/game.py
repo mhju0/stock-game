@@ -1,6 +1,8 @@
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -10,6 +12,7 @@ from app.schemas import GameSessionCreateRequest, GameSessionUpdateRequest, NewG
 from app.services.benchmark_service import get_benchmark_data
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
+    ensure_session_cash_initialized,
     get_active_sessions,
     get_current_session,
     get_owned_session,
@@ -88,22 +91,6 @@ def _session_current_value_krw(
     return compute_session_total_value_krw(session, holdings, rate, prices)
 
 
-def _latest_session_snapshot(
-    db: Session,
-    user_id: int,
-    session_id: int,
-) -> PortfolioSnapshot | None:
-    return (
-        db.query(PortfolioSnapshot)
-        .filter(
-            PortfolioSnapshot.user_id == user_id,
-            PortfolioSnapshot.game_session_id == session_id,
-        )
-        .order_by(PortfolioSnapshot.created_at.desc())
-        .first()
-    )
-
-
 def _create_session(
     db: Session,
     user: User,
@@ -149,52 +136,79 @@ def _create_session(
     return session
 
 
-def _request_updates(request) -> dict:
-    if hasattr(request, "model_dump"):
-        return request.model_dump(exclude_unset=True)
-    return request.dict(exclude_unset=True)
+def _serialize_sessions(db: Session, user: User, sessions: list[GameSession]) -> list[dict]:
+    if not sessions:
+        return []
 
+    user_id = user.id
+    session_ids = [session.id for session in sessions]
+    # Preserve the nullable-cash migration bridge without committing once per row.
+    needs_commit = any(s.cash_krw is None or s.cash_usd is None for s in sessions)
+    if needs_commit:
+        for session in sessions:
+            ensure_session_cash_initialized(session, user)
+        db.commit()
+        # Commit expires ORM instances; reload together instead of lazily per row.
+        by_id = {s.id: s for s in db.query(GameSession).filter(
+            GameSession.user_id == user_id, GameSession.id.in_(session_ids),
+        ).all()}
+        sessions = [by_id[session_id] for session_id in session_ids]
 
-def _serialize_session(db: Session, user: User, session: GameSession) -> dict:
-    ensure_session_cash_for_read(db, session, user)
+    holdings_by_session = defaultdict(list)
+    holdings = db.query(Holding).filter(
+        Holding.user_id == user_id, Holding.game_session_id.in_(session_ids),
+    ).all()
+    for holding in holdings:
+        holdings_by_session[holding.game_session_id].append(holding)
+    latest_updates = dict(db.query(
+        PortfolioSnapshot.game_session_id, func.max(PortfolioSnapshot.created_at),
+    ).filter(
+        PortfolioSnapshot.user_id == user_id,
+        PortfolioSnapshot.game_session_id.in_(session_ids),
+    ).group_by(PortfolioSnapshot.game_session_id).all())
     rate = get_exchange_rate()
-    holdings = _session_holdings(db, user.id, session.id)
-    current_value = _session_current_value_krw(session, holdings, rate)
-    starting_value = session_starting_value_krw(session, rate)
-    latest_snapshot = _latest_session_snapshot(db, user.id, session.id)
-    start_date = _as_aware_utc(session.start_date)
-    end_date = _as_aware_utc(session.end_date)
-    last_updated = (
-        latest_snapshot.created_at
-        if latest_snapshot
-        else session.updated_at or session.created_at or session.start_date
-    )
-    lifecycle_state = resolve_session_lifecycle_state(session)
+    prices = get_prices_for_tickers([holding.ticker for holding in holdings])
+    serialized = []
+    for session in sessions:
+        current_value = compute_session_total_value_krw(
+            session, holdings_by_session[session.id], rate, prices,
+        )
+        starting_value = session_starting_value_krw(session, rate)
+        latest_snapshot_at = latest_updates.get(session.id)
+        start_date = _as_aware_utc(session.start_date)
+        end_date = _as_aware_utc(session.end_date)
+        last_updated = (
+            latest_snapshot_at
+            if latest_snapshot_at
+            else session.updated_at or session.created_at or session.start_date
+        )
+        lifecycle_state = resolve_session_lifecycle_state(session)
 
-    return {
-        "id": session.id,
-        "title": session.title,
-        "status": lifecycle_state,
-        "is_active": bool(session.is_active),
-        "is_expired": lifecycle_state == "expired",
-        "starting_balance_krw": session.starting_balance_krw,
-        "starting_balance_usd": session.starting_balance_usd or 0.0,
-        "cash_krw": session.cash_krw or 0.0,
-        "cash_usd": session.cash_usd or 0.0,
-        "current_value_krw": round(current_value, 2),
-        "current_return_pct": (
-            round(((current_value - starting_value) / starting_value) * 100, 2)
-            if starting_value
-            else 0
-        ),
-        "duration_days": session.duration_days,
-        "start_date": start_date.isoformat() if start_date else None,
-        "end_date": end_date.isoformat() if end_date else None,
-        "last_updated_at": _iso(last_updated),
-        "created_at": _iso(session.created_at),
-        "updated_at": _iso(session.updated_at),
-        "completed_at": _iso(session.completed_at),
-    }
+        serialized.append({
+            "id": session.id,
+            "title": session.title,
+            "status": lifecycle_state,
+            "is_active": bool(session.is_active),
+            "is_expired": lifecycle_state == "expired",
+            "starting_balance_krw": session.starting_balance_krw,
+            "starting_balance_usd": session.starting_balance_usd or 0.0,
+            "cash_krw": session.cash_krw or 0.0,
+            "cash_usd": session.cash_usd or 0.0,
+            "current_value_krw": round(current_value, 2),
+            "current_return_pct": (
+                round(((current_value - starting_value) / starting_value) * 100, 2)
+                if starting_value
+                else 0
+            ),
+            "duration_days": session.duration_days,
+            "start_date": start_date.isoformat() if start_date else None,
+            "end_date": end_date.isoformat() if end_date else None,
+            "last_updated_at": _iso(last_updated),
+            "created_at": _iso(session.created_at),
+            "updated_at": _iso(session.updated_at),
+            "completed_at": _iso(session.completed_at),
+        })
+    return serialized
 
 
 def _build_session_status(db: Session, user: User, session: GameSession) -> dict:
@@ -525,11 +539,7 @@ def game_sessions(
             for session in sessions
             if resolve_session_lifecycle_state(session) == "active"
         ]
-    return {
-        "sessions": [
-            _serialize_session(db, current_user, session) for session in sessions
-        ]
-    }
+    return {"sessions": _serialize_sessions(db, current_user, sessions)}
 
 
 @router.post("/sessions")
@@ -546,7 +556,7 @@ def create_game_session(
         starting_balance_krw=request.starting_balance_krw,
         starting_balance_usd=request.starting_balance_usd,
     )
-    return {"status": "success", "session": _serialize_session(db, current_user, session)}
+    return {"status": "success", "session": _serialize_sessions(db, current_user, [session])[0]}
 
 
 @router.get("/sessions/{session_id}")
@@ -556,7 +566,7 @@ def get_game_session(
     current_user: User = Depends(get_current_user),
 ):
     session = get_owned_session(db, current_user, session_id)
-    return {"session": _serialize_session(db, current_user, session)}
+    return {"session": _serialize_sessions(db, current_user, [session])[0]}
 
 
 @router.patch("/sessions/{session_id}")
@@ -567,7 +577,7 @@ def update_game_session(
     current_user: User = Depends(get_current_user),
 ):
     session = get_owned_session(db, current_user, session_id)
-    updates = _request_updates(request)
+    updates = request.model_dump(exclude_unset=True)
 
     if "title" in updates:
         title = (request.title or "").strip()
@@ -597,7 +607,7 @@ def update_game_session(
 
     db.commit()
     db.refresh(session)
-    return {"status": "success", "session": _serialize_session(db, current_user, session)}
+    return {"status": "success", "session": _serialize_sessions(db, current_user, [session])[0]}
 
 
 @router.delete("/sessions/{session_id}")

@@ -9,7 +9,7 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
 fi
 
 cd "$ROOT_DIR/backend"
-"$PYTHON_BIN" -m pytest tests/test_session_regression_smoke.py
+env -u JWT_SECRET_KEY DATABASE_URL=sqlite:///:memory: "$PYTHON_BIN" -m pytest tests/test_session_regression_smoke.py
 
 cd "$ROOT_DIR/frontend"
 npm run smoke:navigation

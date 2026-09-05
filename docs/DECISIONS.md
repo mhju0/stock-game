@@ -685,3 +685,39 @@ backup; application startup seeds the fresh local demo account.
 The pre-change repository had 204 reachable commits; Gitleaks reported 187 scanned
 commits with patch content. This is a detector result, not proof that every possible
 credential is absent. Git history was not rewritten.
+
+
+### D-35 · Measured cleanup and verification audit — `ACTIVE`
+
+**Decided 2026-09-05:** Under the approved cleanup/performance audit, bulk-load
+holdings and latest snapshot timestamps when serializing session lists; resolve
+one exchange rate and each unique ticker once per response. Keep cash initialization
+and both user/session filters. Nullable cash is initialized in one commit and the
+expired ORM instances are reloaded together. No schema or valuation formula changes.
+
+**Evidence:** For 20 sessions holding the same ticker, an HTTP regression test
+measured 42 → 4 SELECTs (including authentication), 20 → 1 price lookups. The
+nullable-cash case uses 5 SELECTs. One-session responses still use 4 SELECTs.
+
+**Client:** Only request an active summary when opened; only request saved results
+for ended games. Real QueryClient tests enforce request counts, loading, errors,
+and retries. The lifecycle controller now starts with 2 resource requests instead
+of 4 for an active overview, and 2 instead of 3 for an ended result (excluding
+shared shell/detail and benchmark requests). Ignore superseded search responses;
+a browser regression reproduced old results replacing a newer query before the fix.
+
+**Deletion:** Remove the uncalled `apiPatch`, test-only portfolio query-key aliases,
+Pydantic-v1 fallback (runtime is pinned to v2 through FastAPI), duplicated snapshot
+price lookup, dependency-floor tests already guaranteed by manifest + lockfile,
+the uncalled market-download wrapper/cache aliases and redundant rank sort,
+and the source-regex navigation checker. Keep the explicit Portfolio scopes,
+legacy adapters, rate-limit caches, and ownership helpers: their contracts are
+still used and behaviorally tested.
+
+**DX:** `scripts/verify.sh` is the local/CI entrypoint. Tests force in-memory DB and
+test JWT configuration; non-auth tests seed users with one reusable real password
+hash. Auth and smoke tests still register/login normally. Full backend wall time
+on the same machine went from 50.23 s (275 tests) to 27.10 s (278 tests); this is a
+local observation, not a CI timing guarantee. CI no longer repeats smoke tests
+already present in full suites. Playwright owns its server, accepts `E2E_PORT`,
+and fixes the mock API URL. Deployment builds fail early without `VITE_API_URL`.

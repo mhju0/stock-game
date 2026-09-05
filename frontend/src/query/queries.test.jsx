@@ -20,6 +20,7 @@ import {
   useTransactionsQuery,
   useUpdateSessionMutation,
 } from './queries'
+import { createSessionPortfolioAccess, createLegacyPortfolioAccess } from './portfolioAccess'
 import { LegacyPortfolioScope, SessionPortfolioScope } from './portfolioScope'
 
 vi.mock('../api', () => {
@@ -88,7 +89,7 @@ describe('session data queries', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(sessionQueryKeys.account(7, 42)).toEqual([
+    expect(createSessionPortfolioAccess(7, 42).queryKey('account')).toEqual([
       'session-data',
       '7',
       'session',
@@ -114,7 +115,7 @@ describe('session data queries', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(sessionQueryKeys.holdings('7')).toEqual([
+    expect(createLegacyPortfolioAccess('7').queryKey('holdings')).toEqual([
       'session-data',
       '7',
       'legacy',
@@ -150,20 +151,20 @@ describe('session data queries', () => {
     })
     const queryClient = createQueryClient()
     const affectedKeys = [
-      sessionQueryKeys.account(7, 42),
-      sessionQueryKeys.holdings(7, 42),
-      sessionQueryKeys.transactions(7, 42),
-      sessionQueryKeys.analyticsPerformance(7, 42),
-      sessionQueryKeys.analyticsByStock(7, 42),
-      sessionQueryKeys.analyticsBySector(7, 42),
-      sessionQueryKeys.analyticsRealized(7, 42),
+      createSessionPortfolioAccess(7, 42).queryKey('account'),
+      createSessionPortfolioAccess(7, 42).queryKey('holdings'),
+      createSessionPortfolioAccess(7, 42).queryKey('transactions'),
+      createSessionPortfolioAccess(7, 42).queryKey('performance'),
+      createSessionPortfolioAccess(7, 42).queryKey('by-stock'),
+      createSessionPortfolioAccess(7, 42).queryKey('by-sector'),
+      createSessionPortfolioAccess(7, 42).queryKey('realized'),
       sessionQueryKeys.detail(7, 42),
       sessionQueryKeys.status(7, 42),
       sessionQueryKeys.summary(7, 42),
       sessionQueryKeys.result(7, 42),
       sessionQueryKeys.list(7, true),
     ]
-    const otherSessionKey = sessionQueryKeys.account(7, 99)
+    const otherSessionKey = createSessionPortfolioAccess(7, 99).queryKey('account')
 
     for (const key of affectedKeys) queryClient.setQueryData(key, { cached: true })
     queryClient.setQueryData(otherSessionKey, { cached: true })
@@ -188,7 +189,7 @@ describe('session data queries', () => {
         body: JSON.stringify({ ticker: 'AAPL', quantity: 2 }),
       },
     )
-    expect(queryClient.getQueryData(sessionQueryKeys.account(7, 42))).toMatchObject({
+    expect(queryClient.getQueryData(createSessionPortfolioAccess(7, 42).queryKey('account'))).toMatchObject({
       balance_krw: 900_000,
       balance_usd: 125,
     })
@@ -418,8 +419,8 @@ describe('session data queries', () => {
       sessions: [{ id: 42 }, { id: 99 }],
     })
     queryClient.setQueryData(sessionQueryKeys.detail(7, 42), { session: { id: 42 } })
-    queryClient.setQueryData(sessionQueryKeys.account(7, 42), { balance_krw: 10 })
-    queryClient.setQueryData(sessionQueryKeys.account(7, 99), { balance_krw: 20 })
+    queryClient.setQueryData(createSessionPortfolioAccess(7, 42).queryKey('account'), { balance_krw: 10 })
+    queryClient.setQueryData(createSessionPortfolioAccess(7, 99).queryKey('account'), { balance_krw: 20 })
 
     const { result } = renderHook(
       () => useDeleteSessionMutation(7),
@@ -434,8 +435,8 @@ describe('session data queries', () => {
       method: 'DELETE',
     })
     expect(queryClient.getQueryData(sessionQueryKeys.detail(7, 42))).toBeUndefined()
-    expect(queryClient.getQueryData(sessionQueryKeys.account(7, 42))).toBeUndefined()
-    expect(queryClient.getQueryData(sessionQueryKeys.account(7, 99))).toEqual({
+    expect(queryClient.getQueryData(createSessionPortfolioAccess(7, 42).queryKey('account'))).toBeUndefined()
+    expect(queryClient.getQueryData(createSessionPortfolioAccess(7, 99).queryKey('account'))).toEqual({
       balance_krw: 20,
     })
     expect(queryClient.getQueryData(listKey)).toEqual({ sessions: [{ id: 99 }] })

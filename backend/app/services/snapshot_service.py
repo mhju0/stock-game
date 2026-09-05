@@ -11,17 +11,11 @@ from app.services.game_session_service import (
 from app.services.portfolio_compatibility import resolve_legacy_preferred_session_id
 
 logger = logging.getLogger(__name__)
-from app.services.stock_service import get_stock_price
 from app.services.valuation_service import (
+    get_prices_for_tickers,
     compute_holdings_value_krw,
     compute_session_total_value_krw,
 )
-
-
-def get_prices_for_tickers(tickers: list[str]) -> dict[str, float | None]:
-    """Snapshot-local price lookup kept patchable for existing tests/callers."""
-    unique = list(dict.fromkeys(tickers))
-    return {ticker: get_stock_price(ticker) for ticker in unique}
 
 
 def _create_snapshot(
