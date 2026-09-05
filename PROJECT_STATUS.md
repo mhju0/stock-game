@@ -76,3 +76,13 @@ These are not maintenance changes to make silently:
 Do not add product scope, rerun migrations, or mutate unrelated production user
 data during maintenance. Security, dependency compatibility, regressions,
 deployment repairs, and documentation corrections remain accepted work.
+
+
+## Local cleanup audit — 2026-09-05
+
+The maintenance branch now uses `./scripts/verify.sh` for local and CI checks.
+278 backend tests, 36 frontend unit/config tests, and 7 browser flows cover the
+new bounded-query session serialization, on-demand lifecycle requests, and stale
+search-response fix. The earlier deployment/security snapshot above remains dated;
+this audit does not establish a new production deployment or rescan dependency advisories.
+See [DECISIONS D-35](docs/DECISIONS.md) for measurements and retained boundaries.

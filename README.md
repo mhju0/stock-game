@@ -97,7 +97,7 @@ The account budget is charged only after credentials are checked and only when t
 - The benchmark lookback is capped at 10 years, and an account may hold at most 20 active games.
 - Price and metadata lookup misses are cached briefly, so repeated requests for the same unknown symbol do not force an outbound call each time. Search, history, and other upstream-backed routes remain protected by the market-data rate limit.
 
-Backend dependencies are pinned, and a test enforces the `react-router` floor so a reinstall cannot resolve backwards past a fixed advisory.
+Backend dependencies are pinned and checked against the installed environment. Frontend installs use the committed lockfile with `npm ci`; the declared React Router minimum includes the advisory fixes.
 The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnerability alerts and automated security fixes are enabled, and Dependabot checks npm, pip, and GitHub Actions dependencies weekly. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
 
 ## Tech stack
@@ -117,11 +117,10 @@ Prerequisites: Python 3.11 and Node.js 20.19+ (or 22.13+).
 
 ```bash
 cd backend
-python -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-cp .env.example .env
+pip install -r requirements.txt -r requirements-dev.txt
+test -e .env || cp .env.example .env
 # Set JWT_SECRET_KEY in .env, then:
 uvicorn app.main:app --reload
 ```
@@ -132,9 +131,8 @@ The API starts at `http://127.0.0.1:8000`. Set `ENABLE_DEV_TOOLS=true` in `.env`
 
 ```bash
 cd frontend
-npm install
-echo "VITE_API_URL=http://127.0.0.1:8000" > .env.local
-npm run dev
+npm ci --no-audit
+VITE_API_URL=http://127.0.0.1:8000 npm run dev
 ```
 
 The app starts at `http://localhost:5173`.
@@ -153,14 +151,37 @@ The app starts at `http://localhost:5173`.
 ## Verification
 
 ```bash
-./scripts/regression-smoke.sh
-cd frontend && npm test && npm run test:e2e && npm run build && npm run lint
-cd ../backend && venv/bin/pytest && venv/bin/python -m compileall app tests
+./scripts/verify.sh                 # all gates, also used by CI
+./scripts/verify.sh backend         # pytest + compileall
+./scripts/verify.sh frontend        # unit tests + lint + build + Chromium
+./scripts/regression-smoke.sh       # API smoke + rendered stock navigation
+
+# Targeted tests
+backend/venv/bin/pytest backend/tests/test_game.py -k expired
+npm --prefix frontend test -- src/game/useGameSessionLifecycle.test.jsx
+npm --prefix frontend run test:e2e -- --grep 'stock search'
 ```
 
-Install the Playwright Chromium runtime once with `cd frontend && npx playwright install chromium` before running the browser tests locally.
+Install Chromium once with `npm --prefix frontend exec -- playwright install chromium`.
+Tests force an in-memory database and a fixed test JWT secret before importing the
+app. Market data is mocked. Auth tests still exercise real registration/login;
+other tests reuse one password hash when preparing their users.
 
-That is 275 backend tests, 37 frontend unit/config tests, and 5 rendered Chromium flows. GitHub Actions runs the same gates for pull requests, pushes to `main`, and manual dispatches.
+`verify.sh` uses the backend virtualenv by default; set `PYTHON=python3.11` if your
+dependencies are installed elsewhere. Its build artifact uses localhost for
+verification. A deployment must run `npm run build` with its actual `VITE_API_URL`;
+Vite rejects a missing/empty API URL before bundling.
+
+Playwright starts its own frontend and mocks API responses, so no running backend
+or credentials are needed. It refuses to reuse an unrelated server. For another
+worktree, install dependencies there and use `E2E_PORT=4175 ./scripts/verify.sh frontend`.
+Failure traces are in `frontend/test-results/`; open a trace with
+`npm --prefix frontend exec -- playwright show-trace <trace.zip>`. Screenshots
+from the core flows are also written there. Backend errors are logged to the
+uvicorn terminal; `/health/db` checks connectivity without changing user data.
+
+Current gates: 278 backend tests, 36 frontend unit/config tests, and 7 Chromium
+flows. CI runs the same verification script for PRs and pushes to `main`.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 

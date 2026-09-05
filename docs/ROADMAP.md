@@ -20,7 +20,7 @@ obligation to keep a deployed, publicly linked demo alive and honest.
 **Continuous, event-driven:**
 
 1. **Keep the gates green.** Any change to `main` must pass, in full: backend
-   pytest (275) + `compileall`, frontend vitest (37) + Playwright (5) + build +
+   pytest (278) + `compileall`, frontend vitest (36) + Playwright (7) + build +
    lint + navigation smoke, `./scripts/regression-smoke.sh`, `git diff --check`.
    Check exit statuses, not output tails.
 2. **Triage weekly Dependabot minor/patch PRs** for npm, pip, and GitHub Actions.
@@ -90,11 +90,14 @@ They are listed because they are known and real, not because they are scheduled.
 - **Login enumeration decision** — fix the timing oracle with a dummy bcrypt
   compare and soften the registration 409, or accept enumeration as the cost of a
   usable sign-up. Either way, decide it explicitly.
-- **`GET /game/sessions` performance** — it is N+1 over sessions and live-prices
-  ended games (`_serialize_session` in `backend/app/routes/game.py:158`;
-  `get_prices_for_tickers` is a serial per-ticker loop, not a batch call). Currently
-  masked by the 5-minute price cache and the negative cache. Becomes visible for a
-  user with many sessions.
+- **Ended-session valuation consistency across the hub/status and saved results.**
+  The list N+1 issue was resolved in D-35. Hub/status still calculate current value
+  from live prices; the result page uses saved evidence. Unifying those payloads
+  requires explicit tests for missing snapshots, cash-only USD games, and unavailable
+  values in every consumer; this audit preserves the existing valuation contract.
+- **Cold market-data latency and hourly snapshot batching.** Unique ticker lookups
+  are still serial; cross-request cache misses can duplicate upstream work. Measure
+  cold requests before introducing bounded concurrency or more cache synchronization.
 
 ---
 
@@ -176,6 +179,7 @@ Not "someday". Rejected, with the rejection recorded in more than one place.
 
 | Date | Shipped | Reference |
 |---|---|---|
+| 2026-09-05 | Bulk session reads, on-demand lifecycle requests, stale-search fix, deletion of dead adapters/tests, shared local/CI verification command | DECISIONS D-35 |
 | 2026-09-04 | Frontend type/lint patches, README + status wording, UI token docs aligned to shipped CSS, CI installs decoupled from the npm advisory endpoint | PR #36 |
 | 2026-09-04 | Post-merge security state recorded: 0 open Dependabot / CodeQL / secret-scanning alerts, production deploy verified | PR #35 |
 | 2026-09-04 | Dialog mechanics hook, explicit Session Portfolio access scope, Game Session lifecycle controller, orphaned query-key aliases removed, ESLint 10, `browserslist` + `@humanfs/node` advisories cleared, Portfolio fixture reconciled. Frontend tests 26 → 37 | PR #34 |

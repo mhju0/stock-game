@@ -75,7 +75,7 @@ async function installApiFixture(page) {
     const respond = (body, status = 200) => route.fulfill({
       status,
       contentType: 'application/json',
-      headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:4173' },
+      headers: { 'Access-Control-Allow-Origin': request.headers().origin || '*' },
       body: JSON.stringify(body),
     })
 
@@ -448,4 +448,43 @@ test('keeps secondary workspaces clear and connected', async ({ page }, testInfo
   await expect(page.getByText('1 recorded action')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('secondary-workspace.png'), fullPage: true, animations: 'disabled' })
+})
+
+
+test('session stock navigation keeps Market and Watchlist trades in the selected game', async ({ page }) => {
+  await seedAuthenticatedUser(page)
+  for (const workspace of ['market', 'watchlist']) {
+    await page.goto(`/games/101/${workspace}`)
+    await page.getByRole('button', { name: /Apple.*View details/ }).click()
+    await expect(page).toHaveURL(/\/games\/101\/search\?ticker=AAPL$/)
+    await expect(page.getByRole('button', { name: 'Open trade ticket' })).toBeVisible()
+  }
+})
+
+test('keeps the newest stock search results when an earlier response arrives late', async ({ page }) => {
+  await seedAuthenticatedUser(page)
+  let releaseEarlier
+  let earlierFinished
+  const finished = new Promise((resolve) => { earlierFinished = resolve })
+  await page.route('**/stock/search/Apple', async (route) => {
+    await new Promise((resolve) => { releaseEarlier = resolve })
+    await route.fulfill({ json: [{ ticker: 'AAPL', name: 'Apple', exchange: 'NASDAQ' }] })
+    earlierFinished()
+  })
+  await page.route('**/stock/search/Microsoft', (route) => route.fulfill({
+    json: [{ ticker: 'MSFT', name: 'Microsoft', exchange: 'NASDAQ' }],
+  }))
+  await page.goto('/games/101/search')
+  const search = page.getByRole('textbox', { name: 'Search' })
+  await search.fill('Apple')
+  await expect.poll(() => Boolean(releaseEarlier)).toBe(true)
+  await search.fill('Microsoft')
+  const microsoft = page.getByRole('button', { name: /Microsoft.*View details/ })
+  await expect(microsoft).toBeVisible()
+  const earlierResponse = page.waitForResponse('**/stock/search/Apple')
+  releaseEarlier()
+  await finished
+  await (await earlierResponse).finished()
+  await expect(microsoft).toBeVisible()
+  await expect(page.getByRole('button', { name: /Apple.*View details/ })).toHaveCount(0)
 })

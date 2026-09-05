@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.database import engine, SessionLocal, Base, get_db
+from app.database import engine, SessionLocal, get_db
 from app import models
 from app.routes.auth import router as auth_router
 from app.routes.trading import router as trading_router

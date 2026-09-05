@@ -42,29 +42,6 @@ export const sessionQueryKeys = {
     ...sessionScope(userId, sessionId),
     'result',
   ],
-  account: (userId, sessionId) => [
-    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('account'),
-  ],
-  holdings: (userId, sessionId) => compatibilityPortfolioAccess(
-    userId,
-    sessionId,
-  ).queryKey('holdings'),
-  transactions: (userId, sessionId) => compatibilityPortfolioAccess(
-    userId,
-    sessionId,
-  ).queryKey('transactions'),
-  analyticsPerformance: (userId, sessionId) => [
-    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('performance'),
-  ],
-  analyticsByStock: (userId, sessionId) => [
-    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('by-stock'),
-  ],
-  analyticsBySector: (userId, sessionId) => [
-    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('by-sector'),
-  ],
-  analyticsRealized: (userId, sessionId) => [
-    ...compatibilityPortfolioAccess(userId, sessionId).queryKey('realized'),
-  ],
 }
 
 export const queryKeys = {
@@ -138,11 +115,11 @@ export function useSessionDetailQuery(userId, sessionId) {
   })
 }
 
-function useSessionResourceQuery(userId, sessionId, resource, queryKey) {
+function useSessionResourceQuery(userId, sessionId, resource, queryKey, enabled = true) {
   return useQuery({
     queryKey,
     queryFn: () => apiFetchOrThrow(`/game/sessions/${sessionId}/${resource}`),
-    enabled: !!userId && sessionId != null,
+    enabled: !!userId && sessionId != null && enabled,
     ...queryDefaults,
   })
 }
@@ -156,21 +133,23 @@ export function useSessionStatusQuery(userId, sessionId) {
   )
 }
 
-export function useSessionSummaryQuery(userId, sessionId) {
+export function useSessionSummaryQuery(userId, sessionId, { enabled = true } = {}) {
   return useSessionResourceQuery(
     userId,
     sessionId,
     'summary',
     sessionQueryKeys.summary(userId, sessionId),
+    enabled,
   )
 }
 
-export function useSessionResultQuery(userId, sessionId) {
+export function useSessionResultQuery(userId, sessionId, { enabled = true } = {}) {
   return useSessionResourceQuery(
     userId,
     sessionId,
     'result',
     sessionQueryKeys.result(userId, sessionId),
+    enabled,
   )
 }
 

@@ -111,7 +111,7 @@ class TestBuyStock:
         }
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock), \
              patch("app.services.trading_service.get_stock_price", return_value=50_000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=50_000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=50_000.0):
             resp = client.post(
                 "/trade/buy",
                 json={"ticker": "005930.KS", "quantity": 2},
@@ -137,7 +137,7 @@ class TestBuyStock:
         }
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp = client.post(
                 "/trade/buy",
                 json={"ticker": "KB", "quantity": 5},
@@ -163,7 +163,7 @@ class TestSellStock:
         }
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock), \
              patch("app.services.trading_service.get_stock_price", return_value=price), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=price):
+             patch("app.services.valuation_service.get_stock_price", return_value=price):
             return client.post("/trade/buy", json={"ticker": ticker, "quantity": qty}, headers=headers)
 
     def test_sell_increases_krw_balance(self, client, registered_user, auth_headers):
@@ -176,7 +176,7 @@ class TestSellStock:
         self._buy_krw(client, auth_headers, qty=QTY, price=BUY_PRICE)
 
         with patch("app.services.trading_service.get_stock_price", return_value=SELL_PRICE), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=SELL_PRICE):
+             patch("app.services.valuation_service.get_stock_price", return_value=SELL_PRICE):
             resp = client.post("/trade/sell", json={"ticker": "KB", "quantity": QTY}, headers=auth_headers)
 
         assert resp.status_code == 200
@@ -195,7 +195,7 @@ class TestSellStock:
         self._buy_krw(client, auth_headers, qty=QTY, price=PRICE)
 
         with patch("app.services.trading_service.get_stock_price", return_value=PRICE), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=PRICE):
+             patch("app.services.valuation_service.get_stock_price", return_value=PRICE):
             resp = client.post("/trade/sell", json={"ticker": "KB", "quantity": QTY}, headers=auth_headers)
 
         assert resp.status_code == 200
@@ -237,12 +237,12 @@ class TestInvalidTrades:
         }
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             client.post("/trade/buy", json={"ticker": "XSTOCK", "quantity": 2}, headers=auth_headers)
 
         # Try to sell 5
         with patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp = client.post("/trade/sell", json={"ticker": "XSTOCK", "quantity": 5}, headers=auth_headers)
 
         assert resp.status_code == 400
@@ -256,7 +256,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp = client.post(
                 f"/game/sessions/{session.id}/trade/buy",
                 json={"ticker": "KB", "quantity": 5},
@@ -279,7 +279,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1200.0)), \
              patch("app.services.trading_service.get_stock_price", return_value=1200.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1200.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1200.0):
             resp = client.post(
                 f"/game/sessions/{session_a.id}/trade/sell",
                 json={"ticker": "KB", "quantity": 2},
@@ -303,7 +303,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=None), \
              patch("app.services.trading_service.get_stock_price", return_value=1200.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1200.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1200.0):
             resp = client.post(
                 f"/game/sessions/{session.id}/trade/sell",
                 json={"ticker": "KB", "quantity": 1},
@@ -338,7 +338,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp_a = client.post(
                 f"/game/sessions/{session_a.id}/trade/buy",
                 json={"ticker": "KB", "quantity": 2},
@@ -365,7 +365,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp = client.post(
                 f"/game/sessions/{session_a.id}/trade/buy",
                 json={"ticker": "KB", "quantity": 3},
@@ -441,7 +441,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp = client.post(
                 "/trade/buy",
                 json={"ticker": "KB", "quantity": 2},
@@ -459,7 +459,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp = client.post(
                 f"/game/sessions/{session.id}/trade/buy",
                 json={"ticker": "KB", "quantity": 1},
@@ -498,7 +498,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=None), \
              patch("app.services.trading_service.get_stock_price", return_value=1200.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1200.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1200.0):
             resp = client.post(
                 f"/game/sessions/{session.id}/trade/sell",
                 json={"ticker": "KB", "quantity": 1},
@@ -654,7 +654,7 @@ class TestSessionScopedTrading:
 
         with patch("app.services.trading_service.get_stock_info", return_value=krw_stock(1000.0)), \
              patch("app.services.trading_service.get_stock_price", return_value=1000.0), \
-             patch("app.services.snapshot_service.get_stock_price", return_value=1000.0):
+             patch("app.services.valuation_service.get_stock_price", return_value=1000.0):
             resp = client.post(
                 f"/game/sessions/{session.id}/trade/buy",
                 json={"ticker": "KB", "quantity": 1},

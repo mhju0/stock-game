@@ -6,7 +6,7 @@ import {
   useSessionSummaryQuery,
 } from '../query/queries'
 
-export function resolveGameSessionScreen({
+function resolveGameSessionScreen({
   loading = false,
   result = null,
   showSummary = false,
@@ -16,10 +16,10 @@ export function resolveGameSessionScreen({
 }) {
   if (loading) return 'loading'
   if (!status) return 'status-error'
-  if (showSummary && summaryError) return 'summary-error'
   if (status.status !== 'active') {
     return result ? 'ended-result' : 'ended-result-error'
   }
+  if (showSummary && summaryError) return 'summary-error'
   if (showSummary && summary) return 'active-summary'
   return 'active-overview'
 }
@@ -27,15 +27,19 @@ export function resolveGameSessionScreen({
 export function useGameSessionLifecycle(userId, sessionId) {
   const [showSummary, setShowSummary] = useState(false)
   const statusQuery = useSessionStatusQuery(userId, sessionId)
-  const summaryQuery = useSessionSummaryQuery(userId, sessionId)
-  const resultQuery = useSessionResultQuery(userId, sessionId)
   const status = statusQuery.data || null
+  const active = status?.status === 'active'
+  const ended = Boolean(status) && !active
+  const summaryEnabled = active && showSummary
+  const summaryQuery = useSessionSummaryQuery(userId, sessionId, { enabled: summaryEnabled })
+  const resultQuery = useSessionResultQuery(userId, sessionId, { enabled: ended })
+  const performanceQuery = useAnalyticsPerformanceQuery({ enabled: active })
   const summary = summaryQuery.data || null
   const result = resultQuery.data || null
-  const active = status?.status === 'active'
-  const performanceQuery = useAnalyticsPerformanceQuery({ enabled: active })
   const performance = performanceQuery.data
-  const primaryQueries = [statusQuery, summaryQuery, resultQuery]
+  const primaryQueries = [statusQuery]
+  if (ended) primaryQueries.push(resultQuery)
+  if (summaryEnabled) primaryQueries.push(summaryQuery)
   const loading = primaryQueries.some((query) => (
     query.isLoading || (query.isFetching && query.data === undefined)
   ))
@@ -53,8 +57,8 @@ export function useGameSessionLifecycle(userId, sessionId) {
 
   const refresh = () => {
     statusQuery.refetch()
-    summaryQuery.refetch()
-    resultQuery.refetch()
+    if (summaryEnabled) summaryQuery.refetch()
+    if (ended) resultQuery.refetch()
     if (active) performanceQuery.refetch()
   }
 

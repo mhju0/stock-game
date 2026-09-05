@@ -217,7 +217,7 @@ class TestMarketBatch:
             {"MSFT": [200.0, 220.0], "AAPL": [100.0, 110.0]}
         )
 
-        assert market_service.fetch_top_30("US") == [
+        assert market_service.get_top_30("US") == [
             {
                 "rank": 2,
                 "ticker": "AAPL",

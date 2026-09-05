@@ -59,8 +59,8 @@ to explain from the code alone.
 | Current release | `[Verified]` v1.1.0, tagged `670e2b6`, released 2026-08-31. |
 | Branch | `[Verified]` `main` @ `013c154` ("Merge pull request #36"), clean tree, up to date with `origin/main`. |
 | Remote branches | `[Verified]` `main` at the earlier remote audit. Five merged local branches were removed on 2026-09-05 (see §12). |
-| Backend tests | `[Verified]` 275 collected (`backend/venv/bin/python -m pytest --collect-only -q`). |
-| Frontend tests | `[Verified]` 37 unit/config across 9 files; 5 Playwright Chromium flows in `frontend/e2e/core-flow.spec.js`. |
+| Backend tests | `[Verified]` 278 collected after D-35 (2026-09-05). |
+| Frontend tests | `[Verified]` 36 unit/config across 8 files; 7 Playwright Chromium flows in `frontend/e2e/core-flow.spec.js`. |
 | CI | `[Verified]` Last CI and CodeQL runs on `main` are green (run 33849705483, 2026-09-04). |
 | Security alerts | `[Verified]` 0 open Dependabot alerts, 0 open CodeQL alerts (`gh api`, 2026-09-04). |
 | Open issues / PRs | `[Verified]` 0 open. 6 issues total (all closed 2026-07-14); 30 PRs total (13 merged, 17 closed). |
@@ -102,7 +102,7 @@ fully pinned `requirements.txt`.
 | `app/database.py` | Engine selection: `DATABASE_URL` → Postgres with `pool_pre_ping`; unset → local SQLite fallback. |
 | `app/routes/` | `auth`, `users`, `stocks`, `trading`, `portfolio`, `watchlist`, `admin`, `analytics`, `game`. |
 | `app/services/` | Business logic — see below. |
-| `tests/` | 32 pytest modules, 275 tests. |
+| `tests/` | 278 tests; see `pytest --collect-only` for the current module inventory. |
 | `scripts/migrations/001_session_scope.py` | The one historical migration. **Already applied to production. Do not rerun.** |
 
 Services worth knowing by name:
@@ -145,7 +145,7 @@ react-i18next. No TypeScript, no CSS framework — one 2,889-line `src/App.css`.
 | `src/auth.js` | localStorage token + client-side `jwtDecode` for the user id. |
 | `src/sessionRoutes.js` | URL ⇄ session-id helpers, status label keys. |
 | `src/i18n/{ko,en}.json` | 409 keys each, parity-checked during audits. |
-| `e2e/core-flow.spec.js` | 5 Playwright flows: full trade/review journey, 390px shell, reduced motion, pre-auth landing, secondary workspaces. |
+| `e2e/core-flow.spec.js` | 7 Playwright flows: core trade/review, narrow shell, reduced motion, pre-auth, secondary workspaces, scoped navigation, stale search responses. |
 
 ### 3.4 Data / state architecture
 
@@ -245,19 +245,19 @@ VITE_API_URL=http://127.0.0.1:8000 npm run dev                   # http://localh
 ## 7. Build / run / test / lint
 
 ```bash
-# fast pre-push subset (backend smoke + frontend navigation source check)
+# fast pre-push subset (backend smoke + rendered frontend stock navigation)
 ./scripts/regression-smoke.sh
 git diff --check
 
 # frontend, from frontend/
-npm test          # vitest, 37 tests
+npm test          # vitest, 36 tests
 npm run test:e2e  # playwright chromium, 5 flows (npx playwright install chromium once)
 npm run build
 npm run lint
 npm run smoke:navigation
 
 # backend, from backend/
-venv/bin/pytest                        # 275 tests
+venv/bin/pytest                        # 278 tests
 venv/bin/python -m compileall app tests
 
 # dependency audits
@@ -447,14 +447,11 @@ Ranked by how likely it is to bite.
    price, and amount. Long trade chains accumulate sub-won drift. Fixing this means
    integer minor units or `Numeric`, which means a production DDL migration —
    deliberately deferred, not forgotten.
-2. **`[Verified]` `GET /game/sessions` is N+1 over sessions and live-prices ended
-   games.** `_serialize_session` (`backend/app/routes/game.py:158`) runs a holdings
-   query, a snapshot query, and `get_prices_for_tickers` **per session**, including
-   completed and archived ones. `get_prices_for_tickers`
-   (`app/services/valuation_service.py:25-27`) is a dedup + serial per-ticker loop,
-   not a batch call — it is fast only because of the 5-minute price cache and the
-   negative cache. This is the single biggest latency risk if a user accumulates
-   sessions (cap is 20 active, plus unlimited ended ones).
+2. **`[Verified]` Session list N+1 resolved (2026-09-05).** The list now loads
+   holdings and latest snapshot timestamps in bulk and deduplicates price lookups
+   across sessions. A 20-session request takes 4 SELECTs rather than 42 (5 if legacy
+   cash must be initialized). Hub/status live valuations still differ from the
+   result endpoint's saved valuations; see ROADMAP for the remaining consistency work.
 3. **`[Verified]` Rate limiting is process-local, in-memory, and resets on every
    worker restart** (including deploys and `--max-requests` recycling). Correct for
    the one worker in production; a multi-worker deploy would need a shared store.
@@ -588,3 +585,27 @@ The real local API was also started against an explicitly forced SQLite URL:
 five seeded sessions. SQLite integrity and foreign-key checks passed. The API
 was stopped after verification. Backend runtime: Python 3.11.9; frontend checks:
 Node 24.14.0. Backup files and local `.env` are not committed.
+
+
+## 20. Cleanup/performance audit — 2026-09-05
+
+Use `./scripts/verify.sh` from any working directory (absolute path when outside
+this checkout), or pass `backend`/`frontend`. README documents targeted tests,
+worktree ports, traces, and local setup. CI calls the same script and uses Node 22.
+Current local counts are 278 backend, 36 frontend, and 7 browser tests; earlier
+counts above are historical audit evidence. Browser tests mock HTTP; pytest checks
+real API handlers and the in-memory SQLite DB. No staging PostgreSQL integration
+or full browser-to-real-API test is provided; add an isolated staging environment
+before relying on this suite to validate production concurrency or schema work.
+
+The lifecycle controller no longer eagerly fetches summary/result data unrelated
+to its screen. Snapshot creation shares the valuation price lookup instead of
+retaining a duplicate solely for mocking. Portfolio read/trade scope contracts
+are retained; tests use those same scopes rather than dead query-key aliases.
+Search now ignores responses belonging to an earlier query.
+
+GitHub triage at audit start: 0 open PRs, 0 open issues, and no abandoned feature
+branches (only main and the prior knowledge-preservation branch). No stalled
+implementation needed takeover. Main requires backend/frontend checks; merging
+main is connected to production hosting, without a verified backend staging gate.
+Schema, auth contract, production data, and trading rules were not changed.

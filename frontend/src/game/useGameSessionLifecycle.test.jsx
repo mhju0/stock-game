@@ -1,114 +1,105 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  resolveGameSessionScreen,
-  useGameSessionLifecycle,
-} from './useGameSessionLifecycle'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { apiFetchOrThrow } from '../api'
+import { SessionPortfolioScope } from '../query/portfolioScope'
+import { useGameSessionLifecycle } from './useGameSessionLifecycle'
 
-const queryMocks = vi.hoisted(() => ({
-  performance: vi.fn(),
-  result: vi.fn(),
-  status: vi.fn(),
-  summary: vi.fn(),
-}))
+vi.mock('../api', () => ({ apiFetchOrThrow: vi.fn() }))
+let queryClient
 
-vi.mock('../query/queries', () => ({
-  useAnalyticsPerformanceQuery: queryMocks.performance,
-  useSessionResultQuery: queryMocks.result,
-  useSessionStatusQuery: queryMocks.status,
-  useSessionSummaryQuery: queryMocks.summary,
-}))
+beforeEach(() => {
+  vi.resetAllMocks()
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+})
+afterEach(() => {
+  cleanup()
+  queryClient.clear()
+})
 
-function queryResult(data, overrides = {}) {
-  return {
-    data,
-    error: null,
-    isError: false,
-    isFetching: false,
-    isLoading: false,
-    refetch: vi.fn(),
-    ...overrides,
-  }
+function wrapper({ children }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionPortfolioScope userId={7} sessionId={42}>{children}</SessionPortfolioScope>
+    </QueryClientProvider>
+  )
 }
+const paths = () => apiFetchOrThrow.mock.calls.map(([path]) => path)
+const root = '/game/sessions/42'
 
-describe('Game Session lifecycle controller', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    queryMocks.status.mockReturnValue(queryResult({ status: 'active' }))
-    queryMocks.summary.mockReturnValue(queryResult({ total_return: 10 }))
-    queryMocks.result.mockReturnValue(queryResult(null))
-    queryMocks.performance.mockReturnValue(queryResult({ snapshots: [] }))
+it('loads the active overview without summary/result requests, then loads summary on demand', async () => {
+  let finishSummary
+  apiFetchOrThrow.mockImplementation((path) => {
+    if (path === `${root}/status`) return Promise.resolve({ status: 'active' })
+    if (path === `${root}/analytics/performance`) return Promise.resolve({ snapshots: [] })
+    if (path === `${root}/summary`) return new Promise((resolve) => { finishSummary = resolve })
+    throw new Error(`Unexpected request: ${path}`)
   })
+  const { result } = renderHook(() => useGameSessionLifecycle(7, 42), { wrapper })
+  await waitFor(() => expect(result.current.screen).toBe('active-overview'))
+  expect(paths().sort()).toEqual([`${root}/analytics/performance`, `${root}/status`])
 
-  afterEach(() => cleanup())
+  act(() => result.current.actions.openSummary())
+  await waitFor(() => expect(result.current.screen).toBe('loading'))
+  await act(async () => finishSummary({ total_return: 10 }))
+  await waitFor(() => expect(result.current.screen).toBe('active-summary'))
+  expect(result.current.summary.total_return).toBe(10)
+  expect(paths()).not.toContain(`${root}/result`)
 
-  it('requests lifecycle resources eagerly and enables performance only while active', () => {
-    const { result } = renderHook(() => useGameSessionLifecycle(7, 42))
+  act(() => result.current.actions.closeSummary())
+  expect(result.current.screen).toBe('active-overview')
+  apiFetchOrThrow.mockClear()
+  act(() => result.current.actions.refresh())
+  await waitFor(() => expect(paths()).toHaveLength(2))
+  expect(paths().sort()).toEqual([`${root}/analytics/performance`, `${root}/status`])
+})
 
-    expect(queryMocks.status).toHaveBeenCalledWith(7, 42)
-    expect(queryMocks.summary).toHaveBeenCalledWith(7, 42)
-    expect(queryMocks.result).toHaveBeenCalledWith(7, 42)
-    expect(queryMocks.performance).toHaveBeenCalledWith({ enabled: true })
-    expect(result.current.screen).toBe('active-overview')
-
-    act(() => result.current.actions.refresh())
-
-    expect(queryMocks.status.mock.results[0].value.refetch).toHaveBeenCalledOnce()
-    expect(queryMocks.summary.mock.results[0].value.refetch).toHaveBeenCalledOnce()
-    expect(queryMocks.result.mock.results[0].value.refetch).toHaveBeenCalledOnce()
-    expect(queryMocks.performance.mock.results[0].value.refetch).toHaveBeenCalledOnce()
-
-    act(() => result.current.actions.openSummary())
-
-    expect(result.current.screen).toBe('active-summary')
+it('loads saved ended results without live summary/performance requests and can retry a failure', async () => {
+  let failed = true
+  apiFetchOrThrow.mockImplementation(async (path) => {
+    if (path === `${root}/status`) return { status: 'completed' }
+    if (path === `${root}/result`) {
+      if (failed) throw new Error('Result unavailable')
+      return { result_data_available: false }
+    }
+    throw new Error(`Unexpected request: ${path}`)
   })
+  const { result } = renderHook(() => useGameSessionLifecycle(7, 42), { wrapper })
+  await waitFor(() => expect(result.current.screen).toBe('ended-result-error'))
+  expect(result.current.errors.result.message).toBe('Result unavailable')
+  expect(paths()).toEqual([`${root}/status`, `${root}/result`])
+  failed = false
+  act(() => result.current.actions.refresh())
+  await waitFor(() => expect(result.current.screen).toBe('ended-result'))
+  expect(result.current.result.result_data_available).toBe(false)
+  expect(paths()).toEqual([`${root}/status`, `${root}/result`, `${root}/status`, `${root}/result`])
+})
 
-  it('keeps ended Sessions on saved results and skips performance refreshes', () => {
-    const statusQuery = queryResult({ status: 'completed' })
-    const summaryQuery = queryResult({ total_return: 10 })
-    const resultQuery = queryResult({ result_data_available: true })
-    const performanceQuery = queryResult(undefined)
-    queryMocks.status.mockReturnValue(statusQuery)
-    queryMocks.summary.mockReturnValue(summaryQuery)
-    queryMocks.result.mockReturnValue(resultQuery)
-    queryMocks.performance.mockReturnValue(performanceQuery)
+it('does not fetch dependent resources when status fails', async () => {
+  apiFetchOrThrow.mockRejectedValue(new Error('Session not found'))
+  const { result } = renderHook(() => useGameSessionLifecycle(7, 42), { wrapper })
+  await waitFor(() => expect(result.current.screen).toBe('status-error'))
+  expect(paths()).toEqual([`${root}/status`])
+})
 
-    const { result } = renderHook(() => useGameSessionLifecycle(7, 42))
-
-    expect(queryMocks.performance).toHaveBeenCalledWith({ enabled: false })
-    expect(result.current.screen).toBe('ended-result')
-
-    act(() => result.current.actions.refresh())
-
-    expect(statusQuery.refetch).toHaveBeenCalledOnce()
-    expect(summaryQuery.refetch).toHaveBeenCalledOnce()
-    expect(resultQuery.refetch).toHaveBeenCalledOnce()
-    expect(performanceQuery.refetch).not.toHaveBeenCalled()
+it('allows leaving and retrying a failed summary without blocking the overview', async () => {
+  let failed = true
+  apiFetchOrThrow.mockImplementation(async (path) => {
+    if (path === `${root}/status`) return { status: 'active' }
+    if (path === `${root}/analytics/performance`) return { snapshots: [] }
+    if (path === `${root}/summary`) {
+      if (failed) throw new Error('Summary unavailable')
+      return { total_return: 10 }
+    }
+    throw new Error(`Unexpected request: ${path}`)
   })
-
-  it('preserves the existing screen priority', () => {
-    expect(resolveGameSessionScreen({ loading: true })).toBe('loading')
-    expect(resolveGameSessionScreen({ status: null })).toBe('status-error')
-    expect(resolveGameSessionScreen({
-      status: { status: 'active' },
-      showSummary: true,
-      summaryError: true,
-    })).toBe('summary-error')
-    expect(resolveGameSessionScreen({
-      status: { status: 'completed' },
-      result: null,
-    })).toBe('ended-result-error')
-    expect(resolveGameSessionScreen({
-      status: { status: 'completed' },
-      result: { result_data_available: false },
-    })).toBe('ended-result')
-    expect(resolveGameSessionScreen({
-      status: { status: 'active' },
-      showSummary: true,
-      summary: { total_return: 10 },
-    })).toBe('active-summary')
-    expect(resolveGameSessionScreen({
-      status: { status: 'active' },
-    })).toBe('active-overview')
-  })
+  const { result } = renderHook(() => useGameSessionLifecycle(7, 42), { wrapper })
+  await waitFor(() => expect(result.current.screen).toBe('active-overview'))
+  act(() => result.current.actions.openSummary())
+  await waitFor(() => expect(result.current.screen).toBe('summary-error'))
+  failed = false
+  await act(async () => { await result.current.actions.retrySummary() })
+  await waitFor(() => expect(result.current.screen).toBe('active-summary'))
+  act(() => result.current.actions.closeSummary())
+  expect(result.current.screen).toBe('active-overview')
 })

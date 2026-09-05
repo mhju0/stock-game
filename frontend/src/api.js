@@ -139,14 +139,6 @@ export async function apiPost(path, body, onError = null) {
   }, onError)
 }
 
-export async function apiPatch(path, body, onError = null) {
-  return apiFetch(path, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }, onError)
-}
-
 export async function apiDelete(path, onError = null) {
   return apiFetch(path, { method: 'DELETE' }, onError)
 }

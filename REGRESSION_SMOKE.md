@@ -6,11 +6,11 @@ Run this from the repository root before commit/push:
 ./scripts/regression-smoke.sh
 ```
 
-The command uses the existing backend pytest setup with an in-memory database and mocked market data, then runs a dependency-free frontend navigation source check. It does not need production credentials, Supabase access, or live market prices.
+The command uses the existing backend pytest setup with an in-memory database and mocked market data, then runs a rendered Chromium navigation check for both Market and Watchlist. It does not need production credentials, Supabase access, or live market prices.
 
-This is a fast subset, not the whole suite. `venv/bin/pytest` runs 275 backend tests, including the security regressions (rate limiting, CORS, docs gating, ticker and quantity validation, dependency pinning) that this smoke deliberately skips. Run both before pushing.
+This is a fast subset, not the whole suite. `venv/bin/pytest` runs 278 backend tests, including the security regressions (rate limiting, CORS, docs gating, ticker and quantity validation, dependency pinning) that this smoke deliberately skips. Run both before pushing.
 
-The frontend also has 37 unit/config tests and 5 rendered Chromium flows. Run `npm test` and `npm run test:e2e` separately; they are intentionally not part of this fast smoke command. The rendered flows cover the complete trade/review journey, secondary workspace navigation, a 390px viewport plus a 375px overflow check, dark/light themes, reduced motion, and dialog keyboard focus containment.
+The frontend also has 37 unit/config tests and 7 rendered Chromium flows. Run `npm test` and `npm run test:e2e` separately; they are intentionally not part of this fast smoke command. The rendered flows cover the complete trade/review journey, secondary workspace navigation, a 390px viewport plus a 375px overflow check, dark/light themes, reduced motion, and dialog keyboard focus containment.
 
 ## Covered
 
@@ -44,3 +44,10 @@ The frontend also has 37 unit/config tests and 5 rendered Chromium flows. Run `n
 - Confirm the watchlist remains visible across both games.
 - Archive the throwaway game and confirm trading/exchange are blocked.
 - Delete the throwaway game and confirm other games and watchlist items remain.
+
+
+For all gates use `./scripts/verify.sh`; CI invokes its backend and frontend modes.
+The stock navigation check now clicks both lists and verifies the selected session
+and ticker in the destination URL, then waits for the trade ticket. The former
+regex source checker was deleted because matching source text did not establish
+that routing worked. Install Chromium before running this smoke subset.
