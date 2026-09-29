@@ -65,6 +65,13 @@
   --duration-standard: 220ms;
   --duration-enter: 320ms;
 
+  /* Spacing — 4/8 rhythm from docs/UI_DESIGN.md */
+  --space-stack: 16px;
+  --space-section: 24px;
+  --card-pad: 20px;
+  --hero-pad: 24px;
+  --card-radius: 20px;
+
   /* Layer scale */
   --z-content: 1;
   --z-header: 30;
@@ -128,8 +135,26 @@ body {
     var(--bg-secondary);
   color: var(--text-primary);
   overflow-x: hidden;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Korean wraps between words (eojeol), never inside one. */
+:root:lang(ko) {
+  word-break: keep-all;
+}
+
+h1, h2, h3, h4,
+.page-title,
+.card-title,
+.summary-title {
+  text-wrap: balance;
+}
+
+p,
+.page-subtitle {
+  text-wrap: pretty;
 }
 
 .numeric {
@@ -226,6 +251,7 @@ body {
   font-weight: 800;
   line-height: 0.98;
   letter-spacing: -0.055em;
+  white-space: pre-line;
 }
 
 .auth-story .page-eyebrow {
@@ -757,7 +783,7 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-section);
   flex-wrap: wrap;
 }
 
@@ -870,9 +896,9 @@ body {
 .summary-card {
   background: var(--accent-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad);
+  margin-bottom: var(--space-stack);
 }
 
 .summary-title {
@@ -897,9 +923,9 @@ body {
   backdrop-filter: var(--blur-md);
   -webkit-backdrop-filter: var(--blur-md);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 16px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad);
+  margin-bottom: var(--space-stack);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.10);
   transition:
     border-color var(--duration-standard),
@@ -937,8 +963,8 @@ body {
   backdrop-filter: var(--blur-md);
   -webkit-backdrop-filter: var(--blur-md);
   border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 18px 20px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad);
   transition: all 0.4s var(--ease-out-expo);
   position: relative;
   overflow: hidden;
@@ -974,9 +1000,9 @@ body {
 .asset-hero {
   background: var(--surface-panel);
   border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 24px;
-  margin-bottom: 16px;
+  border-radius: var(--card-radius);
+  padding: var(--hero-pad);
+  margin-bottom: var(--space-stack);
 }
 .asset-hero-top {
   display: flex;
@@ -1424,12 +1450,8 @@ body {
 /* ═══════════════════════════════════════════════
    SEARCH
    ═══════════════════════════════════════════════ */
-.trade-page-header {
-  margin-bottom: 18px;
-}
-
 .trade-search-card {
-  padding: clamp(20px, 3vw, 28px);
+  padding: var(--hero-pad);
   border-color: var(--glass-border-hover);
   background:
     linear-gradient(135deg, var(--accent-bg), transparent 52%),
@@ -1655,17 +1677,13 @@ body {
 /* ═══════════════════════════════════════════════
    GAME
    ═══════════════════════════════════════════════ */
-.overview-page-header {
-  margin-bottom: 18px;
-}
-
 .overview-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(250px, 0.5fr);
   min-height: 280px;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-stack);
   border: 1px solid var(--glass-border-hover);
-  border-radius: 22px;
+  border-radius: var(--card-radius);
   overflow: hidden;
   background:
     radial-gradient(circle at 10% 0%, var(--accent-soft), transparent 28rem),
@@ -1792,9 +1810,9 @@ body {
 }
 
 .game-status-bar {
-  border-radius: 16px;
-  padding: 14px 18px;
-  margin-bottom: 16px;
+  border-radius: var(--card-radius);
+  padding: 16px var(--card-pad);
+  margin-bottom: var(--space-stack);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1893,7 +1911,7 @@ body {
 }
 
 .games-section {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-section);
 }
 
 .games-grid {
@@ -1905,7 +1923,6 @@ body {
 .game-session-card {
   display: flex;
   flex-direction: column;
-  padding: 22px;
 }
 
 .game-session-card-active {
@@ -2784,10 +2801,9 @@ body {
     color: var(--negative);
     cursor: pointer;
   }
-  .card { padding: 16px; border-radius: 18px; }
+  :root { --card-pad: 16px; --hero-pad: 20px; --card-radius: 18px; }
   .insight-grid { grid-template-columns: 1fr; }
   .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .metric-card { padding: 14px 16px; border-radius: 16px; }
   .metric-value { font-size: 20px; }
   .hero-value { font-size: 28px; }
   .change-grid { gap: 12px; }
@@ -2848,7 +2864,6 @@ body {
   .overview-progress-copy { margin-top: 28px; }
   .overview-side-stat { padding: 20px 16px; }
   .overview-side-stat strong { font-size: 20px; }
-  .trade-search-card { padding: 18px; }
   .trade-discovery { padding: 24px 20px; }
   .stock-ticket-action .btn { width: 100%; }
   .watchlist-row { align-items: stretch; flex-direction: column; gap: 8px; }

@@ -3,6 +3,7 @@ import { useState, useEffect, useContext, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { getStockName } from "../utils/stockNames";
+import { formatMoney } from "../utils/formatters";
 import { UserContext } from "../context/userContext";
 import {
   useAccountQuery,
@@ -164,7 +165,7 @@ function TradeModal({
   const fmt = (v) =>
     stock?.currency === "KRW"
       ? `₩${Math.round(v).toLocaleString()}`
-      : `$${v.toFixed(2)}`;
+      : formatMoney(v, 'USD');
   const availableCash = account && stock
     ? stock.currency === "KRW"
       ? account.balance_krw
@@ -309,7 +310,7 @@ function TradeModal({
                 <div className="trade-context-value">
                   {stock.currency === "KRW"
                     ? `₩${Math.round(availableCash).toLocaleString()}`
-                    : `$${availableCash.toFixed(2)}`}
+                    : formatMoney(availableCash, 'USD')}
                 </div>
               </div>
               <div className="trade-context-item">

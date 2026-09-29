@@ -80,7 +80,7 @@ function Analytics() {
   }), [filtered, i18n.language])
 
   const formatKRW = (v) => formatMoney(v, 'KRW')
-  const fmtDisplay = (v) => displayCurrency === 'KRW' ? formatMoney(v, 'KRW') : `$${(v / exchangeRate).toFixed(2)}`
+  const fmtDisplay = (v) => displayCurrency === 'KRW' ? formatMoney(v, 'KRW') : formatMoney(v / exchangeRate, 'USD')
   // Dynamic Y range: always keep the 0% break-even line on the axis, then fit
   // the data around it so the axis grows with actual gains/losses instead of
   // pinning the line flat. A 2%p floor keeps tiny intraday moves visually calm.
@@ -413,7 +413,7 @@ function Analytics() {
               gap: 10,
             }}>
               {sortedStocks.map(s => {
-                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : `$${(Number(v) || 0).toFixed(2)}`
+                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : formatMoney(Number(v) || 0, 'USD')
                 const isPositive = s.unrealized_pnl >= 0
                 const name = getStockName(s.ticker, s.name, i18n.language)
                 const allocPct = ((s.total_value_krw / (totalStockValueKRW || 1)) * 100).toFixed(1)
@@ -465,7 +465,7 @@ function Analytics() {
           ) : (
             <div>
               {sortedStocks.map(s => {
-                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : `$${(Number(v) || 0).toFixed(2)}`
+                const fmt = v => s.currency === 'KRW' ? `₩${Math.round(Number(v) || 0).toLocaleString()}` : formatMoney(Number(v) || 0, 'USD')
                 const isPositive = s.unrealized_pnl >= 0
                 const name = getStockName(s.ticker, s.name, i18n.language)
                 const allocPct = ((s.total_value_krw / (totalStockValueKRW || 1)) * 100).toFixed(1)

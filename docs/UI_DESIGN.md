@@ -77,10 +77,17 @@ uses the same semantic roles and preserves contrast independently.
 - Body copy starts at 16px on compact screens and uses at least 1.5 line height.
 - Money, dates, percentages, and chart values use tabular figures.
 - Headings describe structure; visual styling must not skip heading levels.
+- Korean text wraps between words (`word-break: keep-all` under `<html lang="ko">`);
+  headings use balanced wrapping. Headlines carry no trailing period, full
+  sentences end with one, and Korean copy uses one voice (해요체).
 
 ## Spacing, shape, and elevation
 
 - Spacing follows a 4/8px rhythm: 4, 8, 12, 16, 24, 32, 48.
+- Tokens in `App.css`: page header to content `--space-section` (24px), stacked
+  blocks `--space-stack` (16px), card padding `--card-pad` (20px, 16px below
+  1024px), hero padding `--hero-pad` (24px/20px), top-level radius
+  `--card-radius` (20px/18px). Nested tiles use 16px radius.
 - Controls have a minimum 44px hit area.
 - Cards use 16-20px radii; pills use a full radius.
 - Three elevation levels are allowed: canvas, surface, overlay.

@@ -170,7 +170,7 @@ function Portfolio() {
         )
       })()}
 
-      <div className="card" style={{ marginBottom: 12 }}>
+      <div className="card">
         <div className="card-title">{t('stock.sector')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {Object.entries(totalBySector).map(([sector, data]) => (
@@ -192,7 +192,7 @@ function Portfolio() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <MarketFilter value={filterMarket} onChange={e => setFilterMarket(e.target.value)} style={{ minWidth: 100 }} />
         <SortSelect value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ minWidth: 120 }} />
       </div>

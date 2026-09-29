@@ -7,6 +7,7 @@ import TradeModal from '../components/TradeModal'
 import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/userContext'
 import { isSessionEnded } from '../sessionRoutes'
+import { formatMoney } from '../utils/formatters'
 
 
 function SearchStock() {
@@ -122,7 +123,7 @@ function SearchStock() {
   }
 
   const displayName = stock ? getStockName(stock.ticker, stock.name, i18n.language) : ''
-  const fmt = (v) => stock?.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`
+  const fmt = (v) => stock?.currency === 'KRW' ? `₩${Math.round(v).toLocaleString()}` : formatMoney(v, 'USD')
 
   const chartData = history.map(h => ({
     date: h.date,
@@ -258,7 +259,7 @@ function SearchStock() {
             <div className="price-hero-value">{fmt(stock.price)}</div>
             {chartData.length >= 2 && (
               <div className={priceChange >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
-                {priceChange >= 0 ? '+' : ''}{stock.currency === 'KRW' ? `₩${Math.round(Math.abs(priceChange)).toLocaleString()}` : `$${Math.abs(priceChange).toFixed(2)}`} ({priceChangePct}%)
+                {priceChange >= 0 ? '+' : ''}{stock.currency === 'KRW' ? `₩${Math.round(Math.abs(priceChange)).toLocaleString()}` : formatMoney(Math.abs(priceChange), 'USD')} ({priceChangePct}%)
               </div>
             )}
           </div>
@@ -282,7 +283,7 @@ function SearchStock() {
                     domain={['dataMin - 1', 'dataMax + 1']}
                     tickFormatter={v => stock.currency === 'KRW' ? `₩${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`} />
                   <Tooltip
-                    formatter={(value) => [stock.currency === 'KRW' ? `₩${Math.round(value).toLocaleString()}` : `$${value.toFixed(2)}`, '']}
+                    formatter={(value) => [stock.currency === 'KRW' ? `₩${Math.round(value).toLocaleString()}` : formatMoney(value, 'USD'), '']}
                     contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'var(--font-body)', background: 'var(--card-bg)' }}
                   />
                   <Line type="monotone" dataKey="close" stroke={priceChange >= 0 ? 'var(--positive)' : 'var(--negative)'}

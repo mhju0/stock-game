@@ -121,13 +121,13 @@ function Transactions() {
                     const toCur = tx.ticker.split('/')[1] || (fromCur === 'KRW' ? 'USD' : 'KRW')
                     const fromAmt = fromCur === 'KRW'
                       ? `₩${Math.round(tx.total_amount).toLocaleString()}`
-                      : `$${Number(tx.total_amount).toFixed(2)}`
+                      : formatMoney(Number(tx.total_amount), 'USD')
                     const convertedAmt = fromCur === 'KRW'
                       ? tx.total_amount / tx.price
                       : tx.total_amount * tx.price
                     const toAmt = toCur === 'KRW'
                       ? `₩${Math.round(convertedAmt).toLocaleString()}`
-                      : `$${Number(convertedAmt).toFixed(2)}`
+                      : formatMoney(Number(convertedAmt), 'USD')
                     return (
                       <>
                         <strong style={{ fontSize: 15 }}>{fromAmt} → {toAmt}</strong>
