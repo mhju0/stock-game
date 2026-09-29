@@ -325,7 +325,7 @@ function GameSessionCard({ session, locale, onOpen, onManage, t }) {
             {session.title || t('games.cardTitle')}
           </div>
           <div className="game-card-date">
-            {formatDateTime(session.start_date, locale, false)} {t('games.startedAt')}
+            {t('games.startedAt', { date: formatDateTime(session.start_date, locale, false) })}
           </div>
         </div>
         <div className="game-card-controls">
