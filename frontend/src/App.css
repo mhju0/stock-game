@@ -128,8 +128,26 @@ body {
     var(--bg-secondary);
   color: var(--text-primary);
   overflow-x: hidden;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Korean wraps between words (eojeol), never inside one. */
+:root:lang(ko) {
+  word-break: keep-all;
+}
+
+h1, h2, h3, h4,
+.page-title,
+.card-title,
+.summary-title {
+  text-wrap: balance;
+}
+
+p,
+.page-subtitle {
+  text-wrap: pretty;
 }
 
 .numeric {
@@ -226,6 +244,7 @@ body {
   font-weight: 800;
   line-height: 0.98;
   letter-spacing: -0.055em;
+  white-space: pre-line;
 }
 
 .auth-story .page-eyebrow {
