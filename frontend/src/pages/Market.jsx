@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { getStockName } from "../utils/stockNames";
+import { formatMoney } from "../utils/formatters";
 import { gamePath } from "../sessionRoutes";
 
 
@@ -98,7 +99,7 @@ function Market() {
                     <div className="numeric" style={{ fontSize: 15, fontWeight: 600 }}>
                       {s.currency === "KRW"
                         ? `₩${s.price.toLocaleString()}`
-                        : `$${s.price.toFixed(2)}`}
+                        : formatMoney(s.price, 'USD')}
                     </div>
                     <div
                       className={s.change >= 0 ? "positive numeric" : "negative numeric"}

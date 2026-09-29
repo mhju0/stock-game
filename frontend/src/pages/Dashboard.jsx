@@ -133,7 +133,7 @@ function Dashboard() {
   const rate = account.exchange_rate || 1350
   const fmtDual = (krw) => displayCurrency === 'KRW'
     ? formatMoney(krw, 'KRW')
-    : `$${(krw / rate).toFixed(2)}`
+    : formatMoney(krw / rate, 'USD')
   const dayUp = account.daily_change_pct >= 0
 
   return (

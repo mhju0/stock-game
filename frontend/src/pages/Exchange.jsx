@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useOutletContext } from 'react-router-dom'
 import { useAccountQuery, useTradeMutation } from '../query/queries'
 import { isSessionEnded } from '../sessionRoutes'
+import { formatMoney } from '../utils/formatters'
 
 
 function Exchange() {
@@ -74,8 +75,8 @@ function Exchange() {
       })
       if (!data?.exchange || !data?.balance) return
       const ex = data.exchange
-      const fromFmt = ex.from === 'KRW' ? `₩${Math.round(ex.amount).toLocaleString()}` : `$${Number(ex.amount).toFixed(2)}`
-      const toFmt = ex.to === 'KRW' ? `₩${Math.round(ex.converted).toLocaleString()}` : `$${Number(ex.converted).toFixed(2)}`
+      const fromFmt = ex.from === 'KRW' ? `₩${Math.round(ex.amount).toLocaleString()}` : formatMoney(Number(ex.amount), 'USD')
+      const toFmt = ex.to === 'KRW' ? `₩${Math.round(ex.converted).toLocaleString()}` : formatMoney(Number(ex.converted), 'USD')
       setMessage(t('exchange.success', { from: fromFmt, to: toFmt }))
       setIsSuccess(true)
       setAmount('')
@@ -134,7 +135,7 @@ function Exchange() {
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('dashboard.cashUSD')}</div>
-          <div className="metric-value">${account.balance_usd.toFixed(2)}</div>
+          <div className="metric-value">{formatMoney(account.balance_usd, 'USD')}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t('exchange.currentRate')}</div>
@@ -182,7 +183,7 @@ function Exchange() {
           }}>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('exchange.convertedAmount')}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>
-              {toCurrency === 'USD' ? `$${converted.toFixed(2)}` : `₩${Math.round(converted).toLocaleString()}`}
+              {toCurrency === 'USD' ? formatMoney(converted, 'USD') : `₩${Math.round(converted).toLocaleString()}`}
             </div>
           </div>
         )}
