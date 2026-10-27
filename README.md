@@ -18,7 +18,7 @@ Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. This is a
 
 ## Screenshots
 
-These current `main` captures use the v1.1 interface and fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
+These captures were taken on October 27, 2026 from current `main` with fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
 
 ### Sign in
 
@@ -47,7 +47,7 @@ These current `main` captures use the v1.1 interface and fixed, fixture-backed d
 - Benchmark, allocation, and holding-level analytics backed by periodic portfolio snapshots.
 - Korean and English UI, a global user-level watchlist, and market browsing for US and Korean stocks.
 - Ownership checks at every session-scoped API boundary; cross-user resources return 404.
-- Rate limiting, bounded request validation, and hardened response headers on the API — see [Security](#security).
+- Rate limiting, bounded request validation, and hardened response headers on the API (see [Security](#security)).
 - A dark-first showcase interface with an explicit light theme, contextual desktop sidebar, mobile tab bar, keyboard focus containment, and reduced-motion support. The interface contract is documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Architecture
@@ -79,7 +79,7 @@ The deployed API is internet-accessible. Authentication and market-data routes a
 - Production CORS allows the single configured `FRONTEND_URL`; local development allows the two documented localhost Vite origins. Credentialed requests are disabled because the API reads a Bearer header and never a cookie.
 - Every response carries `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`.
 
-**Rate limits** — all return `429` with a `Retry-After` header.
+**Rate limits:** all return `429` with a `Retry-After` header.
 
 | Scope | Limit | Keyed on |
 |---|---|---|
