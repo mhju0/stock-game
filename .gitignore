@@ -81,3 +81,7 @@ SECURITY_AUDIT.md
 # Supabase local-only files
 supabase/.branches/
 supabase/.temp/
+
+# Private agent memory and write locks (shared by Claude Code and Codex)
+.memory/
+.locks/

@@ -657,7 +657,7 @@ production access; none should be silently "fixed" during maintenance.
 
 ## 2026-09-05 — Maintenance and portable project knowledge
 
-### D-33 · Preserve project knowledge in Git — `ACTIVE`
+### D-33 · Preserve project knowledge in Git — `ACTIVE` (handoff part superseded by D-36)
 
 **Decided:** Track `docs/DECISIONS.md`, `docs/ROADMAP.md`, and
 `docs/PROJECT_HANDOFF.md` so another checkout can recover decisions, scope,
@@ -721,3 +721,14 @@ on the same machine went from 50.23 s (275 tests) to 27.10 s (278 tests); this i
 local observation, not a CI timing guarantee. CI no longer repeats smoke tests
 already present in full suites. Playwright owns its server, accepts `E2E_PORT`,
 and fixes the mock API URL. Deployment builds fail early without `VITE_API_URL`.
+
+
+## 2026-10-28 — Agent memory
+
+### D-36 · Agent handoff moves out of Git — `ACTIVE` (supersedes the handoff part of D-33)
+
+**Decided (owner, 2026-10-28):** Agent session handoff and agent-environment notes
+live in a private, git-ignored `.memory/` folder shared by the coding agents.
+`docs/PROJECT_HANDOFF.md` is no longer tracked. `docs/DECISIONS.md`,
+`docs/ROADMAP.md`, `PROJECT_STATUS.md`, and `MAINTENANCE.md` stay tracked as the
+public engineering record.
