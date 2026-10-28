@@ -68,8 +68,6 @@ lerna-debug.log*
 .aider*
 .copilot/
 .windsurf/
-AGENTS.md
-CLAUDE.md
 GEMINI.md
 .github/copilot-instructions.md
 docs/agents/
