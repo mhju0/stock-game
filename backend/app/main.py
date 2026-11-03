@@ -90,7 +90,10 @@ async def snapshot_loop():
             finally:
                 db.close()
 
-        await asyncio.to_thread(_take_all_snapshots)
+        try:
+            await asyncio.to_thread(_take_all_snapshots)
+        except Exception:
+            logger.exception("Snapshot batch failed; retrying on the next scheduled run")
 
 
 async def market_refresh_loop():

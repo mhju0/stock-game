@@ -16,6 +16,9 @@ TickerQuery = Annotated[str, Query(pattern=TICKER_PATTERN)]
 # hundreds of digits; multiplying that by a float price raises OverflowError in
 # the handler. Set far above any share count a real portfolio could hold.
 MAX_TRADE_QUANTITY = 1_000_000_000
+MAX_DURATION_DAYS = 3650
+MAX_STARTING_KRW = 1_000_000_000_000
+MAX_STARTING_USD = 1_000_000_000
 
 
 class BuyRequest(BaseModel):
@@ -35,17 +38,17 @@ class ExchangeRequest(BaseModel):
 
 
 class NewGameRequest(BaseModel):
-    starting_balance_krw: float = Field(default=10_000_000, gt=0, allow_inf_nan=False)
-    duration_days: int = Field(default=90, gt=0)
+    starting_balance_krw: float = Field(default=10_000_000, gt=0, le=MAX_STARTING_KRW, allow_inf_nan=False)
+    duration_days: int = Field(default=90, gt=0, le=MAX_DURATION_DAYS)
 
 
 class GameSessionCreateRequest(BaseModel):
-    title: str | None = None
-    duration_days: int = Field(default=90, gt=0)
-    starting_balance_krw: float = Field(default=10_000_000, gt=0, allow_inf_nan=False)
-    starting_balance_usd: float = Field(default=0.0, ge=0, allow_inf_nan=False)
+    title: str | None = Field(default=None, max_length=80)
+    duration_days: int = Field(default=90, gt=0, le=MAX_DURATION_DAYS)
+    starting_balance_krw: float = Field(default=10_000_000, gt=0, le=MAX_STARTING_KRW, allow_inf_nan=False)
+    starting_balance_usd: float = Field(default=0.0, ge=0, le=MAX_STARTING_USD, allow_inf_nan=False)
 
 
 class GameSessionUpdateRequest(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, max_length=80)
     status: str | None = None

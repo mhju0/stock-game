@@ -1,12 +1,16 @@
 import logging
+import math
 
 from sqlalchemy.orm import Session
-from app.models import User, Holding, PortfolioSnapshot, GameSession
+from app.models import User, Holding, PortfolioSnapshot
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
     ensure_session_cash_initialized,
     get_active_sessions,
     get_current_session,
+    get_owned_session,
+    lock_user_for_mutation,
+    resolve_session_lifecycle_state,
 )
 from app.services.portfolio_compatibility import resolve_legacy_preferred_session_id
 
@@ -29,6 +33,10 @@ def _create_snapshot(
     exchange_rate: float,
     game_session_id: int | None = None,
 ) -> PortfolioSnapshot:
+    if not all(math.isfinite(value) for value in (
+        total_value_krw, total_holdings_value_krw, cash_krw, cash_usd, exchange_rate
+    )) or exchange_rate <= 0:
+        raise ValueError("Invalid market price valuation")
     snapshot = PortfolioSnapshot(
         user_id=user_id,
         game_session_id=game_session_id,
@@ -46,7 +54,7 @@ def _create_snapshot(
 def _take_legacy_user_snapshot(db: Session, user: User) -> PortfolioSnapshot:
     rate = get_exchange_rate()
 
-    holdings = db.query(Holding).filter(Holding.user_id == user.id).all()
+    holdings = db.query(Holding).filter(Holding.user_id == user.id).populate_existing().all()
     prices = get_prices_for_tickers([h.ticker for h in holdings])
     holdings_value_krw = compute_holdings_value_krw(holdings, rate, prices)
     total_value_krw = user.balance_krw + (user.balance_usd * rate) + holdings_value_krw
@@ -69,29 +77,23 @@ def take_session_snapshot(db: Session, user_id: int, game_session_id: int) -> Po
     GameSession.cash_* is still null. Holdings are scoped by both user_id and
     game_session_id so multiple game sessions cannot bleed into each other.
     """
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise ValueError("User not found")
-
-    session = (
-        db.query(GameSession)
-        .filter(GameSession.id == game_session_id, GameSession.user_id == user_id)
-        .first()
-    )
-    if not session:
-        raise ValueError("Game session not found")
-
+    user = lock_user_for_mutation(db, user_id)
+    session = get_owned_session(db, user, game_session_id, for_update=True)
+    if resolve_session_lifecycle_state(session) != "active":
+        raise ValueError("Cannot snapshot an ended game session")
     ensure_session_cash_initialized(session, user)
     rate = get_exchange_rate()
 
     holdings = (
         db.query(Holding)
         .filter(Holding.user_id == user_id, Holding.game_session_id == game_session_id)
-        .all()
+        .populate_existing().all()
     )
     prices = get_prices_for_tickers([h.ticker for h in holdings])
     holdings_value_krw = compute_holdings_value_krw(holdings, rate, prices)
     total_value_krw = compute_session_total_value_krw(session, holdings, rate, prices)
+    if resolve_session_lifecycle_state(session) != "active":
+        raise ValueError("Cannot snapshot an ended game session")
 
     return _create_snapshot(
         db,
@@ -113,10 +115,7 @@ def take_snapshot(db: Session, user_id: int) -> PortfolioSnapshot:
     paths have created unscoped holdings, it preserves the legacy user-level
     snapshot behavior for compatibility.
     """
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise ValueError("User not found")
-
+    user = lock_user_for_mutation(db, user_id)
     session = get_current_session(db, user)
     game_session_id = resolve_legacy_preferred_session_id(
         db,

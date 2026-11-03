@@ -62,5 +62,5 @@ def test_session_list_has_bounded_queries_and_deduplicates_quotes(
         assert session['current_value_krw'] == 1000 + (int(session['title']) + 1) * 100 * 1300
         assert session['last_updated_at'] == (now - timedelta(days=1)).isoformat()
     print(f'{count} sessions: {len(statements)} SELECTs, {price.call_count} quote lookups')
-    assert len(statements) <= (5 if missing_cash else 4)  # authentication, sessions, holdings, latest timestamps
+    assert len(statements) <= (7 if missing_cash else 4)  # nullable cash also locks user and sessions, then reloads after commit
     price.assert_called_once_with('AAPL')
