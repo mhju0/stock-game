@@ -126,4 +126,3 @@ test('creates and manages a first game through the public authentication flow', 
   expect(authRequests.map((request) => request.path)).toEqual(['/auth/register', '/auth/login', '/auth/login'])
   expect(authRequests.every((request) => request.authorization === undefined)).toBe(true)
 })
-
