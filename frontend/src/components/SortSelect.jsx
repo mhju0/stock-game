@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next'
 const DEFAULT_OPTIONS = [
   ['alloc_desc', 'sort.allocDesc'],
   ['alloc_asc', 'sort.allocAsc'],
-  ['mcap_desc', 'sort.mcapDesc'],
-  ['mcap_asc', 'sort.mcapAsc'],
   ['name_asc', 'sort.nameAsc'],
   ['name_desc', 'sort.nameDesc'],
   ['value_desc', 'sort.valueDesc'],

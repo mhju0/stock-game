@@ -1,7 +1,11 @@
 export function getSessionIdFromPath(pathname) {
   const match = pathname.match(/^\/games\/([^/]+)/)
   if (!match || match[1] === 'new') return null
-  return decodeURIComponent(match[1])
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return null
+  }
 }
 
 export function gamePath(sessionId, section = 'status') {

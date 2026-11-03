@@ -120,6 +120,7 @@ function AppLayout() {
   const selectedSession = selectedSessionQuery.data?.session || null;
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     document.getElementById("main-content")?.focus({ preventScroll: true });
   }, [location.pathname]);
 
@@ -234,7 +235,7 @@ function AppLayout() {
         </header>
 
         <main id="main-content" className="main" tabIndex={-1}>
-          <ErrorBoundary>
+          <ErrorBoundary key={location.pathname}>
             <Suspense fallback={<RouteLoading />}>
               <div className="route-stage" key={location.pathname}>
                 <Routes>

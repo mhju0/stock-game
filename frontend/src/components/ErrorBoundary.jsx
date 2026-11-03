@@ -18,8 +18,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="card" style={{ textAlign: 'center', padding: 40, margin: 24 }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+        <div className="card" role="alert" style={{ textAlign: 'center', padding: 40, margin: 24 }}>
           <p style={{ color: 'var(--negative)', marginBottom: 12, fontSize: 16, fontWeight: 600 }}>
             {i18n.t('common.pageErrorTitle')}
           </p>

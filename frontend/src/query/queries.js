@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, apiFetchOrThrow, apiDelete } from '../api'
+import { apiFetchOrThrow } from '../api'
 import {
   compatibilityPortfolioAccess,
   usePortfolioAccess,
@@ -249,13 +249,9 @@ export function useWatchlistToggleMutation(userId) {
   return useMutation({
     mutationFn: async ({ ticker, isInWatchlist }) => {
       if (isInWatchlist) {
-        const res = await apiDelete(`/watchlist/remove/${ticker}`)
-        if (!res) throw new Error('remove failed')
-        return res
+        return apiFetchOrThrow(`/watchlist/remove/${ticker}`, { method: 'DELETE' })
       }
-      const res = await apiFetch(`/watchlist/add?ticker=${ticker}`, { method: 'POST' })
-      if (!res) throw new Error('add failed')
-      return res
+      return apiFetchOrThrow(`/watchlist/add?ticker=${ticker}`, { method: 'POST' })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.watchlist(userId) })

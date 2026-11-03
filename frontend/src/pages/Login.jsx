@@ -74,7 +74,13 @@ function Login() {
 
       <div className="auth-demo-note">
         <span className="status-dot status-dot-active" />
-        <span>{t('auth.demoHint')}</span>
+        <div>
+          <div>{t('auth.demoAccount')}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 12, rowGap: 4 }}>
+            <span style={{ whiteSpace: 'nowrap' }}>{t('auth.username')}: demo</span>
+            <span style={{ whiteSpace: 'nowrap' }}>{t('auth.password')}: demo1234</span>
+          </div>
+        </div>
       </div>
     </AuthShell>
   )

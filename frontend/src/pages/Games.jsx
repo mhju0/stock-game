@@ -27,15 +27,14 @@ const DURATION_PRESETS = [
 ]
 
 function parseIntegerInput(value) {
-  const normalized = String(value).replace(/[^\d]/g, '')
-  if (!normalized) return NaN
-  return Number(normalized)
+  const normalized = String(value).trim()
+  if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(normalized)) return NaN
+  return Number(normalized.replaceAll(',', ''))
 }
 
 function formatIntegerInput(value) {
-  const normalized = String(value).replace(/[^\d]/g, '')
-  if (!normalized) return ''
-  return Number(normalized).toLocaleString('ko-KR')
+  const number = parseIntegerInput(value)
+  return Number.isFinite(number) ? number.toLocaleString('ko-KR') : String(value)
 }
 
 function normalizeSetupDefaults(defaults) {
@@ -151,8 +150,8 @@ function CreateGameModal({ t, initialSetup, onClose, onCreate, onCreated }) {
   const titleTooLong = title.trim().length > 80
   const startingValue = parseIntegerInput(cashInput)
   const durationValue = parseIntegerInput(durationInput)
-  const invalidStartingCash = !Number.isFinite(startingValue) || startingValue <= 0
-  const invalidDuration = !Number.isFinite(durationValue) || durationValue <= 0
+  const invalidStartingCash = !Number.isSafeInteger(startingValue) || startingValue <= 0 || startingValue > 1_000_000_000_000
+  const invalidDuration = !Number.isSafeInteger(durationValue) || durationValue <= 0 || durationValue > 3650
   const disabled = creating || titleTooLong || invalidStartingCash || invalidDuration
 
   const selectCashPreset = (value) => {
@@ -288,7 +287,7 @@ function CreateGameModal({ t, initialSetup, onClose, onCreate, onCreated }) {
                 className="input"
                 inputMode="numeric"
                 value={durationInput}
-                onChange={(event) => setDurationInput(String(parseIntegerInput(event.target.value) || ''))}
+                onChange={(event) => setDurationInput(event.target.value)}
                 placeholder="30"
               />
             </label>
@@ -346,15 +345,17 @@ function GameSessionCard({ session, locale, onOpen, onManage, t }) {
 
       <div className="metric-grid game-card-metrics">
         <div>
-          <div className="metric-label">{t('games.currentValue')}</div>
+          <div className="metric-label">{t(isPlayable ? 'games.currentValue' : session.valuation_source === 'cash_only_session_balance' ? 'game.cashOnlyValue' : 'game.endingValue')}</div>
           <div className="game-card-metric-value">
-            {formatMoney(session.current_value_krw, 'KRW')}
+            {Number.isFinite(session.current_value_krw) ? formatMoney(session.current_value_krw, 'KRW') : t('common.unavailable')}
           </div>
+          {!isPlayable && session.valuation_as_of && <time className="game-card-muted" dateTime={session.valuation_as_of}>{new Date(session.valuation_as_of).toLocaleString(locale)}</time>}
+          {!isPlayable && session.valuation_uses_live_fx && <p className="game-card-muted">{t('game.liveFxFallback')}</p>}
         </div>
         <div>
           <div className="metric-label">{t('games.return')}</div>
-          <div className={session.current_return_pct >= 0 ? 'positive game-card-metric-value' : 'negative game-card-metric-value'}>
-            {session.current_return_pct >= 0 ? '+' : ''}{session.current_return_pct}%
+          <div className={`game-card-metric-value ${Number.isFinite(session.current_return_pct) ? session.current_return_pct >= 0 ? 'positive' : 'negative' : ''}`}>
+            {Number.isFinite(session.current_return_pct) ? `${session.current_return_pct >= 0 ? '+' : ''}${session.current_return_pct}%` : t('common.unavailable')}
           </div>
         </div>
         <div>
@@ -498,7 +499,7 @@ function GameManagementModal({ session, locale, t, onClose, onSave, onUpdated, o
             {formatMoney(session.starting_balance_krw, 'KRW')}
           </DetailItem>
           <DetailItem label={t('games.currentValue')}>
-            {formatMoney(session.current_value_krw, 'KRW')}
+            {Number.isFinite(session.current_value_krw) ? formatMoney(session.current_value_krw, 'KRW') : t('common.unavailable')}
           </DetailItem>
         </div>
 
@@ -716,7 +717,7 @@ function Games({ startSetup = false }) {
           <p className="page-subtitle">
             {t('games.selectBody')}
           </p>
-          <div className="page-header-meta" aria-label={`${activeSessions.length} / ${otherSessions.length}`}>
+          <div className="page-header-meta" role="group" aria-label={`${activeSessions.length} / ${otherSessions.length}`}>
             <span><span className="status-dot status-dot-active" />{t('games.activeCount', { count: activeSessions.length })}</span>
             <span>{t('games.historyCount', { count: otherSessions.length })}</span>
           </div>

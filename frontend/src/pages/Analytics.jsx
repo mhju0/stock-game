@@ -35,8 +35,9 @@ function Analytics() {
   const [tradeTicker, setTradeTicker] = useState(null)
   const [displayCurrency, setDisplayCurrency] = useState('KRW')
 
-  const { data: accountData } = useAccountQuery()
-  const exchangeRate = accountData?.exchange_rate || 1350
+  const accountQuery = useAccountQuery()
+  const accountData = accountQuery.data
+  const exchangeRate = accountData?.exchange_rate
 
   const performanceQuery = useAnalyticsPerformanceQuery()
   const byStockQuery = useAnalyticsByStockQuery()
@@ -80,7 +81,9 @@ function Analytics() {
   }), [filtered, i18n.language])
 
   const formatKRW = (v) => formatMoney(v, 'KRW')
-  const fmtDisplay = (v) => displayCurrency === 'KRW' ? formatMoney(v, 'KRW') : formatMoney(v / exchangeRate, 'USD')
+  const fmtDisplay = (v) => !Number.isFinite(v) || (displayCurrency === 'USD' && !(exchangeRate > 0))
+    ? t('common.unavailable')
+    : displayCurrency === 'KRW' ? formatMoney(v, 'KRW') : formatMoney(v / exchangeRate, 'USD')
   // Dynamic Y range: always keep the 0% break-even line on the axis, then fit
   // the data around it so the axis grows with actual gains/losses instead of
   // pinning the line flat. A 2%p floor keeps tiny intraday moves visually calm.
@@ -118,8 +121,6 @@ function Analytics() {
       case 'value_asc': return a.total_value_krw - b.total_value_krw
       case 'pnl_desc': return b.unrealized_pnl_pct - a.unrealized_pnl_pct
       case 'pnl_asc': return a.unrealized_pnl_pct - b.unrealized_pnl_pct
-      case 'mcap_desc': return (b.market_cap || 0) - (a.market_cap || 0)
-      case 'mcap_asc': return (a.market_cap || 0) - (b.market_cap || 0)
       default: return 0
     }
   }), [byStock, stockSort, i18n.language])
@@ -195,7 +196,7 @@ function Analytics() {
     { label: t('nav.watchlist'), to: gamePath(sessionId, 'watchlist') },
   ]
 
-  const analyticsQueries = [performanceQuery, byStockQuery, bySectorQuery, realizedQuery]
+  const analyticsQueries = [accountQuery, performanceQuery, byStockQuery, bySectorQuery, realizedQuery]
   const analyticsError = analyticsQueries.find((query) => query.isError)?.error
   const refetchAnalytics = () => {
     for (const query of analyticsQueries) query.refetch()
@@ -207,12 +208,13 @@ function Analytics() {
   if (
     analyticsError ||
     !performance ||
+    performance.valuation_available === false ||
     performance.starting_value === undefined ||
     !Array.isArray(performance.snapshots)
   ) return (
     <div className="card" style={{ textAlign: 'center', padding: 40 }}>
       <p style={{ color: 'var(--negative)', marginBottom: 12 }}>
-        {analyticsError?.message || t('common.loadError')}
+        {performance?.valuation_available === false ? t('common.valuationUnavailable') : analyticsError?.message || t('common.loadError')}
       </p>
       <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>{t('analytics.retryBody')}</p>
       <button type="button" className="btn btn-primary" onClick={refetchAnalytics}>
@@ -230,6 +232,8 @@ function Analytics() {
           <p className="page-subtitle">{t('analytics.subtitle')}</p>
         </div>
       </div>
+
+      {tradeDisabledReason && <p className="page-subtitle">{t('game.endedReviewNote')}</p>}
 
       <div className="summary-card">
         <div className="summary-title">{t('analytics.summaryTitle')}</div>
@@ -256,7 +260,7 @@ function Analytics() {
             <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
             <div style={{ display: 'flex', gap: 2 }}>
               {['KRW', 'USD'].map(c => (
-                <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
+                <button key={c} aria-pressed={displayCurrency === c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
                   fontSize: 11, padding: '2px 8px', borderRadius: 6,
                   lineHeight: '16px',
                 }}>{c === 'KRW' ? '₩' : '$'}</button>
@@ -277,8 +281,12 @@ function Analytics() {
         {realized && (
           <div className="metric-card">
             <div className="metric-label">{t("analytics.realizedPnl")}</div>
-            <div className={`metric-value ${realized.total_realized_pnl >= 0 ? 'positive' : 'negative'}`}>
-              {realized.total_realized_pnl >= 0 ? '+' : ''}{fmtDisplay(realized.total_realized_pnl)}
+            <div className="metric-value">
+              {realized.realized_pnl_available !== false && Object.keys(realized.realized_pnl_by_currency || {}).length > 0
+                ? Object.entries(realized.realized_pnl_by_currency).map(([currency, value]) => (
+                  <div key={currency} className={value >= 0 ? 'positive' : 'negative'}>{value >= 0 ? '+' : ''}{formatMoney(value, currency)}</div>
+                ))
+                : realized.realized_pnl_available && realized.total_trades === 0 ? t('analytics.noSales') : t('common.unavailable')}
             </div>
           </div>
         )}
@@ -308,6 +316,7 @@ function Analytics() {
             ))}
           </div>
         </div>
+        {tradeDisabledReason && <p className="page-subtitle">{t('game.endedChartNote')}</p>}
 
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{t('analytics.returnOverTime')}</div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13 }}>
@@ -424,14 +433,12 @@ function Analytics() {
                     type="button"
                     className="interactive-card-button"
                     onClick={() => setTradeTicker(s.ticker)}
-                    aria-label={`${name} ${t('stock.openTrade')}`}
+                    aria-label={`${name}, ${s.unrealized_pnl_pct}%, ${formatMoney(s.unrealized_pnl, s.currency)}. ${t(tradeDisabledReason ? 'stock.viewDetails' : 'stock.openTrade')}`}
                     style={{
                     background: 'var(--bg-secondary)', borderRadius: 14, padding: 16,
                     cursor: 'pointer', transition: 'transform 0.1s',
                     borderLeft: `4px solid ${isPositive ? 'var(--positive)' : 'var(--negative)'}`,
                   }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                       <div>
@@ -476,7 +483,7 @@ function Analytics() {
                     type="button"
                     className="interactive-row"
                     onClick={() => setTradeTicker(s.ticker)}
-                    aria-label={`${name} ${t('stock.openTrade')}`}
+                    aria-label={`${name}, ${s.unrealized_pnl_pct}%, ${formatMoney(s.unrealized_pnl, s.currency)}. ${t(tradeDisabledReason ? 'stock.viewDetails' : 'stock.openTrade')}`}
                     style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '14px 0', borderBottom: '1px solid var(--border-light)',
@@ -518,6 +525,7 @@ function Analytics() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
+                  isAnimationActive={false}
                   data={bySector}
                   dataKey="allocation_pct"
                   nameKey="sector"

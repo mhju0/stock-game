@@ -72,6 +72,19 @@ describe('throwing API requests', () => {
     })
   })
 
+  it('keeps a failed public login independent of a stale stored token', async () => {
+    const removeItem = vi.fn()
+    vi.stubGlobal('localStorage', { getItem: () => 'stale-token', removeItem })
+    const fetch = vi.fn().mockResolvedValue({ ok: false, status: 401,
+      json: async () => ({ detail: 'Invalid username or password' }) })
+    vi.stubGlobal('fetch', fetch)
+    const error = vi.fn()
+    await apiFetch('/auth/login', {}, error)
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBeUndefined()
+    expect(error).toHaveBeenCalledWith('auth.invalidCredentials', { status: 401, retryable: false })
+    expect(removeItem).not.toHaveBeenCalled()
+  })
+
   it('logs response paths as structured data instead of format strings', async () => {
     vi.stubGlobal('localStorage', {
       getItem: vi.fn().mockReturnValue(null),

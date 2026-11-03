@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react';
-import { getCurrentUserId, removeToken } from '../auth';
+import { useState, useCallback, useEffect } from 'react';
+import { getCurrentUserId, removeToken, subscribeToTokenChanges } from '../auth';
 import { UserContext } from './userContext';
 
 export function UserProvider({ children }) {
   const [currentUserId, setCurrentUserId] = useState(() => getCurrentUserId());
+
+  useEffect(() => subscribeToTokenChanges(() => window.location.reload()), [])
 
   const logout = useCallback(() => {
     removeToken();

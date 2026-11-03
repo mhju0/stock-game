@@ -69,7 +69,8 @@ function getResponseErrorMessage(data, status, path) {
 export async function apiFetch(path, options = {}, onError = null) {
   try {
     const headers = { ...options.headers }
-    const token = getToken()
+    const publicAuth = path === '/auth/login' || path === '/auth/register'
+    const token = publicAuth ? null : getToken()
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }

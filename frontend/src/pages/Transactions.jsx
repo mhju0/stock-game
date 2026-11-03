@@ -153,9 +153,9 @@ function Transactions() {
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{fmt(tx.total_amount)}</div>
                 )}
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{date}</div>
-                {tx.realized_pnl !== 0 && (
-                  <div style={{ fontSize: 12, color: tx.realized_pnl > 0 ? 'var(--positive)' : 'var(--negative)' }}>
-                    {tx.realized_pnl > 0 ? '+' : ''}{fmt(Math.abs(tx.realized_pnl))}
+                {tx.transaction_type === 'SELL' && tx.realized_pnl !== 0 && (
+                  <div style={{ fontSize: 12, color: Number.isFinite(tx.realized_pnl) ? tx.realized_pnl > 0 ? 'var(--positive)' : 'var(--negative)' : undefined }}>
+                    {Number.isFinite(tx.realized_pnl) ? `${tx.realized_pnl > 0 ? '+' : ''}${fmt(tx.realized_pnl)}` : t('common.unavailable')}
                   </div>
                 )}
               </div>
