@@ -11,6 +11,28 @@ describe('throwing API requests', () => {
     vi.unstubAllGlobals()
   })
 
+  it.each([false, true])('only clears the token that received a 401 (replacement: %s)', async (replaced) => {
+    let token = 'request-token'
+    const removeItem = vi.fn(() => { token = null })
+    vi.stubGlobal('localStorage', { getItem: () => token, removeItem })
+    vi.stubGlobal('window', { location: { href: '/games' } })
+    let finishRequest
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => { finishRequest = resolve })))
+    const request = apiFetch('/game/sessions/42')
+    if (replaced) token = 'replacement-token'
+    finishRequest({ status: 401, ok: false })
+    await expect(request).resolves.toBeNull()
+    if (replaced) {
+      expect(token).toBe('replacement-token')
+      expect(removeItem).not.toHaveBeenCalled()
+      expect(window.location.href).toBe('/games')
+    } else {
+      expect(token).toBeNull()
+      expect(removeItem).toHaveBeenCalledOnce()
+      expect(window.location.href).toBe('/login')
+    }
+  })
+
   it('rejects with the backend message and retry metadata', async () => {
     vi.stubGlobal('localStorage', {
       getItem: vi.fn().mockReturnValue(null),

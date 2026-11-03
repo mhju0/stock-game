@@ -111,6 +111,8 @@ function TradeModal({
 
   const buy = async () => {
     if (submitting) return false;
+    window.clearTimeout(completionTimerRef.current)
+    completionTimerRef.current = null
     setMessage("");
     setIsSuccess(false);
     setSubmitting(true);
@@ -135,6 +137,8 @@ function TradeModal({
 
   const sell = async () => {
     if (submitting) return false;
+    window.clearTimeout(completionTimerRef.current)
+    completionTimerRef.current = null
     setMessage("");
     setIsSuccess(false);
     setSubmitting(true);

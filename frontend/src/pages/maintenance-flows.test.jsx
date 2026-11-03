@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { StrictMode } from 'react'
+import { StrictMode, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiFetch } from '../api'
 import { UserContext } from '../context/userContext'
@@ -291,6 +291,38 @@ describe('maintenance flow regressions', () => {
     view.unmount()
     act(() => vi.runAllTimers())
     expect(complete).not.toHaveBeenCalled()
+  })
+
+  it.each(['buy', 'sell'])('keeps a second pending %s open past the first order completion timer', async (type) => {
+    state.account = { ...state.account, balance_usd: 1000 }
+    state.holdings = [{ ...holding, quantity: 3 }]
+    const secondOrder = deferred()
+    state.trade.mockReset().mockResolvedValueOnce({ status: 'success' }).mockReturnValueOnce(secondOrder.promise)
+    const complete = vi.fn()
+    function Ticket() {
+      const [open, setOpen] = useState(true)
+      return open ? <TradeModal ticker="AAPL" onClose={vi.fn()} onComplete={() => { complete(); setOpen(false) }} /> : null
+    }
+    renderPage(Ticket)
+    await screen.findByRole('dialog')
+    vi.useFakeTimers()
+    fireEvent.click(screen.getByText(`stock.${type}`))
+    await act(async () => fireEvent.click(screen.getByText('common.confirm')))
+    expect(state.trade).toHaveBeenCalledTimes(1)
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.click(screen.getByText(`stock.${type}`))
+    await act(async () => fireEvent.click(screen.getByText('common.confirm')))
+    expect(state.trade).toHaveBeenCalledTimes(2)
+    act(() => vi.advanceTimersByTime(500))
+    expect(complete).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'common.loading' }).disabled).toBe(true)
+    await act(async () => secondOrder.resolve({ status: 'success' }))
+    act(() => vi.advanceTimersByTime(799))
+    expect(complete).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(1))
+    expect(complete).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('keeps active realized profit currencies separate and disables pie animation', () => {

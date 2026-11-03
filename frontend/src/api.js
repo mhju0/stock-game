@@ -78,8 +78,10 @@ export async function apiFetch(path, options = {}, onError = null) {
     const res = await fetch(`${API}${path}`, { ...options, headers })
 
     if (res.status === 401 && token) {
-      removeToken()
-      window.location.href = '/login'
+      if (getToken() === token) {
+        removeToken()
+        window.location.href = '/login'
+      }
       return null
     }
 
