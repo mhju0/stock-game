@@ -1,7 +1,8 @@
 # Project Status
 
-- Last verified: 2026-09-04
-- Current release: [v1.1.0](https://github.com/mhju0/stock-game/releases/tag/v1.1.0)
+- Last verified: 2026-11-04
+- Latest tagged release: [v1.1.0](https://github.com/mhju0/stock-game/releases/tag/v1.1.0)
+- Latest maintenance delivery: [PR #54](https://github.com/mhju0/stock-game/pull/54), code commit `7b7d551a98a6fdfee90f54940dc96efe5e43bbd8`
 - Release delivery: [PR #30](https://github.com/mhju0/stock-game/pull/30) merged to `main`; Vercel production deployment verified
 - Architecture and audit synchronization: [PR #34](https://github.com/mhju0/stock-game/pull/34) merged to `main`; Vercel production deployment verified
 - Post-merge security-state record: [PR #35](https://github.com/mhju0/stock-game/pull/35) merged to `main`; CI, CodeQL, and Vercel production deployment verified
@@ -12,7 +13,33 @@ This is the authoritative point-in-time record for the maintained project.
 their old line numbers and unresolved findings must be rechecked against current
 code before being acted on.
 
-## Current snapshot
+## Latest verification — 2026-11-04
+
+The owner authorized a comprehensive quality audit, accepted repairs, independent
+review, and production redeployment. [D-38](docs/DECISIONS.md) records the bounded
+engineering choices. Historical snapshots below remain dated evidence.
+
+| Area | Verified state |
+|---|---|
+| Source and review | `[Verified]` PR #54 merged after required CI and CodeQL checks passed. Independent review approved frozen candidate `f8b18ab`; the merge preserves that code. Earlier review rejected and then rechecked concurrent cache eviction, expiry during remote lookups, and an old ticket timer closing a subsequent order. |
+| Local verification | `[Verified]` 356 backend tests, including 14 real PostgreSQL concurrency cases; 107 frontend unit tests; and 21 browser flows passed. Lint, production build, compileall, and diff check passed. Main CI [41675344811](https://github.com/mhju0/stock-game/actions/runs/41675344811) also passed. |
+| Render | `[Verified]` Deploy `dep-dbl0pg15efls73f60060` is live for code commit `7b7d551`; it finished at 2026-11-03 16:34:37 UTC. Production API is `https://stock-game-6411.onrender.com`. No schema migration or historical user-data rewrite was performed. |
+| Vercel | `[Verified]` Deployment `dpl_42M39fWV2J3jzPWLsycxKUEp6JHW` is READY for the same code commit and owns `https://stock-game-gray.vercel.app`. Canonical HTML, JS, and CSS returned 200; compiled JS uses the production Render origin and the CSP allows that origin. |
+| Connected production API | `[Verified]` 43 real requests passed: authentication, game creation, rejected oversized/invalid inputs, US/Korean buy/sell, FX, currency-separated realized returns, saved-result/list agreement, ended-game rejection, cross-user access denial, and deletion isolation. Production QA mutated only two newly created disposable accounts; both were deleted and their old tokens rejected. |
+| Interface evidence | `[Verified]` Frontend tests and browser fixtures exercise onboarding, create/rename/archive/delete, trade review, error recovery, cross-tab auth changes, all supported sorts, dialog layering/keyboard behavior, reduced motion, and narrow layouts. Independent image review covered English dark/light and Korean light mobile screens. 28 Axe scans reported zero violations; 74 SVG/image-node or symbol contrast incomplete items received computed-color checks, minimum 5.823:1. This is scoped evidence rather than accessibility certification. |
+| Production GUI gap | `[Unknown]` Post-deployment Chrome click-through could not run: computer use returned `cgWindowNotFound`, and Chrome/in-app browser providers were unavailable. Pre-change live Chrome observations, local rendered fixtures, static deployed assets, and real API checks are distinct evidence. Actual-device keyboard/VoiceOver/Safari and a complete final 200% live review remain unverified. |
+| Dependencies and scanning | `[Verified]` Final npm audit reports 0 vulnerabilities. Gitleaks scanned 208 commits with 0 leaks. The former frontend Dependabot alerts closed; one critical python-jose alert remains open. Pip audit retains two unique no-fix advisory families, python-jose and ecdsa. `[Inferred]` The current private-symmetric-secret/HS256-only contract lacks their documented exploit prerequisites; `[Unknown]` production secret entropy remains unverified. Alerts were not dismissed to manufacture a clean result. |
+| Operations | `[Verified]` Post-deploy docs/redoc/openapi return 404; unauthorized sessions return 401; oversized JSON returns 413 before auth work with security headers; untrusted-origin CORS is denied. The Render error-log query from deployment completion through 2026-11-03 16:40:20 UTC returned no entries. `MALLOC_ARENA_MAX=2` was submitted as an additive environment merge preserving other variables. `[Unknown]` Runtime environment readback and allocator/RSS improvement were not measured. |
+| Performance limits | `[Verified]` Local production main JS is 119.29KB gzip (previously 118.57KB), shared chart 101.88KB (101.99KB), CSS 8.89KB (9.20KB). Normal session lists retain bounded 4-SELECT behavior; nullable-cash backfill uses up to 7 SELECTs with fresh locks. Several production trade writes took approximately 4.4–4.6 seconds in the smoke run. These observations are not load-test results or an SLO; free-host/provider latency remains a limitation. |
+| Database metadata | `[Verified]` Read-only Supabase catalog inspection found all six application tables with RLS enabled, no policies, FORCE RLS disabled, and owner `postgres`. Anon CRUD and authenticated SELECT grants exist. `[Inferred]` Those grants alone do not expose rows: policy-free RLS denies normal anon/authenticated access, while owners can bypass it. `[Unknown]` The actual Render database connection role remains unverified. No policies, grants, indexes, or schema were changed. |
+| Database follow-up | `[Verified]` Supabase advisors report three foreign keys without covering indexes: `portfolio_snapshots.game_session_id`, `transactions.game_session_id`, and `watchlist.user_id`. These require a separately approved, measured migration; unused-index notices alone do not justify dropping existing indexes. The server reports PostgreSQL 17.6; the platform [17.11 security-update notice](https://supabase.com/changelog/postgres-15-19-17-11-breaking-changes) warrants a separately planned backup/compatibility/upgrade phase. Affected extensions and project-specific CVE applicability were not established. See the [RLS advisory](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) and [index advisory](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys). |
+
+Existing open decisions remain: stateless seven-day JWT without revocation or
+password change, username timing/enumeration, float money storage, database role
+verification, and a separately approved RLS-policy phase. No backup-restore drill
+was performed. No new feature, ranking, or paid service was added.
+
+## Historical snapshot — 2026-09-04
 
 | Area | Verified state |
 |---|---|
