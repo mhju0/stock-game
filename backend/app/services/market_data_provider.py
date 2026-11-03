@@ -50,6 +50,7 @@ _market_cache: dict[str, dict[str, Any]] = {
 }
 
 _yf_semaphore = threading.Semaphore(4)
+_cache_store_lock = threading.Lock()
 
 MARKET_OPEN_CONFIG = {
     "US": {"tz": ZoneInfo("America/New_York"), "open": dt_time(9, 30)},
@@ -65,9 +66,10 @@ def _is_fresh(entry: dict, now: float, ttl: float) -> bool:
 
 def _store(cache: dict, key: str, value: Any, now: float) -> Any:
     # Plain dicts preserve insertion order, so the first key is the oldest.
-    while len(cache) >= MAX_CACHE_KEYS:
-        cache.pop(next(iter(cache)))
-    cache[key] = {"value": value, "ts": now}
+    with _cache_store_lock:
+        while len(cache) >= MAX_CACHE_KEYS:
+            cache.pop(next(iter(cache)))
+        cache[key] = {"value": value, "ts": now}
     return value
 
 

@@ -1,16 +1,19 @@
 import logging
 import math
 
+from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import GameSession, Holding, Transaction, User
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
+    NON_TRADEABLE_STATES,
     ensure_session_cash_initialized,
     get_current_session,
     get_tradeable_session,
     lock_user_for_mutation,
+    resolve_session_lifecycle_state,
     sync_legacy_user_balance,
 )
 from app.services.snapshot_service import take_session_snapshot, take_snapshot
@@ -69,6 +72,9 @@ class _LegacyPortfolioTradeAdapter:
         self.db = db
         self.user = user
 
+    def ensure_tradeable(self) -> None:
+        return None
+
     def prepare_cash(self) -> None:
         # Legacy buy/sell behavior does not normalize nullable balances.
         return None
@@ -126,6 +132,13 @@ class _SessionPortfolioTradeAdapter:
         self.user = user
         self.session = session
         self.session_id = session.id
+
+    def ensure_tradeable(self) -> None:
+        state = resolve_session_lifecycle_state(self.session)
+        if state == "expired":
+            raise HTTPException(status_code=400, detail="Game session has expired")
+        if state in NON_TRADEABLE_STATES:
+            raise HTTPException(status_code=400, detail="Game session is not tradeable")
 
     def prepare_cash(self) -> None:
         ensure_session_cash_initialized(self.session, self.user)
@@ -313,6 +326,7 @@ def _execute_sell(storage, ticker: str, quantity: int) -> dict:
         )
 
     price = get_stock_price(ticker)
+    storage.ensure_tradeable()
     if price is None:
         raise ValueError("Could not fetch current price")
 
@@ -496,6 +510,7 @@ def exchange_currency(
         storage.prepare_exchange_cash()
         rate = _exchange_rate()
 
+    storage.ensure_tradeable()
     return _execute_exchange(
         storage,
         from_currency,

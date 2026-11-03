@@ -1,3 +1,4 @@
+import threading
 import time
 
 from app.services import market_data_provider
@@ -8,6 +9,7 @@ from app.services.static_fundamentals import STATIC_FUNDAMENTALS
 _price_cache = market_data_provider._price_cache
 
 _info_cache: dict[str, dict] = {}
+_info_cache_store_lock = threading.Lock()
 INFO_CACHE_TTL = 600
 MAX_INFO_CACHE_KEYS = market_data_provider.MAX_CACHE_KEYS
 SUPPORTED_US_EXCHANGES = {"NMS", "NGM", "NCM", "NYQ", "ASE", "PCX", "BTS"}
@@ -272,9 +274,10 @@ def _cache_info_value(result: dict) -> dict:
 
 
 def _store_info(ticker: str, result: dict, now: float) -> None:
-    while len(_info_cache) >= MAX_INFO_CACHE_KEYS:
-        _info_cache.pop(next(iter(_info_cache)))
-    _info_cache[ticker] = {"value": _cache_info_value(result), "ts": now}
+    with _info_cache_store_lock:
+        while len(_info_cache) >= MAX_INFO_CACHE_KEYS:
+            _info_cache.pop(next(iter(_info_cache)))
+        _info_cache[ticker] = {"value": _cache_info_value(result), "ts": now}
 
 
 # ── Stock Info ───────────────────────────────────────────────────────
