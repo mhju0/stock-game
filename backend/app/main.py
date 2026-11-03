@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.database import engine, SessionLocal, get_db
@@ -90,7 +91,10 @@ async def snapshot_loop():
             finally:
                 db.close()
 
-        await asyncio.to_thread(_take_all_snapshots)
+        try:
+            await asyncio.to_thread(_take_all_snapshots)
+        except Exception:
+            logger.exception("Snapshot batch failed; retrying on the next scheduled run")
 
 
 async def market_refresh_loop():
@@ -170,6 +174,9 @@ app = FastAPI(
     lifespan=lifespan,
     **resolve_doc_urls(os.environ),
 )
+
+MAX_REQUEST_BODY_BYTES = 64 * 1024
+app.add_middleware(RequestBodyLimitMiddleware, max_body_size=MAX_REQUEST_BODY_BYTES)
 
 app.add_middleware(
     CORSMiddleware,

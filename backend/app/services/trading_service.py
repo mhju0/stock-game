@@ -1,13 +1,19 @@
 import logging
+import math
 
+from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import GameSession, Holding, Transaction, User
 from app.services.exchange_service import get_exchange_rate
 from app.services.game_session_service import (
+    NON_TRADEABLE_STATES,
     ensure_session_cash_initialized,
     get_current_session,
     get_tradeable_session,
+    lock_user_for_mutation,
+    resolve_session_lifecycle_state,
     sync_legacy_user_balance,
 )
 from app.services.snapshot_service import take_session_snapshot, take_snapshot
@@ -17,13 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _load_user(db: Session, user_id: int) -> User:
-    # Lock the user row for the duration of the trade so the legacy check-and-
-    # debit on User.balance_* cannot race with a concurrent trade. No-op on
-    # SQLite (dev/tests); a real row lock on Postgres.
-    user = db.query(User).filter(User.id == user_id).with_for_update().first()
-    if not user:
-        raise ValueError("User not found")
-    return user
+    return lock_user_for_mutation(db, user_id)
 
 
 def _resolve_trade_session(db: Session, user: User, game_session_id: int | None):
@@ -72,6 +72,9 @@ class _LegacyPortfolioTradeAdapter:
         self.db = db
         self.user = user
 
+    def ensure_tradeable(self) -> None:
+        return None
+
     def prepare_cash(self) -> None:
         # Legacy buy/sell behavior does not normalize nullable balances.
         return None
@@ -96,7 +99,7 @@ class _LegacyPortfolioTradeAdapter:
             self.db.query(Holding)
             .filter(
                 Holding.user_id == self.user.id,
-                Holding.ticker == ticker,
+                func.upper(Holding.ticker) == ticker,
                 Holding.game_session_id.is_(None),
             )
             .first()
@@ -107,7 +110,7 @@ class _LegacyPortfolioTradeAdapter:
             self.db.query(Holding)
             .filter(
                 Holding.user_id == self.user.id,
-                Holding.ticker == ticker,
+                func.upper(Holding.ticker) == ticker,
                 Holding.game_session_id.is_(None),
             )
             .first()
@@ -129,6 +132,13 @@ class _SessionPortfolioTradeAdapter:
         self.user = user
         self.session = session
         self.session_id = session.id
+
+    def ensure_tradeable(self) -> None:
+        state = resolve_session_lifecycle_state(self.session)
+        if state == "expired":
+            raise HTTPException(status_code=400, detail="Game session has expired")
+        if state in NON_TRADEABLE_STATES:
+            raise HTTPException(status_code=400, detail="Game session is not tradeable")
 
     def prepare_cash(self) -> None:
         ensure_session_cash_initialized(self.session, self.user)
@@ -152,7 +162,7 @@ class _SessionPortfolioTradeAdapter:
                 Holding.user_id == self.user.id,
                 Holding.game_session_id == self.session.id,
                 Holding.market == market,
-                Holding.ticker == ticker,
+                func.upper(Holding.ticker) == ticker,
             )
             .first()
         )
@@ -163,7 +173,7 @@ class _SessionPortfolioTradeAdapter:
             .filter(
                 Holding.user_id == self.user.id,
                 Holding.game_session_id == self.session.id,
-                Holding.ticker == ticker,
+                func.upper(Holding.ticker) == ticker,
             )
             .all()
         )
@@ -221,6 +231,8 @@ def _execute_buy(storage, ticker: str, quantity: int, stock_info: dict) -> dict:
     price = stock_info["price"]
     currency = stock_info["currency"]
     total_cost = price * quantity
+    if not math.isfinite(price) or price <= 0 or not math.isfinite(total_cost):
+        raise ValueError("Could not fetch valid stock price")
     storage.prepare_cash()
 
     balance = storage.balance(currency)
@@ -287,6 +299,7 @@ def buy_stock(
     quantity: int,
     game_session_id: int | None = None,
 ) -> dict:
+    ticker = ticker.upper()
     stock_info = get_stock_info(ticker)
     if not stock_info or stock_info["price"] is None:
         raise ValueError("Could not fetch stock data")
@@ -313,12 +326,17 @@ def _execute_sell(storage, ticker: str, quantity: int) -> dict:
         )
 
     price = get_stock_price(ticker)
+    storage.ensure_tradeable()
     if price is None:
         raise ValueError("Could not fetch current price")
 
     storage.prepare_cash()
     total_proceeds = price * quantity
     realized_pnl = (price - holding.avg_price) * quantity
+    if (not math.isfinite(price) or price <= 0 or not math.isfinite(total_proceeds)
+            or not math.isfinite(realized_pnl)
+            or not math.isfinite(storage.balance(holding.currency) + total_proceeds)):
+        raise ValueError("Could not fetch valid current price")
     storage.adjust_balance(holding.currency, total_proceeds)
 
     storage.db.add(
@@ -362,6 +380,7 @@ def sell_stock(
     quantity: int,
     game_session_id: int | None = None,
 ) -> dict:
+    ticker = ticker.upper()
     user = _load_user(db, user_id)
     session = _resolve_trade_session(db, user, game_session_id)
     return _execute_sell(_trade_storage(db, user, session), ticker, quantity)
@@ -382,7 +401,7 @@ def _exchange_rate() -> float:
         rate = float(get_exchange_rate())
     except (TypeError, ValueError):
         raise ValueError("Could not fetch exchange rate")
-    if rate <= 0:
+    if not math.isfinite(rate) or rate <= 0:
         raise ValueError("Could not fetch exchange rate")
     return rate
 
@@ -394,6 +413,9 @@ def _execute_exchange(
     amount: float,
     rate: float,
 ) -> dict:
+    converted = amount / rate if from_currency == "KRW" else amount * rate
+    if not math.isfinite(converted) or not math.isfinite(storage.balance(to_currency) + converted):
+        raise ValueError("Could not fetch valid exchange rate")
     if from_currency == "KRW":
         balance = storage.balance("KRW")
         if balance < amount:
@@ -488,6 +510,7 @@ def exchange_currency(
         storage.prepare_exchange_cash()
         rate = _exchange_rate()
 
+    storage.ensure_tradeable()
     return _execute_exchange(
         storage,
         from_currency,

@@ -26,6 +26,8 @@ function Game() {
   
   const [benchmarkData, setBenchmarkData] = useState([])
   const [benchmarkIndex, setBenchmarkIndex] = useState('SP500')
+  const [benchmarkError, setBenchmarkError] = useState('')
+  const [benchmarkRetry, setBenchmarkRetry] = useState(0)
   const {
     active,
     actions,
@@ -49,6 +51,9 @@ function Game() {
   }, [performance])
 
   useEffect(() => {
+    let current = true
+    setBenchmarkData([])
+    setBenchmarkError('')
     if (!active || !Array.isArray(performance?.snapshots)) return
     // Benchmark window = the game's elapsed days (not full duration), so the
     // 0% baseline of both lines is the game start date.
@@ -57,10 +62,11 @@ function Game() {
     // Fewer than 2 snapshots renders the day-one placeholder instead of the
     // chart, so skip the benchmark call entirely until then.
     if (performance.snapshots.length >= 2) {
-      apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`)
-        .then(bd => { if (Array.isArray(bd)) setBenchmarkData(bd) })
+      apiFetch(`/game/benchmark/${benchmarkIndex}?days=${days}`, {}, (error) => { if (current) setBenchmarkError(error) })
+        .then(bd => { if (current && Array.isArray(bd)) setBenchmarkData(bd) })
     }
-  }, [active, performance, status, benchmarkIndex])
+    return () => { current = false }
+  }, [active, performance, status, benchmarkIndex, benchmarkRetry])
 
   const mergedChartData = useMemo(() => {
     const map = {}
@@ -168,6 +174,11 @@ function Game() {
             onClick={() => navigate('/games')}>{t('nav.myGames')}</button>
         </div>
 
+        {completedResult.ending_value_as_of && (
+          <p className="page-subtitle"><time dateTime={completedResult.ending_value_as_of}>{t('game.savedValueAsOf', { date: new Date(completedResult.ending_value_as_of).toLocaleString(locale) })}</time></p>
+        )}
+        {completedResult.ending_value_uses_live_fx && <p className="page-subtitle">{t('game.liveFxFallback')}</p>}
+
         {!hasResultData && (
           <div className="summary-card">
             <div className="summary-title">{t('game.resultUnavailableTitle')}</div>
@@ -179,7 +190,7 @@ function Game() {
           <ResultMetric label={t('game.startingValue')}>
             {formatKRW(completedResult.starting_value_krw)}
           </ResultMetric>
-          <ResultMetric label={t('game.endingValue')}>
+          <ResultMetric label={t(completedResult.ending_value_source === 'cash_only_session_balance' ? 'game.cashOnlyValue' : 'game.endingValue')}>
             {completedResult.ending_value_krw === null || completedResult.ending_value_krw === undefined
               ? t('common.unavailable')
               : formatKRW(completedResult.ending_value_krw)}
@@ -307,22 +318,23 @@ function Game() {
 
   // Summary view
   if (screen === 'active-summary') {
+    const hasReturn = Number.isFinite(summary.total_return)
     const isPositive = summary.total_return >= 0
     return (
       <div>
         <div className="card" style={{ textAlign: 'center', padding: 32 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>{isPositive ? '📈' : '📉'}</div>
+          {hasReturn && <div style={{ fontSize: 48, marginBottom: 8 }}>{isPositive ? '📈' : '📉'}</div>}
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
             {!active ? (t('game.gameOver')) : (t('game.progress'))}
           </h2>
-          <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 36, fontWeight: 700 }}>
-            {isPositive ? '+' : ''}{summary.total_return_pct.toFixed(2)}%
+          <div className={Number.isFinite(summary.total_return_pct) ? isPositive ? 'positive' : 'negative' : ''} style={{ fontSize: 36, fontWeight: 700 }}>
+            {Number.isFinite(summary.total_return_pct) ? `${isPositive ? '+' : ''}${summary.total_return_pct.toFixed(2)}%` : t('common.unavailable')}
           </div>
           <div style={{ fontSize: 15, color: 'var(--text-secondary)', marginTop: 4 }}>
-            {formatKRW(summary.starting_balance)} → {formatKRW(summary.current_value)}
+            {formatKRW(summary.starting_balance)} → {Number.isFinite(summary.current_value) ? formatKRW(summary.current_value) : t('common.unavailable')}
           </div>
-          <div className={isPositive ? 'positive' : 'negative'} style={{ fontSize: 16, marginTop: 4 }}>
-            {isPositive ? '+' : ''}{formatKRW(summary.total_return)}
+          <div className={hasReturn ? isPositive ? 'positive' : 'negative' : ''} style={{ fontSize: 16, marginTop: 4 }}>
+            {Number.isFinite(summary.total_return) ? `${isPositive ? '+' : ''}${formatKRW(summary.total_return)}` : t('common.unavailable')}
           </div>
         </div>
 
@@ -341,13 +353,17 @@ function Game() {
           </div>
           <div className="metric-card">
             <div className="metric-label">{t('analytics.winRate')}</div>
-            <div className="metric-value">{summary.win_rate}%</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('game.winLossSummary', { wins: summary.winning_trades, losses: summary.losing_trades })}</div>
+            <div className="metric-value">{Number.isFinite(summary.win_rate) ? `${summary.win_rate}%` : t('common.unavailable')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{Number.isFinite(summary.winning_trades) && Number.isFinite(summary.losing_trades) ? t('game.winLossSummary', { wins: summary.winning_trades, losses: summary.losing_trades }) : t('common.unavailable')}</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">{t('analytics.realizedPnl')}</div>
-            <div className={`metric-value ${summary.realized_pnl >= 0 ? 'positive' : 'negative'}`}>
-              {summary.realized_pnl >= 0 ? '+' : ''}{formatKRW(summary.realized_pnl)}
+            <div className="metric-value">
+              {summary.realized_pnl_available !== false && Object.keys(summary.realized_pnl_by_currency || {}).length > 0
+                ? Object.entries(summary.realized_pnl_by_currency).map(([currency, value]) => (
+                  <div key={currency} className={value >= 0 ? 'positive' : 'negative'}>{value >= 0 ? '+' : ''}{formatMoney(value, currency)}</div>
+                ))
+                : summary.realized_pnl_available && summary.total_sells === 0 ? t('analytics.noSales') : t('common.unavailable')}
             </div>
           </div>
         </div>
@@ -370,7 +386,7 @@ function Game() {
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--positive)' }}>
                 {getStockName(summary.best_trade.ticker, summary.best_trade.name, i18n.language)}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--positive)' }}>+{formatKRW(summary.best_trade.pnl)}</div>
+              <div className={summary.best_trade.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 13 }}>{summary.best_trade.pnl >= 0 ? '+' : ''}{formatMoney(summary.best_trade.pnl, summary.best_trade.currency)}</div>
             </div>
             {summary.worst_trade && (
               <div className="metric-card" style={{ background: 'var(--negative-bg)' }}>
@@ -378,7 +394,7 @@ function Game() {
                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--negative)' }}>
                   {getStockName(summary.worst_trade.ticker, summary.worst_trade.name, i18n.language)}
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--negative)' }}>{formatKRW(summary.worst_trade.pnl)}</div>
+                <div className={summary.worst_trade.pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 13 }}>{summary.worst_trade.pnl >= 0 ? '+' : ''}{formatMoney(summary.worst_trade.pnl, summary.worst_trade.currency)}</div>
               </div>
             )}
           </div>
@@ -415,9 +431,9 @@ function Game() {
       <section className="overview-hero" aria-labelledby="overview-value-title">
         <div className="overview-hero-main">
           <div id="overview-value-title" className="metric-label">{t('game.currentValue')}</div>
-          <div className="overview-hero-value">{formatKRW(status.current_value_krw)}</div>
-          <div className={`overview-return ${status.current_return_pct >= 0 ? 'positive' : 'negative'}`}>
-            <span>{status.current_return_pct >= 0 ? '+' : ''}{status.current_return_pct}%</span>
+          <div className="overview-hero-value">{Number.isFinite(status.current_value_krw) ? formatKRW(status.current_value_krw) : t('common.unavailable')}</div>
+          <div className={`overview-return ${Number.isFinite(status.current_return_pct) ? status.current_return_pct >= 0 ? 'positive' : 'negative' : ''}`}>
+            <span>{Number.isFinite(status.current_return_pct) ? `${status.current_return_pct >= 0 ? '+' : ''}${status.current_return_pct}%` : t('common.unavailable')}</span>
             <small>{t('game.return')}</small>
           </div>
           <div className="overview-progress-copy">
@@ -478,10 +494,17 @@ function Game() {
             {['SP500', 'KOSPI'].map(idx => (
               <button key={idx} className={`btn segmented-button ${benchmarkIndex === idx ? 'segmented-button-selected' : ''}`} onClick={() => setBenchmarkIndex(idx)} style={{
                 fontSize: 12, padding: '4px 10px',
-              }}>{idx === 'SP500' ? 'S&P 500' : 'KOSPI'}</button>
+              }} aria-pressed={benchmarkIndex === idx}>{idx === 'SP500' ? 'S&P 500' : 'KOSPI'}</button>
             ))}
           </div>
         </div>
+
+        {benchmarkError && (
+          <div role="alert" className="negative">
+            <p>{benchmarkError}</p>
+            <button type="button" className="btn" onClick={() => setBenchmarkRetry(value => value + 1)}>{t('common.retry')}</button>
+          </div>
+        )}
 
         {performanceLoading ? (
           <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>

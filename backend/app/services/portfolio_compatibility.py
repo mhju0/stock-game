@@ -6,6 +6,8 @@ from app.models import GameSession, Holding, PortfolioSnapshot, Transaction, Use
 from app.services.game_session_service import (
     ensure_session_cash_initialized,
     get_current_session,
+    get_owned_session,
+    lock_user_for_mutation,
 )
 
 
@@ -15,8 +17,10 @@ def ensure_session_cash_for_read(
     user: User,
 ) -> GameSession:
     needs_commit = session.cash_krw is None or session.cash_usd is None
-    ensure_session_cash_initialized(session, user)
     if needs_commit:
+        user = lock_user_for_mutation(db, user.id)
+        session = get_owned_session(db, user, session.id, for_update=True)
+        ensure_session_cash_initialized(session, user)
         db.commit()
         db.refresh(session)
     return session

@@ -1,5 +1,5 @@
 import { apiFetch } from '../api'
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { getStockName } from "../utils/stockNames";
@@ -15,11 +15,15 @@ function Market() {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const latestRequest = useRef(0)
 
   const fetchStocks = useCallback(() => {
+    const requestId = ++latestRequest.current
+    const isCurrent = () => requestId === latestRequest.current
     setLoading(true);
     setError("");
-    apiFetch(`/market/top30/${market}`, {}, setError).then((data) => {
+    apiFetch(`/market/top30/${market}`, {}, (message) => { if (isCurrent()) setError(message) }).then((data) => {
+      if (!isCurrent()) return
       if (data) setStocks(data);
       setLoading(false);
     });
@@ -27,6 +31,7 @@ function Market() {
 
   useEffect(() => {
     fetchStocks();
+    return () => { latestRequest.current++ }
   }, [fetchStocks]);
 
   const openStockDetails = (ticker) => {
@@ -42,12 +47,13 @@ function Market() {
           <h1 className="page-title">{t('market.title')}</h1>
           <p className="page-subtitle">{t('market.subtitle')}</p>
         </div>
-        <div className="segmented-control market-region-toggle" aria-label={t('market.title')}>
+        <div className="segmented-control market-region-toggle" role="group" aria-label={t('market.title')}>
           {["US", "KR"].map((m) => (
             <button
               key={m}
               className={`btn segmented-button ${market === m ? 'segmented-button-selected' : ''}`}
               onClick={() => setMarket(m)}
+              aria-pressed={market === m}
             >
               {m === "US" ? t("market.us") : t("market.kr")}
             </button>
@@ -60,7 +66,7 @@ function Market() {
       ) : error ? (
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>
           <p style={{ color: 'var(--negative)', marginBottom: 12 }}>{t('common.loadError')}</p>
-          <button className="btn btn-primary" onClick={fetchStocks}>{t('common.retry')}</button>
+          <button className="btn btn-primary" onClick={() => fetchStocks()}>{t('common.retry')}</button>
         </div>
       ) : stocks.length === 0 ? (
         <div className="empty-state">
@@ -76,7 +82,7 @@ function Market() {
                 type="button"
                 className="interactive-row"
                 onClick={() => openStockDetails(s.ticker)}
-                aria-label={`${name} ${t('stock.viewDetails')}`}
+                aria-label={`${name}, ${formatMoney(s.price, s.currency)}, ${s.change_pct}%. ${t('stock.viewDetails')}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",

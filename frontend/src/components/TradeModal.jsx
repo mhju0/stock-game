@@ -39,9 +39,12 @@ function TradeModal({
   const [submitting, setSubmitting] = useState(false);
   const [showDelayedLoading, setShowDelayedLoading] = useState(false);
   const closeButtonRef = useRef(null);
+  const completionTimerRef = useRef(null)
+  const mountedRef = useRef(true)
   const accountQuery = useAccountQuery()
   const holdingsQuery = useHoldingsQuery()
   const account = accountQuery.data
+  const holdingsKnown = Array.isArray(holdingsQuery.data)
   const { data: watchlistContains } = useWatchlistContainsQuery(currentUserId, ticker)
   const toggleWatchlistMutation = useWatchlistToggleMutation(currentUserId)
   const tradeMutation = useTradeMutation()
@@ -50,12 +53,22 @@ function TradeModal({
   const sessionDataError = accountQuery.error || holdingsQuery.error
   const dialog = useDialogMechanics({
     onDismiss: onClose,
+    dismissible: !submitting,
     initialFocusRef: closeButtonRef,
     backdropEvent: 'click',
   })
 
   useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      window.clearTimeout(completionTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!ticker) return;
+    let current = true
     setStockLoading(true);
     setMessage("");
     setIsSuccess(false);
@@ -67,19 +80,25 @@ function TradeModal({
       setShowDelayedLoading(true);
     }, 300);
 
-    apiFetch(`/stock/${ticker}`, {}, setMessage)
+    apiFetch(`/stock/${ticker}`, {}, (error) => { if (current) setMessage(error) })
       .then((stockData) => {
+        if (!current) return
+        window.clearTimeout(loadingTimer)
         setStock(stockData);
         setStockLoading(false);
         setShowDelayedLoading(false);
       })
       .catch(() => {
+        if (!current) return
         setMessage(t("common.error"));
         setStockLoading(false);
         setShowDelayedLoading(true);
       });
 
-    return () => window.clearTimeout(loadingTimer);
+    return () => {
+      current = false
+      window.clearTimeout(loadingTimer)
+    };
   }, [ticker, currentUserId, sessionId, t]);
 
   useEffect(() => {
@@ -92,6 +111,8 @@ function TradeModal({
 
   const buy = async () => {
     if (submitting) return false;
+    window.clearTimeout(completionTimerRef.current)
+    completionTimerRef.current = null
     setMessage("");
     setIsSuccess(false);
     setSubmitting(true);
@@ -100,10 +121,11 @@ function TradeModal({
         type: 'buy',
         payload: { ticker, quantity: quantityNumber },
       })
+      if (!mountedRef.current) return true
       setMessage(t("trade.buySuccess"));
       setIsSuccess(true);
       setMyHolding(myHolding + quantityNumber);
-      if (onComplete) setTimeout(onComplete, 800);
+      if (onComplete) completionTimerRef.current = window.setTimeout(onComplete, 800);
       setSubmitting(false);
       return true;
     } catch (error) {
@@ -115,6 +137,8 @@ function TradeModal({
 
   const sell = async () => {
     if (submitting) return false;
+    window.clearTimeout(completionTimerRef.current)
+    completionTimerRef.current = null
     setMessage("");
     setIsSuccess(false);
     setSubmitting(true);
@@ -123,10 +147,11 @@ function TradeModal({
         type: 'sell',
         payload: { ticker, quantity: quantityNumber },
       })
+      if (!mountedRef.current) return true
       setMessage(t("trade.sellSuccess"));
       setIsSuccess(true);
       setMyHolding(Math.max(0, myHolding - quantityNumber));
-      if (onComplete) setTimeout(onComplete, 800);
+      if (onComplete) completionTimerRef.current = window.setTimeout(onComplete, 800);
       setSubmitting(false);
       return true;
     } catch (error) {
@@ -170,7 +195,7 @@ function TradeModal({
     ? stock.currency === "KRW"
       ? account.balance_krw
       : account.balance_usd
-    : 0;
+    : null;
   const safeWholeHolding = Math.max(0, Math.floor(Number(myHolding) || 0));
   const estimatedTotal = stock && Number.isFinite(quantityNumber) ? stock.price * quantityNumber : 0;
   const maxBuyQuantity = stock?.price > 0 ? Math.floor(availableCash / stock.price) : 0;
@@ -232,7 +257,7 @@ function TradeModal({
                   {ticker} · {stock.market}
                 </div>
                 <div style={{ fontSize: 13, marginTop: 4, color: myHolding > 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                  {t('dashboard.holdings')}: {t('holdings.shares', { count: safeWholeHolding })}
+                  {t('dashboard.holdings')}: {holdingsKnown ? t('holdings.shares', { count: safeWholeHolding }) : t('common.unavailable')}
                 </div>
               </>
             )}
@@ -268,6 +293,7 @@ function TradeModal({
               type="button"
               ref={closeButtonRef}
               className="modal-close-btn"
+              disabled={submitting}
               onClick={dialog.dismiss}
               aria-label={t("common.close")}
             >
@@ -308,7 +334,7 @@ function TradeModal({
               <div className="trade-context-item">
                 <div className="trade-context-label">{t("trade.availableCash")}</div>
                 <div className="trade-context-value">
-                  {stock.currency === "KRW"
+                  {!Number.isFinite(availableCash) ? t('common.unavailable') : stock.currency === "KRW"
                     ? `₩${Math.round(availableCash).toLocaleString()}`
                     : formatMoney(availableCash, 'USD')}
                 </div>
@@ -316,7 +342,7 @@ function TradeModal({
               <div className="trade-context-item">
                 <div className="trade-context-label">{t("trade.ownedQuantity")}</div>
                 <div className="trade-context-value">
-                  {t('holdings.shares', { count: safeWholeHolding })}
+                  {holdingsKnown ? t('holdings.shares', { count: safeWholeHolding }) : t('common.unavailable')}
                 </div>
               </div>
             </div>

@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models import User, PortfolioSnapshot
 from app.auth import get_current_user
 from app.services.exchange_service import get_exchange_rate
-from app.services.game_session_service import get_current_session
+from app.services.game_session_service import get_current_session, get_owned_session, lock_user_for_mutation
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -22,9 +22,11 @@ def require_dev_tools_enabled():
 @router.post("/add-funds")
 def add_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     require_dev_tools_enabled()
-    user = current_user
+    user = lock_user_for_mutation(db, current_user.id)
 
     session = get_current_session(db, user)
+    if session:
+        session = get_owned_session(db, user, session.id, for_update=True)
     rate = get_exchange_rate()
 
     snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user.id).all()
@@ -61,9 +63,11 @@ def add_funds(request: FundsRequest, db: Session = Depends(get_db), current_user
 @router.post("/remove-funds")
 def remove_funds(request: FundsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     require_dev_tools_enabled()
-    user = current_user
+    user = lock_user_for_mutation(db, current_user.id)
 
     session = get_current_session(db, user)
+    if session:
+        session = get_owned_session(db, user, session.id, for_update=True)
     rate = get_exchange_rate()
 
     snapshots = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user.id).all()

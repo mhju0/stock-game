@@ -9,6 +9,7 @@ boundary.
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from datetime import datetime, time as dt_time
@@ -49,6 +50,7 @@ _market_cache: dict[str, dict[str, Any]] = {
 }
 
 _yf_semaphore = threading.Semaphore(4)
+_cache_store_lock = threading.Lock()
 
 MARKET_OPEN_CONFIG = {
     "US": {"tz": ZoneInfo("America/New_York"), "open": dt_time(9, 30)},
@@ -64,9 +66,10 @@ def _is_fresh(entry: dict, now: float, ttl: float) -> bool:
 
 def _store(cache: dict, key: str, value: Any, now: float) -> Any:
     # Plain dicts preserve insertion order, so the first key is the oldest.
-    while len(cache) >= MAX_CACHE_KEYS:
-        cache.pop(next(iter(cache)))
-    cache[key] = {"value": value, "ts": now}
+    with _cache_store_lock:
+        while len(cache) >= MAX_CACHE_KEYS:
+            cache.pop(next(iter(cache)))
+        cache[key] = {"value": value, "ts": now}
     return value
 
 
@@ -106,7 +109,7 @@ def get_stock_price(ticker: str) -> float | None:
         if closes.empty:
             return _store(_price_cache, ticker, None, now)
         price = round(float(closes.iloc[-1]), 2)
-        if price != price or price <= 0:
+        if not math.isfinite(price) or price <= 0:
             return _store(_price_cache, ticker, None, now)
         return _store(_price_cache, ticker, price, now)
     except Exception:
@@ -152,6 +155,10 @@ def get_stock_history(ticker: str, period: str = "1mo") -> list[dict]:
         result = []
         for date, row in data.iterrows():
             timestamp = date.to_pydatetime() if hasattr(date, "to_pydatetime") else date
+            if not all(math.isfinite(float(row[key])) and float(row[key]) > 0 for key in ("Open", "High", "Low", "Close")):
+                continue
+            if not math.isfinite(float(row["Volume"])) or row["Volume"] < 0:
+                continue
             result.append(
                 {
                     "date": (
@@ -186,7 +193,7 @@ def get_exchange_rate() -> float:
         if closes.empty:
             return cached_value or DEFAULT_EXCHANGE_RATE
         rate = round(float(closes.iloc[-1]), 2)
-        if rate != rate or rate <= 0:
+        if not math.isfinite(rate) or rate <= 0:
             return cached_value or DEFAULT_EXCHANGE_RATE
         _exchange_rate_cache.update({"value": rate, "timestamp": now})
         return rate
@@ -226,6 +233,8 @@ def fetch_market_closes(candidates: list[str]) -> dict[str, tuple[float, float]]
                 continue
             current = float(closes.iloc[-1])
             previous = float(closes.iloc[-2]) if len(closes) >= 2 else current
+            if not all(math.isfinite(value) and value > 0 for value in (current, previous)):
+                continue
             result[ticker] = (current, previous)
         except Exception as exc:
             logger.warning("Skipping malformed market data for %s: %s", ticker, exc)
@@ -285,6 +294,7 @@ def get_close_history(symbol: str, start: str) -> list[tuple[Any, float]]:
         data = yf.Ticker(symbol).history(start=start)
         if data.empty:
             return []
-        return [(date, float(row["Close"])) for date, row in data.iterrows()]
+        return [(date, float(row["Close"])) for date, row in data.iterrows()
+                if math.isfinite(float(row["Close"])) and float(row["Close"]) > 0]
     except Exception:
         return []

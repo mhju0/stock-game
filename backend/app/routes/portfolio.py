@@ -23,6 +23,8 @@ from app.services.valuation_service import (
     get_prices_for_tickers,
     resolved_industry,
     resolved_sector,
+    valuation_available,
+    valuation_fields,
 )
 
 router = APIRouter(tags=["portfolio"])
@@ -39,7 +41,7 @@ def _format_holdings(holdings: list[Holding]) -> list[dict]:
         unrealized_pnl = (
             (current_price - h.avg_price) * h.quantity
             if current_price is not None
-            else 0
+            else None
         )
         result.append(
             {
@@ -52,11 +54,11 @@ def _format_holdings(holdings: list[Holding]) -> list[dict]:
                 "avg_price": h.avg_price,
                 "current_price": current_price,
                 "currency": h.currency,
-                "unrealized_pnl": round(unrealized_pnl, 2),
+                "unrealized_pnl": round(unrealized_pnl, 2) if unrealized_pnl is not None else None,
                 "total_value": (
                     round(current_price * h.quantity, 2)
                     if current_price is not None
-                    else 0
+                    else None
                 ),
             }
         )
@@ -106,9 +108,11 @@ def _build_account_response(
     snapshots: list[PortfolioSnapshot],
     starting_value: float,
     rate: float,
+    starting_date: datetime | None = None,
 ) -> dict:
     prices = get_prices_for_tickers([h.ticker for h in holdings])
 
+    available = valuation_available(holdings, rate, prices)
     holdings_value_krw = 0.0
     holdings_value_usd = 0.0
     for h in holdings:
@@ -168,7 +172,7 @@ def _build_account_response(
 
     holdings_value_total_krw = holdings_value_krw + (holdings_value_usd * rate)
 
-    return {
+    response = {
         "balance_krw": cash_krw,
         "balance_usd": cash_usd,
         "holdings_value_krw": round(holdings_value_krw, 2),
@@ -182,6 +186,8 @@ def _build_account_response(
             if starting_value
             else 0
         ),
+        "daily_change_basis": "previous_snapshot" if prev_snapshot else "starting_value",
+        "daily_change_reference_date": (prev_snapshot.created_at.isoformat() if prev_snapshot else starting_date.isoformat() if starting_date else None),
         "daily_change_krw": round(total_krw - daily_prev, 2),
         "daily_change_pct": (
             round(((total_krw - daily_prev) / daily_prev) * 100, 2) if daily_prev else 0
@@ -199,6 +205,14 @@ def _build_account_response(
         ),
         "change_all_krw": round(total_krw - starting_value, 2),
     }
+    response.update(valuation_fields(available))
+    if not available:
+        for key in response:
+            if key not in {"balance_krw", "balance_usd", "exchange_rate", "starting_value",
+                            "valuation_available", "valuation_unavailable_reason", "daily_change_basis", "daily_change_reference_date"}:
+                response[key] = None
+    return response
+
 
 
 @router.get("/game/sessions/{session_id}/portfolio/account")
@@ -220,6 +234,7 @@ def get_session_account(
         holdings=holdings,
         snapshots=snapshots,
         starting_value=session_starting_value_krw(session, rate),
+        starting_date=session.start_date,
         rate=rate,
     )
 
@@ -260,6 +275,7 @@ def get_account(
         holdings=holdings,
         snapshots=snapshots,
         starting_value=starting_value,
+        starting_date=session.start_date if session else None,
         rate=rate,
     )
 

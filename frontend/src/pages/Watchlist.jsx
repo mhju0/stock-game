@@ -1,13 +1,12 @@
-import { apiDelete } from '../api'
 import { useState, useContext, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { useQueryClient } from '@tanstack/react-query'
 import TradeModal from "../components/TradeModal";
 import SortSelect from "../components/SortSelect";
 import { getStockName } from "../utils/stockNames";
+import { formatMoney } from '../utils/formatters'
 import { UserContext } from "../context/userContext";
-import { useWatchlistQuery, queryKeys } from '../query/queries'
+import { useWatchlistQuery, useWatchlistToggleMutation } from '../query/queries'
 import { gamePath, isSessionEnded } from "../sessionRoutes";
 
 
@@ -27,8 +26,10 @@ function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort
       switch (sort) {
         case 'name_asc': return nameA.localeCompare(nameB)
         case 'name_desc': return nameB.localeCompare(nameA)
-        case 'price_desc': return (b.price || 0) - (a.price || 0)
-        case 'price_asc': return (a.price || 0) - (b.price || 0)
+        case 'price_desc':
+        case 'price_asc':
+          if (!Number.isFinite(a.price) || !Number.isFinite(b.price)) return Number(Number.isFinite(b.price)) - Number(Number.isFinite(a.price))
+          return sort === 'price_desc' ? b.price - a.price : a.price - b.price
         default: return 0
       }
     })
@@ -59,7 +60,7 @@ function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort
               type="button"
               className="watchlist-row-main"
               onClick={() => onOpenDetails(item.ticker)}
-              aria-label={`${name} ${t('stock.viewDetails')}`}
+              aria-label={`${name}, ${Number.isFinite(item.price) ? formatMoney(item.price, item.currency) : t('common.unavailable')}. ${t('stock.viewDetails')}`}
             >
               <div>
                 <strong style={{ fontSize: 15 }}>{name}</strong>
@@ -69,9 +70,7 @@ function WatchlistSection({ title, items, onOpenDetails, onTrade, onRemove, sort
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 16, fontWeight: 600 }}>
-                  {item.currency === "KRW"
-                    ? `₩${item.price?.toLocaleString() || "-"}`
-                    : `$${item.price?.toFixed(2) || "-"}`}
+                  {Number.isFinite(item.price) ? formatMoney(item.price, item.currency) : t('common.unavailable')}
                 </div>
               </div>
             </button>
@@ -105,17 +104,22 @@ function Watchlist() {
   const { sessionId } = useParams();
   const { session } = useOutletContext() || {};
   const { currentUserId } = useContext(UserContext);
-  const queryClient = useQueryClient()
+  const toggleMutation = useWatchlistToggleMutation(currentUserId)
   const tradeDisabledReason = isSessionEnded(session) ? t('game.tradeUnavailableEnded') : ''
 
   const [tradeTicker, setTradeTicker] = useState(null);
   const [sortUS, setSortUS] = useState('name_asc');
   const [sortKR, setSortKR] = useState('name_asc');
+  const [removeError, setRemoveError] = useState('')
   const { data: watchlist = [], isLoading: loading, isError, refetch: refetchWatchlist } = useWatchlistQuery(currentUserId)
 
   const remove = async (ticker) => {
-    await apiDelete(`/watchlist/remove/${ticker}?user_id=${currentUserId}`);
-    queryClient.invalidateQueries({ queryKey: queryKeys.watchlist(currentUserId) })
+    setRemoveError('')
+    try {
+      await toggleMutation.mutateAsync({ ticker, isInWatchlist: true })
+    } catch (error) {
+      setRemoveError(error.message || t('common.error'))
+    }
   };
 
   const openStockDetails = (ticker) => {
@@ -176,6 +180,7 @@ function Watchlist() {
   return (
     <div>
       {watchlistHeader}
+      {removeError && <p role="alert" className="negative">{removeError}</p>}
 
       <WatchlistSection
         title={t('watchlist.koreaSection')}

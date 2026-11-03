@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Watchlist
@@ -6,6 +7,7 @@ from app.auth import get_current_user
 from app.schemas import TickerPath, TickerQuery
 from app.services.public_rate_limit import enforce_market_data_rate_limit
 from app.services.stock_service import get_stock_info
+from app.services.game_session_service import lock_user_for_mutation
 from app.services.valuation_service import get_prices_for_tickers
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
@@ -32,17 +34,20 @@ def get_watchlist(db: Session = Depends(get_db), current_user: User = Depends(ge
 
 @router.get("/contains")
 def contains_watchlist_item(ticker: TickerQuery, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ticker = ticker.upper()
     item = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id,
-        Watchlist.ticker == ticker
+        func.upper(Watchlist.ticker) == ticker
     ).first()
     return {"ticker": ticker, "in_watchlist": bool(item)}
 
 @router.post("/add", dependencies=[Depends(enforce_market_data_rate_limit)])
 def add_to_watchlist(ticker: TickerQuery, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user = lock_user_for_mutation(db, current_user.id)
+    ticker = ticker.upper()
     existing = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id,
-        Watchlist.ticker == ticker
+        func.upper(Watchlist.ticker) == ticker
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Already in watchlist")
@@ -63,9 +68,11 @@ def add_to_watchlist(ticker: TickerQuery, db: Session = Depends(get_db), current
 
 @router.delete("/remove/{ticker}")
 def remove_from_watchlist(ticker: TickerPath, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user = lock_user_for_mutation(db, current_user.id)
+    ticker = ticker.upper()
     item = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id,
-        Watchlist.ticker == ticker
+        func.upper(Watchlist.ticker) == ticker
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Not in watchlist")

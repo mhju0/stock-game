@@ -1,3 +1,5 @@
+import math
+
 from app.services.stock_service import get_stock_price, get_stock_info
 
 
@@ -46,13 +48,15 @@ def compute_holdings_value_krw(
     holdings_value_krw = 0.0
     for h in holdings:
         price = prices.get(h.ticker)
-        if price is None:
-            continue
+        if price is None or not math.isfinite(price) or price <= 0:
+            raise ValueError(f"Missing market price for {h.ticker}")
         value = price * h.quantity
         if h.currency == "USD":
             value *= rate
         holdings_value_krw += value
 
+    if not math.isfinite(holdings_value_krw):
+        raise ValueError("Invalid market price valuation")
     return holdings_value_krw
 
 
@@ -66,4 +70,23 @@ def compute_session_total_value_krw(
     holdings_value_krw = compute_holdings_value_krw(holdings, rate, prices)
     cash_krw = session.cash_krw or 0.0
     cash_usd = session.cash_usd or 0.0
-    return cash_krw + (cash_usd * rate) + holdings_value_krw
+    total = cash_krw + (cash_usd * rate) + holdings_value_krw
+    if not math.isfinite(total):
+        raise ValueError("Invalid market price valuation")
+    return total
+
+
+def valuation_available(holdings, rate: float, prices: dict) -> bool:
+    return math.isfinite(rate) and rate > 0 and all(
+        prices.get(h.ticker) is not None
+        and math.isfinite(prices[h.ticker]) and prices[h.ticker] > 0
+        and math.isfinite(prices[h.ticker] * h.quantity * (rate if h.currency == "USD" else 1))
+        for h in holdings
+    )
+
+
+def valuation_fields(available: bool) -> dict:
+    return {
+        "valuation_available": available,
+        "valuation_unavailable_reason": None if available else "missing_market_prices",
+    }

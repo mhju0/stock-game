@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -22,7 +22,11 @@ from app.services.valuation_service import (
     get_prices_for_tickers,
     resolved_industry,
     resolved_sector,
+    valuation_available,
+    valuation_fields,
 )
+
+from app.services.realized_service import realized_performance as summarize_realized
 
 router = APIRouter(tags=["analytics"])
 
@@ -39,19 +43,17 @@ def _performance_response(
 ) -> dict:
     limited_snapshots = snapshots[: max(1, min(limit, 5000))] if limit else snapshots
     prices = get_prices_for_tickers([h.ticker for h in holdings])
-    current = cash_krw + (cash_usd * rate) + compute_holdings_value_krw(
-        holdings,
-        rate,
-        prices,
-    )
-    total_return = current - starting_value
-    total_return_pct = (total_return / starting_value) * 100 if starting_value else 0
+    available = valuation_available(holdings, rate, prices)
+    current = (cash_krw + (cash_usd * rate) + compute_holdings_value_krw(holdings, rate, prices)) if available else None
+    total_return = current - starting_value if available else None
+    total_return_pct = ((total_return / starting_value) * 100 if starting_value else 0) if available else None
 
     return {
+        **valuation_fields(available),
         "starting_value": starting_value,
-        "current_value": round(current, 2),
-        "total_return": round(total_return, 2),
-        "total_return_pct": round(total_return_pct, 2),
+        "current_value": round(current, 2) if available else None,
+        "total_return": round(total_return, 2) if available else None,
+        "total_return_pct": round(total_return_pct, 2) if available else None,
         "snapshots": [
             {
                 "date": s.created_at.isoformat(),
@@ -73,6 +75,8 @@ def _by_stock_response(
     tickers = [h.ticker for h in holdings]
     prices = get_prices_for_tickers(tickers)
     infos = get_infos_for_tickers(tickers)
+    if not valuation_available(holdings, rate, prices):
+        raise HTTPException(status_code=503, detail="Market prices unavailable")
 
     realized_by_ticker: dict[str, float] = {}
     realized_trades_by_ticker: dict[str, int] = {}
@@ -125,6 +129,8 @@ def _by_sector_response(holdings: list[Holding]) -> list[dict]:
     tickers = [h.ticker for h in holdings]
     prices = get_prices_for_tickers(tickers)
     infos = get_infos_for_tickers(tickers)
+    if not valuation_available(holdings, rate, prices):
+        raise HTTPException(status_code=503, detail="Market prices unavailable")
 
     sectors = {}
     for h in holdings:
@@ -182,34 +188,7 @@ def _by_sector_response(holdings: list[Holding]) -> list[dict]:
 
 
 def _realized_response(transactions: list[Transaction]) -> dict:
-    sells = [t for t in transactions if t.transaction_type == "SELL"]
-    total_realized = sum(t.realized_pnl or 0.0 for t in sells)
-    wins = [t for t in sells if (t.realized_pnl or 0.0) > 0]
-    losses = [t for t in sells if (t.realized_pnl or 0.0) < 0]
-
-    return {
-        "total_realized_pnl": round(total_realized, 2),
-        "total_trades": len(sells),
-        "winning_trades": len(wins),
-        "losing_trades": len(losses),
-        "win_rate": round(len(wins) / len(sells) * 100, 2) if sells else 0,
-        "best_trade": (
-            {
-                "ticker": max(sells, key=lambda t: t.realized_pnl or 0.0).ticker,
-                "pnl": max(sells, key=lambda t: t.realized_pnl or 0.0).realized_pnl,
-            }
-            if sells
-            else None
-        ),
-        "worst_trade": (
-            {
-                "ticker": min(sells, key=lambda t: t.realized_pnl or 0.0).ticker,
-                "pnl": min(sells, key=lambda t: t.realized_pnl or 0.0).realized_pnl,
-            }
-            if sells
-            else None
-        ),
-    }
+    return summarize_realized([t for t in transactions if t.transaction_type == "SELL"])
 
 
 @router.get("/game/sessions/{session_id}/analytics/performance")

@@ -69,7 +69,8 @@ function getResponseErrorMessage(data, status, path) {
 export async function apiFetch(path, options = {}, onError = null) {
   try {
     const headers = { ...options.headers }
-    const token = getToken()
+    const publicAuth = path === '/auth/login' || path === '/auth/register'
+    const token = publicAuth ? null : getToken()
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
@@ -77,8 +78,10 @@ export async function apiFetch(path, options = {}, onError = null) {
     const res = await fetch(`${API}${path}`, { ...options, headers })
 
     if (res.status === 401 && token) {
-      removeToken()
-      window.location.href = '/login'
+      if (getToken() === token) {
+        removeToken()
+        window.location.href = '/login'
+      }
       return null
     }
 

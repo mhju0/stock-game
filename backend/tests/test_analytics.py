@@ -254,8 +254,8 @@ class TestSessionScopedAnalytics:
         assert body["total_trades"] == 2
         assert body["winning_trades"] == 1
         assert body["losing_trades"] == 1
-        assert body["best_trade"] == {"ticker": "WIN", "pnl": 150.0}
-        assert body["worst_trade"] == {"ticker": "LOSS", "pnl": -50.0}
+        assert body["best_trade"] == {"ticker": "WIN", "name": "WIN Corp", "pnl": 150.0, "currency": "KRW"}
+        assert body["worst_trade"] == {"ticker": "LOSS", "name": "LOSS Corp", "pnl": -50.0, "currency": "KRW"}
 
     def test_two_sessions_with_same_ticker_do_not_bleed_by_stock(
         self,

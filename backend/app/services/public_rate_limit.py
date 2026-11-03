@@ -23,6 +23,9 @@ MARKET_DATA_WINDOW_SECONDS = 60
 RATE_LIMIT_DETAIL = "Too many market data requests. Try again later."
 
 # Far above any human trading pace, so this only ever catches a script.
+SESSION_CREATE_LIMIT = 60
+SESSION_CREATE_WINDOW_SECONDS = 60
+
 TRADE_LIMIT = 60
 TRADE_WINDOW_SECONDS = 60
 TRADE_RATE_LIMIT_DETAIL = "Too many trades. Try again in a moment."
@@ -57,5 +60,19 @@ def enforce_trade_rate_limit(current_user: User = Depends(get_current_user)) -> 
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=TRADE_RATE_LIMIT_DETAIL,
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+def enforce_session_create_rate_limit(current_user: User = Depends(get_current_user)) -> None:
+    retry_after = trade_rate_limiter.hit(
+        f"session-create:{current_user.id}",
+        limit=SESSION_CREATE_LIMIT,
+        window_seconds=SESSION_CREATE_WINDOW_SECONDS,
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many new games. Try again in a moment.",
             headers={"Retry-After": str(retry_after)},
         )

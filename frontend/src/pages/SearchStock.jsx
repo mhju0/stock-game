@@ -8,6 +8,7 @@ import { getStockName } from '../utils/stockNames'
 import { UserContext } from '../context/userContext'
 import { isSessionEnded } from '../sessionRoutes'
 import { formatMoney } from '../utils/formatters'
+import { useWatchlistToggleMutation } from '../query/queries'
 
 
 function SearchStock() {
@@ -24,17 +25,30 @@ function SearchStock() {
   const [history, setHistory] = useState([])
   const [historyPeriod, setHistoryPeriod] = useState('1mo')
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
+  const [historyRetry, setHistoryRetry] = useState(0)
   const [searching, setSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [retryNonce, setRetryNonce] = useState(0)
   const [tradeTicker, setTradeTicker] = useState(null)
   const [message, setMessage] = useState('')
+  const [messageIsError, setMessageIsError] = useState(false)
   const [stockLoadError, setStockLoadError] = useState('')
   const [loadingStock, setLoadingStock] = useState(false)
   const [showDelayedStockLoading, setShowDelayedStockLoading] = useState(false)
-  const lastQueryTickerAttemptRef = useRef('')
+  const stockRequestRef = useRef(0)
+  const stockLoadingTimerRef = useRef(null)
+  const translateRef = useRef(t)
+  const watchlistMutation = useWatchlistToggleMutation(currentUserId)
   const selectedTicker = stock?.ticker
+
+  useEffect(() => { translateRef.current = t }, [t])
+
+  useEffect(() => () => {
+    stockRequestRef.current++
+    window.clearTimeout(stockLoadingTimerRef.current)
+  }, [])
 
   useEffect(() => {
     const normalizedQuery = query.trim()
@@ -71,8 +85,9 @@ function SearchStock() {
     if (!selectedTicker) return
     let cancelled = false
     setHistory([])
+    setHistoryError('')
     setHistoryLoading(true)
-    apiFetch(`/stock/${selectedTicker}/history?period=${historyPeriod}`)
+    apiFetch(`/stock/${selectedTicker}/history?period=${historyPeriod}`, {}, (error) => { if (!cancelled) setHistoryError(error) })
       .then(data => {
         if (!cancelled && Array.isArray(data)) setHistory(data)
       })
@@ -80,11 +95,13 @@ function SearchStock() {
         if (!cancelled) setHistoryLoading(false)
       })
     return () => { cancelled = true }
-  }, [selectedTicker, historyPeriod])
+  }, [selectedTicker, historyPeriod, historyRetry])
 
   const selectStock = useCallback(async (ticker) => {
     const normalizedTicker = String(ticker || '').trim()
     if (!normalizedTicker) return false
+    const requestId = ++stockRequestRef.current
+    window.clearTimeout(stockLoadingTimerRef.current)
     setResults([])
     setQuery('')
     setHasSearched(false)
@@ -93,33 +110,38 @@ function SearchStock() {
     setStockLoadError('')
     setLoadingStock(true)
     setShowDelayedStockLoading(false)
-    const loadingTimer = window.setTimeout(() => {
+    stockLoadingTimerRef.current = window.setTimeout(() => {
       setShowDelayedStockLoading(true)
     }, 300)
-    const data = await apiFetch(`/stock/${encodeURIComponent(normalizedTicker)}`)
-    window.clearTimeout(loadingTimer)
+    let loadError = ''
+    const data = await apiFetch(`/stock/${encodeURIComponent(normalizedTicker)}`, {}, (error) => { loadError = error })
+    if (requestId !== stockRequestRef.current) return false
+    window.clearTimeout(stockLoadingTimerRef.current)
     setLoadingStock(false)
     setShowDelayedStockLoading(false)
     if (data && !data.error) {
       setStock(data)
       return true
     }
-    setStockLoadError(t('stock.notFound'))
+    setStockLoadError(loadError || translateRef.current('stock.notFound'))
     return false
-  }, [t])
+  }, [])
 
   useEffect(() => {
     const ticker = (searchParams.get('ticker') || '').trim()
-    if (!ticker || ticker === selectedTicker || loadingStock) return
-    if (lastQueryTickerAttemptRef.current === ticker) return
-    lastQueryTickerAttemptRef.current = ticker
-    selectStock(ticker)
-  }, [searchParams, selectedTicker, loadingStock, selectStock])
+    if (ticker) selectStock(ticker)
+  }, [searchParams, selectStock])
 
   const addToWatchlist = async () => {
     setMessage('')
-    const data = await apiFetch(`/watchlist/add?ticker=${stock.ticker}&user_id=${currentUserId}`, { method: 'POST' })
-    if (data) setMessage(`${getStockName(stock.ticker, stock.name, i18n.language)} → ${t('watchlist.title')}`)
+    setMessageIsError(false)
+    try {
+      await watchlistMutation.mutateAsync({ ticker: stock.ticker, isInWatchlist: false })
+      setMessage(`${getStockName(stock.ticker, stock.name, i18n.language)} → ${t('watchlist.title')}`)
+    } catch (error) {
+      setMessageIsError(true)
+      setMessage(error.message || t('common.error'))
+    }
   }
 
   const displayName = stock ? getStockName(stock.ticker, stock.name, i18n.language) : ''
@@ -226,7 +248,7 @@ function SearchStock() {
       )}
 
       {message && (
-        <div className="card trade-feedback" role="status">{message}</div>
+        <div className="card trade-feedback" role={messageIsError ? 'alert' : 'status'}>{message}</div>
       )}
 
       {loadingStock && showDelayedStockLoading && (
@@ -248,7 +270,7 @@ function SearchStock() {
               <h2 style={{ fontSize: 20, fontWeight: 700 }}>{displayName}</h2>
               <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{stock.ticker} · {stock.market}</span>
             </div>
-            <button className="btn" onClick={addToWatchlist}
+            <button className="btn" onClick={addToWatchlist} disabled={watchlistMutation.isPending}
               style={{ fontSize: 13, border: '1px solid var(--border)' }}>
               + {t('watchlist.title')}
             </button>
@@ -259,7 +281,7 @@ function SearchStock() {
             <div className="price-hero-value">{fmt(stock.price)}</div>
             {chartData.length >= 2 && (
               <div className={priceChange >= 0 ? 'positive' : 'negative'} style={{ fontSize: 14, marginTop: 4 }}>
-                {priceChange >= 0 ? '+' : ''}{stock.currency === 'KRW' ? `₩${Math.round(Math.abs(priceChange)).toLocaleString()}` : formatMoney(Math.abs(priceChange), 'USD')} ({priceChangePct}%)
+                {priceChange >= 0 ? '+' : ''}{formatMoney(priceChange, stock.currency)} ({priceChangePct}%)
               </div>
             )}
           </div>
@@ -274,6 +296,11 @@ function SearchStock() {
             </div>
             {historyLoading ? (
               <div className="empty-state stock-chart-state">{t('common.loading')}</div>
+            ) : historyError ? (
+              <div className="empty-state stock-chart-state" role="alert">
+                <p>{historyError}</p>
+                <button type="button" className="btn" onClick={() => setHistoryRetry(value => value + 1)}>{t('common.retry')}</button>
+              </div>
             ) : chartData.length >= 2 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={chartData}>
@@ -310,7 +337,7 @@ function SearchStock() {
 
           <div className="stock-ticket-action">
             <button className="btn btn-primary"
-              onClick={() => setTradeTicker(stock.ticker)}>{t('stock.openTicket')}</button>
+              onClick={() => setTradeTicker(stock.ticker)}>{tradeDisabledReason ? t('stock.reviewTicket') : t('stock.openTicket')}</button>
           </div>
         </div>
       )}

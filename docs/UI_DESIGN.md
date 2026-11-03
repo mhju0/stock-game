@@ -10,6 +10,11 @@ The visual system uses a deep ink background, solid elevated surfaces, cobalt
 for navigation and primary actions, mint/coral only for positive and negative
 financial states, and tabular figures for money and percentages.
 
+Design read: a practice-trading workspace for individual learners, using solid
+financial surfaces; ENERGY 2 / RHYTHM 1 / MOTION 1. Cobalt identifies the next
+action, tabular figures make comparisons readable, and consistent spacing keeps
+frequent navigation predictable. Motion supplies feedback rather than decoration.
+
 ## Product principles
 
 1. **Keep the game in context.** Once a game is selected, its name, status, and
@@ -62,6 +67,8 @@ Overview, Trade, Portfolio, and More. Analysis and utilities live in More.
 | Raised surface | `#172131` | Dialogs and selected controls |
 | Primary text | `#f4f7fb` | Headings and key values |
 | Secondary text | `#a3aec0` | Supporting copy |
+| Tertiary text | `#94a0b4` | Small labels and placeholders |
+| Control border | `#66758b` | Input and secondary-button boundaries |
 | Border | `rgba(255, 255, 255, 0.09)` | Surface separation |
 | Cobalt | `#6f8cff` | Navigation and primary actions |
 | Mint | `#47d6a0` | Positive financial state |
@@ -69,6 +76,8 @@ Overview, Trade, Portfolio, and More. Analysis and utilities live in More.
 
 Light mode is an explicit user choice, not an operating-system side effect. It
 uses the same semantic roles and preserves contrast independently.
+Light tertiary text is `#596477` and control borders are `#788394`. Selected
+controls retain their foreground/background pairing on hover and while loading.
 
 ## Typography and numbers
 
@@ -99,12 +108,15 @@ uses the same semantic roles and preserves contrast independently.
 |---|---:|---|
 | Fast | 140ms | Press, hover, focus |
 | Standard | 220ms | Menus, tabs, small state changes |
-| Enter | 320ms | Route content and dialogs |
+| Enter | 220ms | Route content and dialogs |
 
-- Entering content uses opacity plus at most 12px of vertical translation.
+- Route content fades without transforming its ancestor, so nested fixed dialogs
+  remain attached to the viewport. Dialogs use opacity and an 8px translation.
 - Exits are faster than entrances.
 - Only transform and opacity are animated for layout movement.
-- Stagger is limited to the first four peer cards at 35ms intervals.
+- Cards do not replay nested entrances on route changes. Frequent navigation and
+  hover do not move labels or data; dialogs enter at scale 0.97 with an 8px offset.
+- Loading placeholders pulse opacity rather than repainting a moving gradient.
 - `prefers-reduced-motion: reduce` removes spatial movement and nonessential
   transitions while keeping content immediately available.
 
@@ -119,6 +131,8 @@ uses the same semantic roles and preserves contrast independently.
 
 Fixed navigation must reserve content space. Dialogs remain operable in a short
 landscape viewport and scroll internally when necessary.
+Portfolio holding names occupy the first row on compact screens, with quantity
+and price below. Monetary P/L remains fully visible rather than ellipsized.
 
 ## Accessibility acceptance
 

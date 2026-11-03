@@ -41,10 +41,11 @@ function Dashboard() {
   // denominator so the holdings list sums to ~100% regardless of cash; kr/us feed
   // the asset breakdown.
   const stockValues = useMemo(() => {
-    const rate = account?.exchange_rate || 1350
+    const rate = account?.exchange_rate
     let kr = 0, us = 0
     for (const h of holdingsSafe) {
       const v = h.currency === 'USD' ? h.total_value * rate : h.total_value
+      if (!Number.isFinite(h.total_value) || !Number.isFinite(v)) return { kr: null, us: null, total: null }
       if (h.currency === 'USD') us += v
       else kr += v
     }
@@ -92,9 +93,9 @@ function Dashboard() {
     if (filterMarket !== 'ALL') filtered = filtered.filter(h => h.market === filterMarket)
     return [...filtered].sort((a, b) => {
       // Standardize everything to KRW to calculate true Value and Allocation sorts
-      const rate = account?.exchange_rate || 1350
-      const aValKRW = a.currency === 'USD' ? a.total_value * rate : a.total_value
-      const bValKRW = b.currency === 'USD' ? b.total_value * rate : b.total_value
+      const rate = account?.exchange_rate
+      const aValKRW = Number.isFinite(a.total_value) && (a.currency !== 'USD' || rate > 0) ? a.currency === 'USD' ? a.total_value * rate : a.total_value : null
+      const bValKRW = Number.isFinite(b.total_value) && (b.currency !== 'USD' || rate > 0) ? b.currency === 'USD' ? b.total_value * rate : b.total_value : null
 
       switch (sortBy) {
         case 'name_asc':
@@ -103,18 +104,18 @@ function Dashboard() {
           return getStockName(b.ticker, b.name, i18n.language).localeCompare(getStockName(a.ticker, a.name, i18n.language))
         case 'alloc_desc':
         case 'value_desc':
-          return bValKRW - aValKRW
         case 'alloc_asc':
         case 'value_asc':
-          return aValKRW - bValKRW
+          if (!Number.isFinite(aValKRW) || !Number.isFinite(bValKRW)) return Number(Number.isFinite(bValKRW)) - Number(Number.isFinite(aValKRW))
+          return sortBy.endsWith('_desc') ? bValKRW - aValKRW : aValKRW - bValKRW
         case 'pnl_desc':
-          return b.unrealized_pnl - a.unrealized_pnl
         case 'pnl_asc':
-          return a.unrealized_pnl - b.unrealized_pnl
-        case 'mcap_desc':
-          return (b.market_cap || 0) - (a.market_cap || 0)
-        case 'mcap_asc':
-          return (a.market_cap || 0) - (b.market_cap || 0)
+        {
+          const aPnl = Number.isFinite(a.unrealized_pnl) && (a.currency !== 'USD' || rate > 0) ? a.currency === 'USD' ? a.unrealized_pnl * rate : a.unrealized_pnl : null
+          const bPnl = Number.isFinite(b.unrealized_pnl) && (b.currency !== 'USD' || rate > 0) ? b.currency === 'USD' ? b.unrealized_pnl * rate : b.unrealized_pnl : null
+          if (!Number.isFinite(aPnl) || !Number.isFinite(bPnl)) return Number(Number.isFinite(bPnl)) - Number(Number.isFinite(aPnl))
+          return sortBy === 'pnl_desc' ? bPnl - aPnl : aPnl - bPnl
+        }
         default:
           return 0
       }
@@ -130,8 +131,10 @@ function Dashboard() {
     </div>
   )
 
-  const rate = account.exchange_rate || 1350
-  const fmtDual = (krw) => displayCurrency === 'KRW'
+  const rate = account.exchange_rate
+  const fmtDual = (krw) => !Number.isFinite(krw) || (displayCurrency === 'USD' && !(rate > 0))
+    ? t('common.unavailable')
+    : displayCurrency === 'KRW'
     ? formatMoney(krw, 'KRW')
     : formatMoney(krw / rate, 'USD')
   const dayUp = account.daily_change_pct >= 0
@@ -154,22 +157,25 @@ function Dashboard() {
         </div>
       </div>
 
+      {tradeDisabledReason && <p className="page-subtitle">{t('game.endedReviewNote')}</p>}
+      {account.valuation_available === false && <p role="status">{t('common.valuationUnavailable')}</p>}
+
       <section className="asset-hero">
         <div className="asset-hero-top">
           <div className="metric-label" style={{ marginBottom: 0 }}>{t('dashboard.totalValue')}</div>
           <div style={{ display: 'flex', gap: 2 }}>
             {['KRW', 'USD'].map(c => (
-              <button key={c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
+              <button key={c} aria-pressed={displayCurrency === c} className={`btn segmented-button ${displayCurrency === c ? 'segmented-button-selected' : ''}`} onClick={() => setDisplayCurrency(c)} style={{
                 fontSize: 11, padding: '2px 8px', borderRadius: 6, lineHeight: '16px',
               }}>{c === 'KRW' ? '₩' : '$'}</button>
             ))}
           </div>
         </div>
         <div className="asset-total">{fmtDual(account.total_value_krw)}</div>
-        <div className={`asset-chip ${dayUp ? 'up' : 'down'}`}>
-          <span>{dayUp ? '+' : '-'}{fmtDual(Math.abs(account.daily_change_krw ?? 0))}</span>
+        <div className={`asset-chip ${Number.isFinite(account.daily_change_pct) ? dayUp ? 'up' : 'down' : ''}`}>
+          <span>{Number.isFinite(account.daily_change_krw) ? `${dayUp ? '+' : '-'}${fmtDual(Math.abs(account.daily_change_krw))}` : t('common.unavailable')}</span>
           <span className="asset-chip-sep" aria-hidden="true" />
-          <span>{dayUp ? '+' : ''}{account.daily_change_pct}% {t('dashboard.today')}</span>
+          <span title={account.daily_change_reference_date || undefined}>{Number.isFinite(account.daily_change_pct) ? `${dayUp ? '+' : ''}${account.daily_change_pct}%` : t('common.unavailable')} {t(account.daily_change_basis === 'previous_snapshot' ? 'dashboard.sinceSnapshot' : account.daily_change_basis === 'starting_value' ? 'dashboard.sinceStart' : 'dashboard.today')}</span>
         </div>
         <div className="asset-break">
           <div><div className="k">{t('dashboard.koreanStocks')}</div><div className="v">{fmtDual(stockValues.kr)}</div></div>
@@ -247,13 +253,13 @@ function Dashboard() {
           </div>
         ) : (
           sorted.map(h => {
-            const fmt = v => formatMoney(v, h.currency)
-            const pnlPct = h.avg_price ? ((h.current_price - h.avg_price) / h.avg_price * 100).toFixed(2) : 0
+            const fmt = v => Number.isFinite(v) ? formatMoney(v, h.currency) : t('common.unavailable')
+            const pnlPct = Number.isFinite(h.current_price) && h.avg_price > 0 ? `${((h.current_price - h.avg_price) / h.avg_price * 100).toFixed(2)}%` : t('common.unavailable')
             const name = getStockName(h.ticker, h.name, i18n.language)
             
             // Calculate Portfolio Weight (Allocation %)
-            const hValKRW = h.currency === 'USD' ? h.total_value * (account?.exchange_rate || 1350) : h.total_value
-            const allocPct = ((hValKRW / (stockValues.total || 1)) * 100).toFixed(1)
+            const hValKRW = h.currency === 'USD' ? h.total_value * account?.exchange_rate : h.total_value
+            const allocPct = Number.isFinite(h.total_value) && stockValues.total > 0 ? `${((hValKRW / stockValues.total) * 100).toFixed(1)}%` : t('common.unavailable')
 
             return (
               <button
@@ -261,12 +267,12 @@ function Dashboard() {
                 type="button"
                 className="holding-row"
                 onClick={() => setTradeTicker(h.ticker)}
-                aria-label={`${name} ${t('stock.openTrade')}`}
+                aria-label={`${name}, ${t('holdings.shares', { count: h.quantity })}, ${fmt(h.current_price)}, ${pnlPct}. ${t(tradeDisabledReason ? 'stock.viewDetails' : 'stock.openTrade')}`}
               >
                 <div style={{ flex: 1 }}>
                   <strong style={{ fontSize: 15 }}>{name}</strong>
                   <div className="holding-sub">
-                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct}% {t('holdings.ofPortfolio')}</span> · {h.ticker}
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{allocPct} {t('holdings.ofPortfolio')}</span> · {h.ticker}
                   </div>
                 </div>
                 
@@ -277,8 +283,8 @@ function Dashboard() {
 
                 <div style={{ flex: 1, textAlign: 'right' }}>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{fmt(h.current_price)}</div>
-                  <div className={h.unrealized_pnl >= 0 ? 'positive' : 'negative'} style={{ fontSize: 13 }}>
-                    {h.unrealized_pnl >= 0 ? '+' : ''}{pnlPct}%
+                  <div className={Number.isFinite(h.unrealized_pnl) ? h.unrealized_pnl >= 0 ? 'positive' : 'negative' : ''} style={{ fontSize: 13 }}>
+                    {Number.isFinite(h.unrealized_pnl) && h.unrealized_pnl >= 0 ? '+' : ''}{pnlPct}
                   </div>
                 </div>
               </button>

@@ -82,3 +82,24 @@ class TestProtectedRoutes:
         resp = client.get("/users")
         # Route was deleted — must not return a 200 list of users
         assert resp.status_code != 200
+
+
+class TestTokenAlgorithmBoundary:
+    def test_hs256_token_reaches_protected_route(self, client, auth_headers):
+        assert client.get('/game/sessions', headers=auth_headers).status_code == 200
+
+    def test_hs384_with_same_secret_is_rejected(self, client, registered_user):
+        token = jwt.encode({'sub': str(registered_user['user_id'])}, SECRET, algorithm='HS384')
+        assert client.get('/game/sessions', headers={'Authorization': f'Bearer {token}'}).status_code == 401
+
+    def test_wrong_hs256_key_is_rejected(self, client, registered_user):
+        token = jwt.encode({'sub': str(registered_user['user_id'])}, 'wrong-test-secret', algorithm='HS256')
+        assert client.get('/game/sessions', headers={'Authorization': f'Bearer {token}'}).status_code == 401
+
+    def test_unsigned_token_is_rejected(self, client, registered_user):
+        import base64
+        import json
+        def encode(value):
+            return base64.urlsafe_b64encode(json.dumps(value).encode()).rstrip(b'=').decode()
+        token = f"{encode({'alg': 'none', 'typ': 'JWT'})}.{encode({'sub': str(registered_user['user_id'])})}."
+        assert client.get('/game/sessions', headers={'Authorization': f'Bearer {token}'}).status_code == 401

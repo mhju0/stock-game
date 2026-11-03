@@ -168,7 +168,7 @@ function Exchange() {
           ))}
           <button className="btn" onClick={() => {
             const max = fromCurrency === 'KRW' ? account.balance_krw : account.balance_usd
-            setAmount(String(Math.floor(max)))
+            setAmount(String(max))
           }} style={{ fontSize: 13, padding: '6px 12px', border: '1px solid var(--border)', color: 'var(--accent)', fontWeight: 600 }}>
             {t('exchange.allFunds')}
           </button>

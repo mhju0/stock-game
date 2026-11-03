@@ -739,3 +739,44 @@ public engineering record.
 `CLAUDE.md` as a single `@AGENTS.md` import, so a fresh clone carries the same
 rules for every coding agent. The rest of D-13 stands: local harness folders,
 `docs/agents/*`, and the audit reports stay ignored.
+
+## 2026-11-04 — Owner-authorized quality audit
+
+### D-38 · Repair verified security and interface defects — `ACTIVE`
+
+**Approved (owner, 2026-11-04):** audit security, accessibility, motion,
+performance, code, and complete user flows; implement accepted findings with
+independent review and redeploy. This bounded quality pass preserves maintenance
+mode, supported US/Korean markets, ownership, legacy compatibility, and trading
+rules. It does not authorize a production schema migration or historical rewrite.
+
+**Engineering choices:** account/session writes lock fresh rows in User →
+GameSession order. Trades recheck expiry after remote lookups. Missing prices
+produce unavailable valuations rather than partial totals or saved zeroes.
+Realized returns remain currency-separated; mixed-currency rankings are absent.
+Input bounds, a 64KiB request-body limit, and bounded, synchronized caches protect
+availability. The body limit uses the installed Starlette middleware before JSON
+parsing and leaves CORS/security headers on 413 responses. CI exercises
+real PostgreSQL concurrency in a disposable database.
+
+**Saved-result boundary:** list and result use the same latest saved observation,
+preserving the existing first/last snapshot contract. New snapshots cannot be
+written after a session ends. A saved observation may precede the last fill when
+completion wins the post-trade capture race; the UI exposes its date/source.
+The existing cash-only USD fallback uses current FX and is labeled accordingly.
+There is no retroactive end-date cutoff or forced new valuation on completion.
+
+**Interface:** preserve Midnight Market and its navigation. Strengthen both
+themes' contrast, remove decorative movement and ambient gradients, keep dialogs
+above navigation and operable in short viewports, and keep financial values
+visible on mobile. Cross-tab token changes reload the app to discard old identity
+and query state. Finite animations settle before automated contrast inspection.
+
+**Dependency exception:** reviewed minimatch 11 as a targeted security override
+for ESLint's transitive minimatch 10 dependency; its supported APIs and the full
+lint/test/build workflow are checked. This is not an unattended major framework
+upgrade. Two no-fix Python advisories remain visible: python-jose DER-public-key
+HMAC confusion and python-ecdsa Minerva. The current private symmetric-secret,
+HS256-only implementation does not meet their exploit prerequisites; production
+secret entropy and database RLS remain unverified. D-24's deliberately open auth
+and database design decisions remain open.

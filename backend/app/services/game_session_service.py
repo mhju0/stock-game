@@ -48,6 +48,15 @@ def resolve_session_lifecycle_state(
     return "active" if session.is_active else "completed"
 
 
+def lock_user_for_mutation(db: Session, user_id: int) -> User:
+    # Auth may already have loaded this identity before waiting on another writer.
+    user = (db.query(User).filter(User.id == user_id)
+            .populate_existing().with_for_update().first())
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
 def get_owned_session(
     db: Session,
     current_user: User,
@@ -65,7 +74,7 @@ def get_owned_session(
         GameSession.id == session_id, GameSession.user_id == current_user.id
     )
     if for_update:
-        query = query.with_for_update()
+        query = query.populate_existing().with_for_update()
     session = query.first()
     if not session:
         raise HTTPException(status_code=404, detail="Game session not found")

@@ -1,3 +1,4 @@
+import threading
 import time
 
 from app.services import market_data_provider
@@ -8,7 +9,11 @@ from app.services.static_fundamentals import STATIC_FUNDAMENTALS
 _price_cache = market_data_provider._price_cache
 
 _info_cache: dict[str, dict] = {}
+_info_cache_store_lock = threading.Lock()
 INFO_CACHE_TTL = 600
+MAX_INFO_CACHE_KEYS = market_data_provider.MAX_CACHE_KEYS
+SUPPORTED_US_EXCHANGES = {"NMS", "NGM", "NCM", "NYQ", "ASE", "PCX", "BTS"}
+SUPPORTED_KR_EXCHANGES = {"KSC", "KOE"}
 
 # ── Korean Stocks: Korean search name → ticker ──────────────────────
 KOREAN_STOCKS = {
@@ -226,6 +231,8 @@ def search_stocks(query: str) -> list:
 
     # Add Yahoo search matches that are not already in the local catalog.
     for quote in market_data_provider.search_equities(query):
+        if quote.get("exchange") not in SUPPORTED_US_EXCHANGES | SUPPORTED_KR_EXCHANGES:
+            continue
         if quote.get("quoteType") == "EQUITY" and quote.get("symbol") not in matched_tickers:
             ticker = quote.get("symbol", "")
             en_name = quote.get("shortname") or quote.get("longname", "")
@@ -266,8 +273,19 @@ def _cache_info_value(result: dict) -> dict:
     return {k: v for k, v in result.items() if k != "price"}
 
 
+def _store_info(ticker: str, result: dict, now: float) -> None:
+    with _info_cache_store_lock:
+        while len(_info_cache) >= MAX_INFO_CACHE_KEYS:
+            _info_cache.pop(next(iter(_info_cache)))
+        _info_cache[ticker] = {"value": _cache_info_value(result), "ts": now}
+
+
 # ── Stock Info ───────────────────────────────────────────────────────
 def get_stock_info(ticker: str) -> dict | None:
+    ticker = ticker.upper()
+    is_kr = ticker.endswith((".KS", ".KQ"))
+    if "." in ticker and not is_kr:
+        return None
     now = time.time()
 
     cached = _info_cache.get(ticker)
@@ -276,14 +294,23 @@ def get_stock_info(ticker: str) -> dict | None:
         result["price"] = get_stock_price(ticker)
         return result
 
-    is_kr = ticker.endswith(".KS") or ticker.endswith(".KQ")
-
     # Get sector/industry from static map (primary source)
     sector, industry = _get_sector_industry(ticker)
 
     # Try provider metadata for name (and fallback sector if not in static map)
     try:
         info = market_data_provider.get_ticker_metadata(ticker)
+        if info:
+            expected_currency = "KRW" if is_kr else "USD"
+            allowed_exchanges = SUPPORTED_KR_EXCHANGES if is_kr else SUPPORTED_US_EXCHANGES
+            if not is_kr and ticker not in US_STOCK_NAMES_EN and (
+                info.get("currency") != "USD" or info.get("exchange") not in SUPPORTED_US_EXCHANGES
+            ):
+                return None
+            if info.get("currency", expected_currency) != expected_currency:
+                return None
+            if info.get("exchange") and info["exchange"] not in allowed_exchanges:
+                return None
         if info and "shortName" in info:
             en_name = info.get("shortName", "")
             ko_name = en_name
@@ -316,7 +343,7 @@ def get_stock_info(ticker: str) -> dict | None:
                 "currency": "KRW" if is_kr else "USD",
             }
 
-            _info_cache[ticker] = {"value": _cache_info_value(result), "ts": now}
+            _store_info(ticker, result, now)
 
             result_with_price = result.copy()
             result_with_price["price"] = get_stock_price(ticker)
@@ -332,6 +359,8 @@ def get_stock_info(ticker: str) -> dict | None:
         return result
 
     # FALLBACK: .info failed — build from local name dicts + .history() price
+    if not is_kr and ticker not in US_STOCK_NAMES_EN:
+        return None
     price = get_stock_price(ticker)
     if price is None:
         return None
@@ -355,5 +384,5 @@ def get_stock_info(ticker: str) -> dict | None:
         "price": price,
     }
 
-    _info_cache[ticker] = {"value": _cache_info_value(result), "ts": now}
+    _store_info(ticker, result, now)
     return result

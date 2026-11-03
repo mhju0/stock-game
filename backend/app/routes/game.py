@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -16,9 +16,10 @@ from app.services.game_session_service import (
     get_active_sessions,
     get_current_session,
     get_owned_session,
+    lock_user_for_mutation,
     resolve_session_lifecycle_state,
 )
-from app.services.public_rate_limit import enforce_market_data_rate_limit
+from app.services.public_rate_limit import enforce_market_data_rate_limit, enforce_session_create_rate_limit
 from app.services.portfolio_compatibility import (
     ensure_session_cash_for_read,
     session_starting_value_krw,
@@ -28,7 +29,11 @@ from app.services.valuation_service import (
     get_infos_for_tickers,
     get_prices_for_tickers,
     resolved_sector,
+    valuation_available,
+    valuation_fields,
 )
+
+from app.services.realized_service import realized_performance
 
 router = APIRouter(prefix="/game", tags=["game"])
 
@@ -77,18 +82,33 @@ def _session_snapshots(
             PortfolioSnapshot.user_id == user_id,
             PortfolioSnapshot.game_session_id == session_id,
         )
-        .order_by(PortfolioSnapshot.created_at.asc())
+        .order_by(PortfolioSnapshot.created_at.asc(), PortfolioSnapshot.id.asc())
         .all()
     )
+
+
+def _saved_session_values(session, first_snapshot, last_snapshot, has_activity, rate):
+    starting_value = (first_snapshot.total_value_krw if first_snapshot
+                      else session_starting_value_krw(session, rate))
+    starting_source = "first_snapshot" if first_snapshot else "session_starting_balance"
+    if last_snapshot:
+        return starting_value, last_snapshot.total_value_krw, starting_source, "last_snapshot"
+    if session.final_value_krw is not None:
+        return starting_value, session.final_value_krw, starting_source, "session_final_value"
+    if not has_activity:
+        ending_value = (session.cash_krw or 0.0) + ((session.cash_usd or 0.0) * rate)
+        return starting_value, ending_value, starting_source, "cash_only_session_balance"
+    return starting_value, None, starting_source, None
 
 
 def _session_current_value_krw(
     session: GameSession,
     holdings: list[Holding],
     rate: float,
-) -> float:
+) -> float | None:
     prices = get_prices_for_tickers([h.ticker for h in holdings])
-    return compute_session_total_value_krw(session, holdings, rate, prices)
+    return (compute_session_total_value_krw(session, holdings, rate, prices)
+            if valuation_available(holdings, rate, prices) else None)
 
 
 def _create_session(
@@ -100,6 +120,7 @@ def _create_session(
     starting_balance_krw: float,
     starting_balance_usd: float = 0.0,
 ) -> GameSession:
+    user = lock_user_for_mutation(db, user.id)
     # Guarded here rather than per route so both creation entry points are covered.
     if len(get_active_sessions(db, user)) >= MAX_ACTIVE_SESSIONS:
         raise HTTPException(
@@ -145,7 +166,11 @@ def _serialize_sessions(db: Session, user: User, sessions: list[GameSession]) ->
     # Preserve the nullable-cash migration bridge without committing once per row.
     needs_commit = any(s.cash_krw is None or s.cash_usd is None for s in sessions)
     if needs_commit:
-        for session in sessions:
+        user = lock_user_for_mutation(db, user_id)
+        locked_sessions = (db.query(GameSession).filter(
+            GameSession.user_id == user_id, GameSession.id.in_(session_ids),
+        ).order_by(GameSession.id).populate_existing().with_for_update().all())
+        for session in locked_sessions:
             ensure_session_cash_initialized(session, user)
         db.commit()
         # Commit expires ORM instances; reload together instead of lazily per row.
@@ -160,21 +185,55 @@ def _serialize_sessions(db: Session, user: User, sessions: list[GameSession]) ->
     ).all()
     for holding in holdings:
         holdings_by_session[holding.game_session_id].append(holding)
-    latest_updates = dict(db.query(
-        PortfolioSnapshot.game_session_id, func.max(PortfolioSnapshot.created_at),
+    snapshot_positions = db.query(
+        PortfolioSnapshot.id,
+        func.row_number().over(
+            partition_by=PortfolioSnapshot.game_session_id,
+            order_by=(PortfolioSnapshot.created_at.asc(), PortfolioSnapshot.id.asc()),
+        ).label("first_position"),
+        func.row_number().over(
+            partition_by=PortfolioSnapshot.game_session_id,
+            order_by=(PortfolioSnapshot.created_at.desc(), PortfolioSnapshot.id.desc()),
+        ).label("last_position"),
     ).filter(
         PortfolioSnapshot.user_id == user_id,
         PortfolioSnapshot.game_session_id.in_(session_ids),
-    ).group_by(PortfolioSnapshot.game_session_id).all())
+    ).subquery()
+    boundary_snapshots = db.query(
+        PortfolioSnapshot, snapshot_positions.c.first_position, snapshot_positions.c.last_position,
+    ).join(snapshot_positions, PortfolioSnapshot.id == snapshot_positions.c.id).filter(
+        or_(snapshot_positions.c.first_position == 1, snapshot_positions.c.last_position == 1),
+    ).all()
+    first_snapshots, last_snapshots = {}, {}
+    for snapshot, first_position, last_position in boundary_snapshots:
+        if first_position == 1:
+            first_snapshots[snapshot.game_session_id] = snapshot
+        if last_position == 1:
+            last_snapshots[snapshot.game_session_id] = snapshot
+    cash_only_candidates = [s.id for s in sessions
+                            if resolve_session_lifecycle_state(s) != "active"
+                            and s.id not in last_snapshots and s.final_value_krw is None
+                            and not holdings_by_session[s.id]]
+    transaction_sessions = set()
+    if cash_only_candidates:
+        transaction_sessions = {row[0] for row in db.query(Transaction.game_session_id).filter(
+            Transaction.user_id == user_id, Transaction.game_session_id.in_(cash_only_candidates),
+        ).distinct().all()}
     rate = get_exchange_rate()
-    prices = get_prices_for_tickers([holding.ticker for holding in holdings])
+    prices = get_prices_for_tickers([
+        holding.ticker for session in sessions
+        if resolve_session_lifecycle_state(session) == "active"
+        for holding in holdings_by_session[session.id]
+    ])
     serialized = []
     for session in sessions:
-        current_value = compute_session_total_value_krw(
+        available = valuation_available(holdings_by_session[session.id], rate, prices)
+        current_value = (compute_session_total_value_krw(
             session, holdings_by_session[session.id], rate, prices,
-        )
+        ) if available else None)
         starting_value = session_starting_value_krw(session, rate)
-        latest_snapshot_at = latest_updates.get(session.id)
+        last_snapshot = last_snapshots.get(session.id)
+        latest_snapshot_at = last_snapshot.created_at if last_snapshot else None
         start_date = _as_aware_utc(session.start_date)
         end_date = _as_aware_utc(session.end_date)
         last_updated = (
@@ -183,6 +242,17 @@ def _serialize_sessions(db: Session, user: User, sessions: list[GameSession]) ->
             else session.updated_at or session.created_at or session.start_date
         )
         lifecycle_state = resolve_session_lifecycle_state(session)
+        value_source = "live_market_prices" if available else None
+        value_as_of = None
+        uses_live_fx = available
+        if lifecycle_state != "active":
+            starting_value, current_value, _, value_source = _saved_session_values(
+                session, first_snapshots.get(session.id), last_snapshot,
+                bool(holdings_by_session[session.id]) or session.id in transaction_sessions, rate,
+            )
+            available = current_value is not None
+            value_as_of = _iso(last_snapshot.created_at) if last_snapshot else None
+            uses_live_fx = value_source == "cash_only_session_balance" and bool(session.cash_usd)
 
         serialized.append({
             "id": session.id,
@@ -194,11 +264,15 @@ def _serialize_sessions(db: Session, user: User, sessions: list[GameSession]) ->
             "starting_balance_usd": session.starting_balance_usd or 0.0,
             "cash_krw": session.cash_krw or 0.0,
             "cash_usd": session.cash_usd or 0.0,
-            "current_value_krw": round(current_value, 2),
+            **valuation_fields(available),
+            "valuation_unavailable_reason": (None if available else "missing_market_prices" if lifecycle_state == "active" else "missing_saved_valuation"),
+            "valuation_source": value_source,
+            "valuation_as_of": value_as_of,
+            "valuation_uses_live_fx": uses_live_fx,
+            "current_value_krw": round(current_value, 2) if available else None,
             "current_return_pct": (
                 round(((current_value - starting_value) / starting_value) * 100, 2)
-                if starting_value
-                else 0
+                if available and starting_value else (0 if available and lifecycle_state == "active" else None)
             ),
             "duration_days": session.duration_days,
             "start_date": start_date.isoformat() if start_date else None,
@@ -238,11 +312,11 @@ def _build_session_status(db: Session, user: User, session: GameSession) -> dict
         "starting_balance_usd": session.starting_balance_usd or 0.0,
         "cash_krw": session.cash_krw or 0.0,
         "cash_usd": session.cash_usd or 0.0,
-        "current_value_krw": round(current_value, 2),
+        **valuation_fields(current_value is not None),
+        "current_value_krw": round(current_value, 2) if current_value is not None else None,
         "current_return_pct": (
             round(((current_value - starting_value) / starting_value) * 100, 2)
-            if starting_value
-            else 0
+            if current_value is not None and starting_value else (0 if current_value is not None else None)
         ),
         "duration_days": session.duration_days,
         "days_elapsed": round(days_elapsed, 1),
@@ -261,22 +335,18 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
     tickers = [h.ticker for h in holdings]
     prices = get_prices_for_tickers(tickers)
     infos = get_infos_for_tickers(tickers)
-    current_value = compute_session_total_value_krw(session, holdings, rate, prices)
+    available = valuation_available(holdings, rate, prices)
+    current_value = compute_session_total_value_krw(session, holdings, rate, prices) if available else None
     starting_value = session_starting_value_krw(session, rate)
-    total_return = current_value - starting_value
-    total_return_pct = (total_return / starting_value) * 100 if starting_value else 0
+    total_return = current_value - starting_value if available else None
+    total_return_pct = ((total_return / starting_value) * 100 if starting_value else 0) if available else None
 
     all_transactions = _session_transactions(db, user_id, session.id)
     buys = [t for t in all_transactions if t.transaction_type == "BUY"]
     sells = [t for t in all_transactions if t.transaction_type == "SELL"]
     exchanges = [t for t in all_transactions if t.transaction_type == "EXCHANGE"]
 
-    total_realized = sum(t.realized_pnl or 0.0 for t in sells)
-    wins = [t for t in sells if (t.realized_pnl or 0.0) > 0]
-    losses = [t for t in sells if (t.realized_pnl or 0.0) < 0]
-
-    best_trade = max(sells, key=lambda t: t.realized_pnl or 0.0) if sells else None
-    worst_trade = min(sells, key=lambda t: t.realized_pnl or 0.0) if sells else None
+    realized = realized_performance(sells)
 
     most_traded_tickers = {}
     for t in all_transactions:
@@ -324,10 +394,11 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
         "starting_balance": session.starting_balance_krw,
         "starting_balance_krw": session.starting_balance_krw,
         "starting_balance_usd": session.starting_balance_usd or 0.0,
-        "current_value": round(current_value, 2),
-        "current_value_krw": round(current_value, 2),
-        "total_return": round(total_return, 2),
-        "total_return_pct": round(total_return_pct, 2),
+        **valuation_fields(current_value is not None),
+        "current_value": round(current_value, 2) if current_value is not None else None,
+        "current_value_krw": round(current_value, 2) if current_value is not None else None,
+        "total_return": round(total_return, 2) if total_return is not None else None,
+        "total_return_pct": round(total_return_pct, 2) if total_return_pct is not None else None,
         "duration_days": session.duration_days,
         "days_elapsed": round(days_elapsed, 1),
         "start_date": start_date.isoformat() if start_date else None,
@@ -337,31 +408,11 @@ def _build_session_summary(db: Session, user: User, session: GameSession) -> dic
         "total_buys": len(buys),
         "total_sells": len(sells),
         "total_exchanges": len(exchanges),
-        "realized_pnl": round(total_realized, 2),
-        "winning_trades": len(wins),
-        "losing_trades": len(losses),
-        "win_rate": round(len(wins) / len(sells) * 100, 2) if sells else 0,
-        "best_trade": (
-            {
-                "ticker": best_trade.ticker,
-                "name": best_trade.name,
-                "pnl": best_trade.realized_pnl,
-            }
-            if best_trade
-            else None
-        ),
-        "worst_trade": (
-            {
-                "ticker": worst_trade.ticker,
-                "name": worst_trade.name,
-                "pnl": worst_trade.realized_pnl,
-            }
-            if worst_trade
-            else None
-        ),
+        **{key: value for key, value in realized.items() if key not in {"total_realized_pnl", "total_trades"}},
+        "realized_pnl": realized["total_realized_pnl"],
         "most_traded": most_traded,
         "current_holdings_count": len(holdings),
-        "sectors": sectors,
+        "sectors": sectors if available else None,
         "peak_value": round(peak_value, 2),
         "trough_value": round(trough_value, 2),
         "cash_krw": session.cash_krw or 0.0,
@@ -385,24 +436,9 @@ def _build_session_result(db: Session, user: User, session: GameSession) -> dict
     fallback_rate = get_exchange_rate()
     start_rate = first_snapshot.exchange_rate if first_snapshot else fallback_rate
 
-    starting_value = (
-        first_snapshot.total_value_krw
-        if first_snapshot
-        else session_starting_value_krw(session, start_rate)
+    starting_value, ending_value, starting_source, ending_source = _saved_session_values(
+        session, first_snapshot, last_snapshot, bool(holdings or transactions), start_rate,
     )
-    starting_source = "first_snapshot" if first_snapshot else "session_starting_balance"
-
-    ending_value = None
-    ending_source = None
-    if last_snapshot:
-        ending_value = last_snapshot.total_value_krw
-        ending_source = "last_snapshot"
-    elif session.final_value_krw is not None:
-        ending_value = session.final_value_krw
-        ending_source = "session_final_value"
-    elif not holdings and not transactions:
-        ending_value = (session.cash_krw or 0.0) + ((session.cash_usd or 0.0) * fallback_rate)
-        ending_source = "cash_only_session_balance"
 
     total_return = None
     total_return_pct = None
@@ -437,7 +473,7 @@ def _build_session_result(db: Session, user: User, session: GameSession) -> dict
     worst_stock = None
     stock_result_reason = None
     sell_currencies = {tx.currency for tx in sells}
-    if sells and len(sell_currencies) == 1:
+    if sells and realized_available and len(sell_currencies) == 1:
         realized_by_stock: dict[str, dict] = {}
         for tx in sells:
             if tx.realized_pnl is None:
@@ -462,7 +498,7 @@ def _build_session_result(db: Session, user: User, session: GameSession) -> dict
             best_stock["realized_pnl"] = round(best_stock["realized_pnl"], 2)
             worst_stock["realized_pnl"] = round(worst_stock["realized_pnl"], 2)
     elif sells:
-        stock_result_reason = "mixed_realized_pnl_currencies"
+        stock_result_reason = "missing_sell_realized_pnl" if not realized_available else "mixed_realized_pnl_currencies"
 
     peak_value = max((snapshot.total_value_krw for snapshot in snapshots), default=None)
     trough_value = min((snapshot.total_value_krw for snapshot in snapshots), default=None)
@@ -483,6 +519,8 @@ def _build_session_result(db: Session, user: User, session: GameSession) -> dict
         "starting_value_source": starting_source,
         "ending_value_krw": round(ending_value, 2) if ending_value is not None else None,
         "ending_value_source": ending_source,
+        "ending_value_as_of": _iso(last_snapshot.created_at) if last_snapshot else None,
+        "ending_value_uses_live_fx": ending_source == "cash_only_session_balance" and bool(session.cash_usd),
         "total_return_krw": round(total_return, 2) if total_return is not None else None,
         "total_return_pct": round(total_return_pct, 2) if total_return_pct is not None else None,
         "return_available": ending_value is not None and bool(starting_value),
@@ -542,7 +580,7 @@ def game_sessions(
     return {"sessions": _serialize_sessions(db, current_user, sessions)}
 
 
-@router.post("/sessions")
+@router.post("/sessions", dependencies=[Depends(enforce_session_create_rate_limit)])
 def create_game_session(
     request: GameSessionCreateRequest,
     db: Session = Depends(get_db),
@@ -576,7 +614,8 @@ def update_game_session(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    session = get_owned_session(db, current_user, session_id)
+    current_user = lock_user_for_mutation(db, current_user.id)
+    session = get_owned_session(db, current_user, session_id, for_update=True)
     updates = request.model_dump(exclude_unset=True)
 
     if "title" in updates:
@@ -616,7 +655,8 @@ def delete_game_session(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    session = get_owned_session(db, current_user, session_id)
+    current_user = lock_user_for_mutation(db, current_user.id)
+    session = get_owned_session(db, current_user, session_id, for_update=True)
     scoped_filter = {
         "user_id": current_user.id,
         "game_session_id": session.id,
@@ -661,7 +701,7 @@ def get_game_session_result(
     return _build_session_result(db, current_user, session)
 
 
-@router.post("/new")
+@router.post("/new", dependencies=[Depends(enforce_session_create_rate_limit)])
 def start_new_game(
     request: NewGameRequest,
     db: Session = Depends(get_db),
