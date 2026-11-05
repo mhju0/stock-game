@@ -1,4 +1,6 @@
-from jose import jwt
+from datetime import datetime, timedelta, timezone
+
+import jwt
 
 
 SECRET = "test-secret-key-for-pytest-do-not-use-in-prod"
@@ -103,3 +105,38 @@ class TestTokenAlgorithmBoundary:
             return base64.urlsafe_b64encode(json.dumps(value).encode()).rstrip(b'=').decode()
         token = f"{encode({'alg': 'none', 'typ': 'JWT'})}.{encode({'sub': str(registered_user['user_id'])})}."
         assert client.get('/game/sessions', headers={'Authorization': f'Bearer {token}'}).status_code == 401
+
+
+class TestTokenExpiryAndClaims:
+    def _get(self, client, token):
+        return client.get('/game/sessions', headers={'Authorization': f'Bearer {token}'})
+
+    def test_issued_token_expires_in_seven_days(self, client):
+        body = client.post("/auth/register", json={"username": "frank", "password": "pw123456"}).json()
+        payload = jwt.decode(body["access_token"], SECRET, algorithms=[ALGORITHM])
+        remaining = payload["exp"] - datetime.now(timezone.utc).timestamp()
+        assert timedelta(days=7) - timedelta(minutes=1) < timedelta(seconds=remaining) <= timedelta(days=7)
+
+    def test_unexpired_token_reaches_protected_route(self, client, registered_user):
+        exp = datetime.now(timezone.utc) + timedelta(minutes=5)
+        token = jwt.encode({'sub': str(registered_user['user_id']), 'exp': exp}, SECRET, algorithm=ALGORITHM)
+        assert self._get(client, token).status_code == 200
+
+    def test_expired_token_is_rejected(self, client, registered_user):
+        exp = datetime.now(timezone.utc) - timedelta(seconds=5)
+        token = jwt.encode({'sub': str(registered_user['user_id']), 'exp': exp}, SECRET, algorithm=ALGORITHM)
+        resp = self._get(client, token)
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "Invalid or expired token"
+        assert resp.headers["WWW-Authenticate"] == "Bearer"
+
+    def test_token_without_subject_is_rejected(self, client):
+        token = jwt.encode({'username': 'nobody'}, SECRET, algorithm=ALGORITHM)
+        assert self._get(client, token).status_code == 401
+
+    def test_tampered_payload_is_rejected(self, client, registered_user):
+        token = jwt.encode({'sub': str(registered_user['user_id'])}, SECRET, algorithm=ALGORITHM)
+        header, _, signature = token.split('.')
+        forged = jwt.encode({'sub': str(registered_user['user_id'] + 1)}, 'other-secret-of-sufficient-length-1234', algorithm=ALGORITHM)
+        token = f"{header}.{forged.split('.')[1]}.{signature}"
+        assert self._get(client, token).status_code == 401
