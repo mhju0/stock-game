@@ -48,7 +48,7 @@ These captures were taken on November 4, 2026 from current `main` with fixed, fi
 - Korean and English UI, a global user-level watchlist, and market browsing for US and Korean stocks.
 - Ownership checks at every session-scoped API boundary; cross-user resources return 404.
 - Rate limiting, bounded request validation, and hardened response headers on the API (see [Security](#security)).
-- A dark-first showcase interface with an explicit light theme, contextual desktop sidebar, mobile tab bar, keyboard focus containment, and reduced-motion support. The interface contract is documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
+- A dark-first interface with an explicit light theme, contextual desktop sidebar, mobile tab bar, keyboard focus containment, and reduced-motion support. The interface contract is documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Architecture
 
