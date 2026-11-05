@@ -6,6 +6,7 @@
 - Release delivery: [PR #30](https://github.com/mhju0/stock-game/pull/30) merged to `main`; Vercel production deployment verified
 - Architecture and audit synchronization: [PR #34](https://github.com/mhju0/stock-game/pull/34) merged to `main`; Vercel production deployment verified
 - Post-merge security-state record: [PR #35](https://github.com/mhju0/stock-game/pull/35) merged to `main`; CI, CodeQL, and Vercel production deployment verified
+- Dependency follow-up (2026-11-05): [PR #57](https://github.com/mhju0/stock-game/pull/57) replaced python-jose with PyJWT; Dependabot alert #38 is fixed and no alerts are open. The 2026-11-04 rows below are the earlier record.
 - Lifecycle: feature complete, maintenance mode
 
 This is the authoritative point-in-time record for the maintained project.
