@@ -100,7 +100,7 @@ The account budget is charged only after credentials are checked and only when t
 - Price and metadata lookup misses are cached briefly, so repeated requests for the same unknown symbol do not force an outbound call each time. Search, history, and other upstream-backed routes remain protected by the market-data rate limit.
 
 Backend dependencies are pinned and checked against the installed environment. Frontend installs use the committed lockfile with `npm ci`; the declared React Router minimum includes the advisory fixes.
-The Vercel deployment adds a restrictive Content Security Policy. GitHub vulnerability alerts and Dependabot security updates are enabled; routine version-update PRs are turned off. One critical python-jose advisory is still open, and [PROJECT_STATUS.md](PROJECT_STATUS.md) records why it is judged unreachable with the HS256-only token setup. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
+The Vercel deployment adds a restrictive Content Security Policy. GitHub vulnerability alerts and Dependabot security updates are enabled; routine version-update PRs are turned off. Tokens are signed and verified with PyJWT, HS256 only; python-jose, which has an unfixed critical advisory, was removed. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
 
 ## Tech stack
 

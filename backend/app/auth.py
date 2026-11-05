@@ -1,11 +1,11 @@
 import os
 import bcrypt
+import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -51,7 +51,7 @@ def get_current_user(
         user_id: Optional[str] = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except JWTError:
+    except jwt.InvalidTokenError:
         raise credentials_exception
 
     user = db.query(User).filter(User.id == int(user_id)).first()
