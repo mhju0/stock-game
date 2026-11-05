@@ -780,3 +780,16 @@ HMAC confusion and python-ecdsa Minerva. The current private symmetric-secret,
 HS256-only implementation does not meet their exploit prerequisites; production
 secret entropy and database RLS remain unverified. D-24's deliberately open auth
 and database design decisions remain open.
+
+## 2026-11-05 — Replace python-jose with PyJWT
+
+The owner approved closing the open dependency alerts. python-jose had a critical no-fix
+advisory (DER-encoded public keys bypass the algorithm-confusion guard, Dependabot #38), so
+[PR #57](https://github.com/mhju0/stock-game/pull/57) replaced it with PyJWT 2.15.1. The token
+contract is unchanged: HS256 only, `sub`/`username`/`exp` claims, 7-day expiry, and a 401 with
+`WWW-Authenticate: Bearer` for any invalid or expired token. The `cryptography` pin was removed
+with it, which also drops ecdsa, so the python-ecdsa Minerva advisory noted on 2026-11-04 no longer
+applies. Five new tests cover expiry, a missing subject and a tampered payload. This supersedes
+the python-jose and ecdsa part of the 2026-11-04 dependency exception; the rest of that entry
+stands. Production secret length and entropy remain unverified; PyJWT warns on HMAC keys under
+32 bytes.
