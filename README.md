@@ -4,9 +4,9 @@ Stock Game is a full-stack paper-trading simulator for US and Korean equities. I
 
 **[Open the live app](https://stock-game-gray.vercel.app)** · API base `https://stock-game-6411.onrender.com`
 
-> **v1.1.0 current · Feature complete · Maintenance mode**
+> **v1.1.0 (latest tag) · Feature complete · Maintenance mode**
 >
-> The planned product scope is complete. v1.1.0 is the explicitly approved showcase-interface maintenance release and adds no product scope. Feature development is paused; maintenance remains limited to security and dependency updates, production compatibility, regressions, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
+> The planned product scope is complete. v1.1.0 changed the interface only and added no features. Since then `main` has received maintenance fixes only, most recently [PR #54](https://github.com/mhju0/stock-game/pull/54) on November 4, 2026. Maintenance covers security and dependency updates, production compatibility, regressions, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
 
 The verified release, deployment, security, test, and remaining-decision snapshot is recorded in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
@@ -14,11 +14,11 @@ Interactive API docs are a developer-environment feature and are disabled on the
 
 ## Demo
 
-Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. This is a shared public account: visitors can change its state while the backend remains running, and the baseline is rebuilt on the next backend start. The Render API uses free hosting, so the first request can take 30–60 seconds while the service starts.
+Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. This is a shared public account: visitors can change its state while the backend remains running, and the baseline is rebuilt on the next backend start. The Render API uses free hosting, so the first request can take 30 to 60 seconds while the service starts.
 
 ## Screenshots
 
-These captures were taken on October 27, 2026 from current `main` with fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
+These captures were taken on November 4, 2026 from current `main` with fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
 
 ### Sign in
 
@@ -48,7 +48,7 @@ These captures were taken on October 27, 2026 from current `main` with fixed, fi
 - Korean and English UI, a global user-level watchlist, and market browsing for US and Korean stocks.
 - Ownership checks at every session-scoped API boundary; cross-user resources return 404.
 - Rate limiting, bounded request validation, and hardened response headers on the API (see [Security](#security)).
-- A dark-first showcase interface with an explicit light theme, contextual desktop sidebar, mobile tab bar, keyboard focus containment, and reduced-motion support. The interface contract is documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
+- A dark-first interface with an explicit light theme, contextual desktop sidebar, mobile tab bar, keyboard focus containment, and reduced-motion support. The interface contract is documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Architecture
 
@@ -76,7 +76,7 @@ The deployed API is internet-accessible. Authentication and market-data routes a
 - Custom JWT (HS256) with bcrypt password hashing. The server refuses to start without `JWT_SECRET_KEY`.
 - Every session-scoped route resolves ownership through shared helpers; another user's session is a 404, not a 403.
 - Interactive docs (`/docs`, `/redoc`, `/openapi.json`) are served only where `ENABLE_DEV_TOOLS=true`, matching the gate on the `/admin` fund routes. They fail closed on any other value.
-- Production CORS allows the single configured `FRONTEND_URL`; local development allows the two documented localhost Vite origins. Credentialed requests are disabled because the API reads a Bearer header and never a cookie.
+- Production CORS allows the single configured `FRONTEND_URL`; local development allows `localhost:5173` and `localhost:3000`. Credentialed requests are disabled because the API reads a Bearer header and never a cookie.
 - Every response carries `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`.
 
 **Rate limits:** all return `429` with a `Retry-After` header.
@@ -87,6 +87,7 @@ The deployed API is internet-accessible. Authentication and market-data routes a
 | Register | 5 per 10 min per address and username; 100 per 10 min process backstop | Client address, requested username, and process |
 | Market data | 120 / min | Client address |
 | Trades | 60 / min | Account |
+| Game creation | 60 / min | Account |
 
 The account budget is charged only after credentials are checked and only when they were wrong, so a third party cannot spend it to lock an owner out of their own login.
 
@@ -95,10 +96,11 @@ The account budget is charged only after credentials are checked and only when t
 - Ticker parameters must match a Yahoo symbol shape before they reach the upstream provider.
 - Trade quantities are whole shares in `1 … 1,000,000,000`; money fields reject `Infinity` and `NaN`.
 - The benchmark lookback is capped at 10 years, and an account may hold at most 20 active games.
+- JSON request bodies over 64 KB are rejected with `413` before any authentication work.
 - Price and metadata lookup misses are cached briefly, so repeated requests for the same unknown symbol do not force an outbound call each time. Search, history, and other upstream-backed routes remain protected by the market-data rate limit.
 
 Backend dependencies are pinned and checked against the installed environment. Frontend installs use the committed lockfile with `npm ci`; the declared React Router minimum includes the advisory fixes.
-The Vercel deployment adds a restrictive Content Security Policy, GitHub vulnerability alerts and automated security fixes are enabled, and Dependabot checks npm, pip, and GitHub Actions dependencies weekly. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
+The Vercel deployment adds a restrictive Content Security Policy. GitHub vulnerability alerts and Dependabot security updates are enabled; routine version-update PRs are turned off. One critical python-jose advisory is still open, and [PROJECT_STATUS.md](PROJECT_STATUS.md) records why it is judged unreachable with the HS256-only token setup. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
 
 ## Tech stack
 
@@ -164,7 +166,8 @@ npm --prefix frontend run test:e2e -- --grep 'stock search'
 
 Install Chromium once with `npm --prefix frontend exec -- playwright install chromium`.
 Tests force an in-memory database and a fixed test JWT secret before importing the
-app. Market data is mocked. Auth tests still exercise real registration/login;
+app. The PostgreSQL concurrency tests run only when `AUDIT_POSTGRES_URL` points at
+a disposable database (CI starts one); otherwise they are skipped. Market data is mocked. Auth tests still exercise real registration/login;
 other tests reuse one password hash when preparing their users.
 
 `verify.sh` uses the backend virtualenv by default; set `PYTHON=python3.11` if your
@@ -180,8 +183,9 @@ Failure traces are in `frontend/test-results/`; open a trace with
 from the core flows are also written there. Backend errors are logged to the
 uvicorn terminal; `/health/db` checks connectivity without changing user data.
 
-Current gates: 278 backend tests, 36 frontend unit/config tests, and 7 Chromium
-flows. CI runs the same verification script for PRs and pushes to `main`.
+As of the November 4, 2026 audit: 356 backend tests (including 14 cases against
+real PostgreSQL), 107 frontend unit tests, and 21 Chromium flows. CI runs the same
+verification script for PRs and pushes to `main`.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
 
