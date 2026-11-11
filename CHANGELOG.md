@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Trading integrity
+
+- Buy and sell accept an optional `Idempotency-Key` header. A resent order with
+  the same key returns the stored fill instead of executing again, and the web
+  client sends one key per order. Requires the additive manual migration
+  `002_order_idempotency_key.py` before deployment to an existing database.
+
 ### Architecture maintenance
 
 - Centralizes Create Game and Trade Ticket focus, Escape, backdrop, and keyboard

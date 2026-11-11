@@ -793,3 +793,30 @@ applies. Five new tests cover expiry, a missing subject and a tampered payload. 
 the python-jose and ecdsa part of the 2026-11-04 dependency exception; the rest of that entry
 stands. Production secret length and entropy remain unverified; PyJWT warns on HMAC keys under
 32 bytes.
+
+## 2026-11-12 — Order Idempotency-Key
+
+A read-only trace showed that a failed post-trade snapshot never re-runs an order (the
+failure is logged and the committed trade is returned as a success), but that nothing told a
+resent order apart from a new one: the same buy or sell POST sent twice was filled twice.
+A response lost or failed after the commit followed by the user pressing the button again was
+therefore a second order.
+
+The owner approved a durable key as a bounded exception to the maintenance rule on schema
+changes. Buy and sell accept an optional `Idempotency-Key` header (8–64 characters of
+`A-Z a-z 0-9 _ -`). The key is stored on the order's row in the new nullable
+`transactions.client_request_id` column, in the same database transaction as the trade, with a
+unique index on `(user_id, client_request_id)`. A request whose key already has a row for that
+account returns the stored fill with `"replayed": true` and current balances instead of
+executing; the check runs before the quote lookup and again under the user row lock. A key
+reused for a different ticker, quantity, side, or session is rejected with 400. The web client
+creates one key per buy/sell order and reuses it until that order succeeds or its contents change.
+
+Limits: requests without a key behave as before; currency exchange is not covered; the client
+keeps the key in memory, so closing the trade ticket and submitting the same order again is a
+new order. Trading rules, prices, balance checks, and session ownership are unchanged.
+
+Deployment order matters. `backend/scripts/migrations/002_order_idempotency_key.py --apply`
+must run against an existing database, after a backup, before this code is deployed there:
+the column is part of the `Transaction` model, so every transaction read and write fails
+without it. The migration is additive and the previous code ignores the new column.
