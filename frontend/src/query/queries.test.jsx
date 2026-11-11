@@ -185,7 +185,10 @@ describe('session data queries', () => {
       '/game/sessions/42/trade/buy',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': expect.stringMatching(/^[A-Za-z0-9_-]{8,64}$/),
+        },
         body: JSON.stringify({ ticker: 'AAPL', quantity: 2 }),
       },
     )
@@ -197,6 +200,76 @@ describe('session data queries', () => {
       (key) => queryClient.getQueryState(key)?.isInvalidated,
     )).toBe(true)
     expect(queryClient.getQueryState(otherSessionKey)?.isInvalidated).toBe(false)
+  })
+
+  describe('order Idempotency-Key', () => {
+    const sentKeys = () => apiFetchOrThrow.mock.calls.map(
+      ([, options]) => options.headers['Idempotency-Key'],
+    )
+    const order = (quantity = 2) => ({ type: 'buy', payload: { ticker: 'AAPL', quantity } })
+    const renderTrade = () => renderHook(
+      () => useTradeMutation(),
+      { wrapper: createWrapper(createQueryClient()) },
+    ).result
+
+    it('reuses the key when the same order is resent after a failure', async () => {
+      apiFetchOrThrow
+        .mockRejectedValueOnce(new ApiRequestError('Server error', { retryable: true }))
+        .mockResolvedValue({ balance: { krw: 1, usd: 1 } })
+      const result = renderTrade()
+
+      await act(async () => {
+        await expect(result.current.mutateAsync(order())).rejects.toThrow('Server error')
+      })
+      await act(async () => { await result.current.mutateAsync(order()) })
+
+      const [first, resent] = sentKeys()
+      expect(first).toMatch(/^[A-Za-z0-9_-]{8,64}$/)
+      expect(resent).toBe(first)
+    })
+
+    it('uses a new key for the next order after a success', async () => {
+      apiFetchOrThrow.mockResolvedValue({ balance: { krw: 1, usd: 1 } })
+      const result = renderTrade()
+
+      await act(async () => { await result.current.mutateAsync(order()) })
+      await act(async () => { await result.current.mutateAsync(order()) })
+
+      const [first, second] = sentKeys()
+      expect(second).not.toBe(first)
+    })
+
+    it('uses a new key when the order changes after a failure', async () => {
+      apiFetchOrThrow.mockRejectedValue(new ApiRequestError('Server error', { retryable: true }))
+      const result = renderTrade()
+
+      await act(async () => {
+        await expect(result.current.mutateAsync(order(2))).rejects.toThrow()
+      })
+      await act(async () => {
+        await expect(result.current.mutateAsync(order(3))).rejects.toThrow()
+      })
+
+      const [first, changed] = sentKeys()
+      expect(changed).not.toBe(first)
+    })
+
+    it('sends no key with a currency exchange', async () => {
+      apiFetchOrThrow.mockResolvedValue({ balance: { krw: 1, usd: 1 } })
+      const result = renderTrade()
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          type: 'exchange',
+          payload: { from_currency: 'KRW', to_currency: 'USD', amount: 1300 },
+        })
+      })
+
+      expect(apiFetchOrThrow).toHaveBeenCalledWith(
+        '/game/sessions/42/trade/exchange',
+        expect.objectContaining({ headers: { 'Content-Type': 'application/json' } }),
+      )
+    })
   })
 
   it('loads the complete Game Session list under its own list key', async () => {

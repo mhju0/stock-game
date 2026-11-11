@@ -99,6 +99,27 @@ def test_concurrent_preloaded_buys_cannot_double_spend(pg_sessions, quote_mocks,
             assert db.get(GameSession, ids[0]).cash_usd == 0
 
 
+@pytest.mark.parametrize('legacy', [False, True])
+def test_concurrent_resend_of_one_order_executes_once(pg_sessions, quote_mocks, legacy):
+    # Cash covers two fills, so only the Idempotency-Key can stop the second.
+    user_id, ids = seed(pg_sessions, count=0 if legacy else 1, cash_usd=200)
+    barrier = threading.Barrier(2)
+    def buy():
+        with pg_sessions() as db:
+            barrier.wait(timeout=5)
+            return buy_stock(db, user_id, 'AAPL', 1, None if legacy else ids[0],
+                             client_request_id='concurrent-resend-key')
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: buy(), range(2)))
+    assert sorted('replayed' in result for result in results) == [False, True]
+    with pg_sessions() as db:
+        assert db.query(Transaction).count() == 1
+        assert db.query(Holding).one().quantity == 1
+        assert db.get(User, user_id).balance_usd == 100
+        if not legacy:
+            assert db.get(GameSession, ids[0]).cash_usd == 100
+
+
 def test_concurrent_creation_preserves_active_session_cap(pg_sessions):
     user_id, _ = seed(pg_sessions, count=19)
     barrier = threading.Barrier(2)

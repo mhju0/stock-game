@@ -48,6 +48,9 @@ class Transaction(Base):
     __tablename__ = "transactions"
     __table_args__ = (
         Index("ix_transactions_user_session_created", "user_id", "game_session_id", "created_at"),
+        # One order per client-chosen Idempotency-Key and account. NULL keys
+        # (orders sent without one) never collide.
+        Index("uq_transactions_user_client_request", "user_id", "client_request_id", unique=True),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -64,6 +67,7 @@ class Transaction(Base):
     industry = Column(String)
     total_amount = Column(Float, nullable=False)
     realized_pnl = Column(Float, default=0.0)
+    client_request_id = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")

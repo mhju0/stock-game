@@ -11,6 +11,7 @@ from app.services.game_session_service import (
     NON_TRADEABLE_STATES,
     ensure_session_cash_initialized,
     get_current_session,
+    get_owned_session,
     get_tradeable_session,
     lock_user_for_mutation,
     resolve_session_lifecycle_state,
@@ -227,7 +228,68 @@ def _trade_response(storage, transaction: dict) -> dict:
     return response
 
 
-def _execute_buy(storage, ticker: str, quantity: int, stock_info: dict) -> dict:
+def _replay_committed_order(
+    db: Session,
+    user_id: int,
+    client_request_id: str | None,
+    transaction_type: str,
+    ticker: str,
+    quantity: int,
+    game_session_id: int | None,
+) -> dict | None:
+    """Return the stored result of an order this account already executed
+    under client_request_id, or None when the order still has to run."""
+    if client_request_id is None:
+        return None
+    transaction = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.client_request_id == client_request_id,
+        )
+        .first()
+    )
+    if transaction is None:
+        return None
+    same_order = (
+        transaction.transaction_type == transaction_type
+        and transaction.ticker == ticker
+        and transaction.quantity == quantity
+        and game_session_id in (None, transaction.game_session_id)
+    )
+    if not same_order:
+        raise ValueError("Idempotency-Key was already used for a different order")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    session = None
+    if transaction.game_session_id is not None:
+        session = get_owned_session(db, user, transaction.game_session_id)
+    is_buy = transaction_type == "BUY"
+    response = _trade_response(
+        _trade_storage(db, user, session),
+        _transaction_response(
+            transaction_type,
+            ticker,
+            transaction.name,
+            quantity,
+            transaction.price,
+            "total_cost" if is_buy else "total_proceeds",
+            transaction.total_amount,
+            transaction.currency,
+            None if is_buy else transaction.realized_pnl,
+        ),
+    )
+    response["replayed"] = True
+    return response
+
+
+def _execute_buy(
+    storage,
+    ticker: str,
+    quantity: int,
+    stock_info: dict,
+    client_request_id: str | None = None,
+) -> dict:
     price = stock_info["price"]
     currency = stock_info["currency"]
     total_cost = price * quantity
@@ -280,6 +342,7 @@ def _execute_buy(storage, ticker: str, quantity: int, stock_info: dict) -> dict:
             sector=stock_info["sector"],
             industry=stock_info["industry"],
             total_amount=total_cost,
+            client_request_id=client_request_id,
         )
     )
     storage.complete_mutation()
@@ -298,23 +361,39 @@ def buy_stock(
     ticker: str,
     quantity: int,
     game_session_id: int | None = None,
+    client_request_id: str | None = None,
 ) -> dict:
     ticker = ticker.upper()
+    order = (db, user_id, client_request_id, "BUY", ticker, quantity, game_session_id)
+    # Checked before the quote so a resend never depends on market data, and
+    # again under the user lock so a concurrent resend waits and then replays.
+    replay = _replay_committed_order(*order)
+    if replay is not None:
+        return replay
     stock_info = get_stock_info(ticker)
     if not stock_info or stock_info["price"] is None:
         raise ValueError("Could not fetch stock data")
 
     user = _load_user(db, user_id)
+    replay = _replay_committed_order(*order)
+    if replay is not None:
+        return replay
     session = _resolve_trade_session(db, user, game_session_id)
     return _execute_buy(
         _trade_storage(db, user, session),
         ticker,
         quantity,
         stock_info,
+        client_request_id,
     )
 
 
-def _execute_sell(storage, ticker: str, quantity: int) -> dict:
+def _execute_sell(
+    storage,
+    ticker: str,
+    quantity: int,
+    client_request_id: str | None = None,
+) -> dict:
     holding = storage.find_sell_holding(ticker)
     if not holding:
         info = get_stock_info(ticker)
@@ -354,6 +433,7 @@ def _execute_sell(storage, ticker: str, quantity: int) -> dict:
             industry=holding.industry,
             total_amount=total_proceeds,
             realized_pnl=realized_pnl,
+            client_request_id=client_request_id,
         )
     )
     if holding.quantity == quantity:
@@ -379,11 +459,19 @@ def sell_stock(
     ticker: str,
     quantity: int,
     game_session_id: int | None = None,
+    client_request_id: str | None = None,
 ) -> dict:
     ticker = ticker.upper()
     user = _load_user(db, user_id)
+    replay = _replay_committed_order(
+        db, user_id, client_request_id, "SELL", ticker, quantity, game_session_id
+    )
+    if replay is not None:
+        return replay
     session = _resolve_trade_session(db, user, game_session_id)
-    return _execute_sell(_trade_storage(db, user, session), ticker, quantity)
+    return _execute_sell(
+        _trade_storage(db, user, session), ticker, quantity, client_request_id
+    )
 
 
 def _validate_exchange_request(from_currency: str, to_currency: str) -> tuple[str, str]:

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas import BuyRequest, SellRequest, ExchangeRequest
@@ -14,20 +16,27 @@ router = APIRouter(
     dependencies=[Depends(enforce_trade_rate_limit)],
 )
 
+# Optional. A client that resends an order with the same key gets the original
+# result back instead of a second execution.
+IdempotencyKey = Annotated[
+    str | None,
+    Header(alias="Idempotency-Key", min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$"),
+]
+
 
 @router.post("/trade/buy")
-def buy(request: BuyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def buy(request: BuyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), idempotency_key: IdempotencyKey = None):
     try:
-        result = buy_stock(db, user_id=current_user.id, ticker=request.ticker, quantity=request.quantity)
+        result = buy_stock(db, user_id=current_user.id, ticker=request.ticker, quantity=request.quantity, client_request_id=idempotency_key)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/trade/sell")
-def sell(request: SellRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def sell(request: SellRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), idempotency_key: IdempotencyKey = None):
     try:
-        result = sell_stock(db, user_id=current_user.id, ticker=request.ticker, quantity=request.quantity)
+        result = sell_stock(db, user_id=current_user.id, ticker=request.ticker, quantity=request.quantity, client_request_id=idempotency_key)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -48,6 +57,7 @@ def buy_for_session(
     request: BuyRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    idempotency_key: IdempotencyKey = None,
 ):
     try:
         return buy_stock(
@@ -56,6 +66,7 @@ def buy_for_session(
             ticker=request.ticker,
             quantity=request.quantity,
             game_session_id=session_id,
+            client_request_id=idempotency_key,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -67,6 +78,7 @@ def sell_for_session(
     request: SellRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    idempotency_key: IdempotencyKey = None,
 ):
     try:
         return sell_stock(
@@ -75,6 +87,7 @@ def sell_for_session(
             ticker=request.ticker,
             quantity=request.quantity,
             game_session_id=session_id,
+            client_request_id=idempotency_key,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
