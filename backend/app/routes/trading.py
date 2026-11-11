@@ -43,9 +43,9 @@ def sell(request: SellRequest, db: Session = Depends(get_db), current_user: User
 
 
 @router.post("/trade/exchange")
-def exchange(request: ExchangeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def exchange(request: ExchangeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), idempotency_key: IdempotencyKey = None):
     try:
-        result = exchange_currency(db, user_id=current_user.id, from_currency=request.from_currency, to_currency=request.to_currency, amount=request.amount)
+        result = exchange_currency(db, user_id=current_user.id, from_currency=request.from_currency, to_currency=request.to_currency, amount=request.amount, client_request_id=idempotency_key)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -99,6 +99,7 @@ def exchange_for_session(
     request: ExchangeRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    idempotency_key: IdempotencyKey = None,
 ):
     try:
         return exchange_currency(
@@ -108,6 +109,7 @@ def exchange_for_session(
             to_currency=request.to_currency,
             amount=request.amount,
             game_session_id=session_id,
+            client_request_id=idempotency_key,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

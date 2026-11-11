@@ -228,6 +228,28 @@ def _trade_response(storage, transaction: dict) -> dict:
     return response
 
 
+def _keyed_transaction(db: Session, user_id: int, client_request_id: str | None) -> Transaction | None:
+    if client_request_id is None:
+        return None
+    return (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.client_request_id == client_request_id,
+        )
+        .first()
+    )
+
+
+def _replay_storage(db: Session, user_id: int, transaction: Transaction):
+    """Read-only view of the portfolio a stored transaction belongs to."""
+    user = db.query(User).filter(User.id == user_id).first()
+    session = None
+    if transaction.game_session_id is not None:
+        session = get_owned_session(db, user, transaction.game_session_id)
+    return _trade_storage(db, user, session)
+
+
 def _replay_committed_order(
     db: Session,
     user_id: int,
@@ -239,16 +261,7 @@ def _replay_committed_order(
 ) -> dict | None:
     """Return the stored result of an order this account already executed
     under client_request_id, or None when the order still has to run."""
-    if client_request_id is None:
-        return None
-    transaction = (
-        db.query(Transaction)
-        .filter(
-            Transaction.user_id == user_id,
-            Transaction.client_request_id == client_request_id,
-        )
-        .first()
-    )
+    transaction = _keyed_transaction(db, user_id, client_request_id)
     if transaction is None:
         return None
     same_order = (
@@ -260,13 +273,9 @@ def _replay_committed_order(
     if not same_order:
         raise ValueError("Idempotency-Key was already used for a different order")
 
-    user = db.query(User).filter(User.id == user_id).first()
-    session = None
-    if transaction.game_session_id is not None:
-        session = get_owned_session(db, user, transaction.game_session_id)
     is_buy = transaction_type == "BUY"
     response = _trade_response(
-        _trade_storage(db, user, session),
+        _replay_storage(db, user_id, transaction),
         _transaction_response(
             transaction_type,
             ticker,
@@ -500,6 +509,7 @@ def _execute_exchange(
     to_currency: str,
     amount: float,
     rate: float,
+    client_request_id: str | None = None,
 ) -> dict:
     converted = amount / rate if from_currency == "KRW" else amount * rate
     if not math.isfinite(converted) or not math.isfinite(storage.balance(to_currency) + converted):
@@ -527,6 +537,7 @@ def _execute_exchange(
             to_currency,
             amount,
             rate,
+            client_request_id,
         )
     )
     storage.complete_mutation()
@@ -544,7 +555,7 @@ def _execute_exchange(
     return response
 
 
-def _exchange_transaction(user_id, session_id, from_currency, to_currency, amount, rate):
+def _exchange_transaction(user_id, session_id, from_currency, to_currency, amount, rate, client_request_id=None):
     return Transaction(
         user_id=user_id,
         game_session_id=session_id,
@@ -559,7 +570,46 @@ def _exchange_transaction(user_id, session_id, from_currency, to_currency, amoun
         industry="Foreign Exchange",
         total_amount=amount,
         realized_pnl=0,
+        client_request_id=client_request_id,
     )
+
+
+def _replay_committed_exchange(
+    db: Session,
+    user_id: int,
+    client_request_id: str | None,
+    from_currency: str,
+    to_currency: str,
+    amount: float,
+    game_session_id: int | None,
+) -> dict | None:
+    """Exchange counterpart of _replay_committed_order."""
+    transaction = _keyed_transaction(db, user_id, client_request_id)
+    if transaction is None:
+        return None
+    same_exchange = (
+        transaction.transaction_type == "EXCHANGE"
+        and transaction.ticker == f"{from_currency}/{to_currency}"
+        and transaction.total_amount == amount
+        and game_session_id in (None, transaction.game_session_id)
+    )
+    if not same_exchange:
+        raise ValueError("Idempotency-Key was already used for a different order")
+
+    rate = transaction.price
+    storage = _replay_storage(db, user_id, transaction)
+    response = _exchange_response(
+        from_currency,
+        to_currency,
+        amount,
+        amount / rate if from_currency == "KRW" else amount * rate,
+        rate,
+        storage.balance("KRW"),
+        storage.balance("USD"),
+    )
+    response.update(storage.response_context())
+    response["replayed"] = True
+    return response
 
 
 def _exchange_response(from_currency, to_currency, amount, converted, rate, balance_krw, balance_usd):
@@ -583,9 +633,15 @@ def exchange_currency(
     to_currency: str,
     amount: float,
     game_session_id: int | None = None,
+    client_request_id: str | None = None,
 ) -> dict:
     user = _load_user(db, user_id)
     from_currency, to_currency = _validate_exchange_request(from_currency, to_currency)
+    replay = _replay_committed_exchange(
+        db, user_id, client_request_id, from_currency, to_currency, amount, game_session_id
+    )
+    if replay is not None:
+        return replay
     session = _resolve_trade_session(db, user, game_session_id)
     storage = _trade_storage(db, user, session)
 
@@ -605,4 +661,5 @@ def exchange_currency(
         to_currency,
         amount,
         rate,
+        client_request_id,
     )
