@@ -20,7 +20,7 @@ from app.routes.watchlist import add_to_watchlist
 from app.schemas import GameSessionUpdateRequest
 from app.services.game_session_service import get_owned_session, lock_user_for_mutation
 from app.services.snapshot_service import take_session_snapshot
-from app.services.trading_service import buy_stock
+from app.services.trading_service import buy_stock, exchange_currency
 
 
 @pytest.fixture
@@ -118,6 +118,25 @@ def test_concurrent_resend_of_one_order_executes_once(pg_sessions, quote_mocks, 
         assert db.get(User, user_id).balance_usd == 100
         if not legacy:
             assert db.get(GameSession, ids[0]).cash_usd == 100
+
+
+def test_concurrent_resend_of_one_exchange_converts_once(pg_sessions, quote_mocks):
+    # Cash covers two conversions, so only the Idempotency-Key can stop the second.
+    user_id, ids = seed(pg_sessions, cash_usd=200)
+    barrier = threading.Barrier(2)
+    def exchange():
+        with pg_sessions() as db:
+            barrier.wait(timeout=5)
+            return exchange_currency(db, user_id, 'USD', 'KRW', 100, ids[0],
+                                     client_request_id='concurrent-exchange-key')
+    with patch('app.services.trading_service.get_exchange_rate', return_value=1300), \
+         ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: exchange(), range(2)))
+    assert sorted('replayed' in result for result in results) == [False, True]
+    with pg_sessions() as db:
+        assert db.query(Transaction).count() == 1
+        session = db.get(GameSession, ids[0])
+        assert (session.cash_usd, session.cash_krw) == (100, 131000)
 
 
 def test_concurrent_creation_preserves_active_session_cap(pg_sessions):

@@ -343,16 +343,14 @@ export function useDeleteSessionMutation(userId) {
 export function useTradeMutation() {
   const queryClient = useQueryClient()
   const access = usePortfolioAccess()
-  // One Idempotency-Key per buy/sell order. Resending the same order after a
-  // failed or lost response reuses the key, so the server returns the first
-  // result instead of filling the order twice.
+  // One Idempotency-Key per buy, sell, or exchange. Resending the same order
+  // after a failed or lost response reuses the key, so the server returns the
+  // first result instead of executing it twice.
   const unconfirmedOrderRef = useRef(null)
 
   return useMutation({
     mutationFn: ({ type, payload }) => {
       const path = access.tradePath(type)
-      if (type === 'exchange') return jsonRequest(path, 'POST', payload)
-
       const signature = JSON.stringify([path, payload])
       if (unconfirmedOrderRef.current?.signature !== signature) {
         unconfirmedOrderRef.current = { signature, key: crypto.randomUUID() }

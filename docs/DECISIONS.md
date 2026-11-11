@@ -812,7 +812,8 @@ executing; the check runs before the quote lookup and again under the user row l
 reused for a different ticker, quantity, side, or session is rejected with 400. The web client
 creates one key per buy/sell order and reuses it until that order succeeds or its contents change.
 
-Limits: requests without a key behave as before; currency exchange is not covered; the client
+Limits (the exchange limit is superseded by the 2026-11-12 "Exchange Idempotency-Key" entry
+below): requests without a key behave as before; currency exchange is not covered; the client
 keeps the key in memory, so closing the trade ticket and submitting the same order again is a
 new order. Trading rules, prices, balance checks, and session ownership are unchanged.
 
@@ -820,3 +821,14 @@ Deployment order matters. `backend/scripts/migrations/002_order_idempotency_key.
 must run against an existing database, after a backup, before this code is deployed there:
 the column is part of the `Transaction` model, so every transaction read and write fails
 without it. The migration is additive and the previous code ignores the new column.
+
+## 2026-11-12 — Exchange Idempotency-Key
+
+Currency exchange shares the trade mutation and the same commit-then-snapshot path as buy and
+sell, so a resent exchange was converted twice. With the owner's permission to finish the work,
+exchange now takes the same optional `Idempotency-Key` header and stores it in the existing
+`transactions.client_request_id` column; no further schema change. A replay returns the stored
+exchange (rate and converted amount from the saved row) with `"replayed": true` and current
+balances. A key reused for a different currency pair, amount, session, or for a buy/sell order
+is rejected with 400. The web client sends a key with every trade mutation. The other limits
+of the entry above stand.

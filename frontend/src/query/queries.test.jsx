@@ -254,7 +254,7 @@ describe('session data queries', () => {
       expect(changed).not.toBe(first)
     })
 
-    it('sends no key with a currency exchange', async () => {
+    it('sends a key with a currency exchange', async () => {
       apiFetchOrThrow.mockResolvedValue({ balance: { krw: 1, usd: 1 } })
       const result = renderTrade()
 
@@ -267,7 +267,12 @@ describe('session data queries', () => {
 
       expect(apiFetchOrThrow).toHaveBeenCalledWith(
         '/game/sessions/42/trade/exchange',
-        expect.objectContaining({ headers: { 'Content-Type': 'application/json' } }),
+        expect.objectContaining({
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': expect.stringMatching(/^[A-Za-z0-9_-]{8,64}$/),
+          },
+        }),
       )
     })
   })

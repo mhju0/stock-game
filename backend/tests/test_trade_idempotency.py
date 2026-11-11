@@ -141,3 +141,67 @@ def test_keys_are_scoped_to_the_account(db_session, registered_user, test_passwo
         assert "replayed" not in response
 
     assert db_session.query(Transaction).count() == 2
+
+
+def _exchange(client, path, headers, key, amount=130_000, to_currency="USD"):
+    from_currency = "KRW" if to_currency == "USD" else "USD"
+    return client.post(
+        path,
+        json={"from_currency": from_currency, "to_currency": to_currency, "amount": amount},
+        headers={**headers, "Idempotency-Key": key},
+    )
+
+
+def test_resent_session_exchange_executes_once(client, db_session, registered_user, auth_headers, failing_snapshot):
+    session = create_game_session(db_session, current_user(db_session, registered_user), cash_krw=1_000_000)
+    path = f"/game/sessions/{session.id}/trade/exchange"
+
+    first = _exchange(client, path, auth_headers, KEY)
+    with patch("app.services.trading_service.get_exchange_rate", return_value=None):
+        second = _exchange(client, path, auth_headers, KEY)
+
+    assert first.status_code == 200 and second.status_code == 200
+    assert first.json()["exchange"]["converted"] == 100.0
+    assert "replayed" not in first.json()
+    assert second.json() == {**first.json(), "replayed": True}
+    db_session.refresh(session)
+    assert len(_transactions(db_session, session.id)) == 1
+    assert (session.cash_krw, session.cash_usd) == (870_000, 100.0)
+
+
+def test_resent_legacy_exchange_executes_once(client, db_session, registered_user, auth_headers, failing_snapshot):
+    first = _exchange(client, "/trade/exchange", auth_headers, KEY)
+    second = _exchange(client, "/trade/exchange", auth_headers, KEY)
+
+    assert first.status_code == 200 and second.status_code == 200
+    assert second.json() == {**first.json(), "replayed": True}
+    assert db_session.query(Transaction).count() == 1
+    user = current_user(db_session, registered_user)
+    assert (user.balance_krw, user.balance_usd) == (9_870_000, 100.0)
+
+
+@pytest.mark.parametrize("change", [{"amount": 260_000}, {"to_currency": "KRW", "amount": 50}])
+def test_exchange_key_reused_for_a_different_exchange_is_rejected(
+    client, db_session, registered_user, auth_headers, failing_snapshot, change,
+):
+    session = create_game_session(db_session, current_user(db_session, registered_user), cash_krw=1_000_000)
+    path = f"/game/sessions/{session.id}/trade/exchange"
+    assert _exchange(client, path, auth_headers, KEY).status_code == 200
+
+    reused = _exchange(client, path, auth_headers, KEY, **change)
+
+    assert reused.status_code == 400
+    assert "Idempotency-Key" in reused.json()["detail"]
+    db_session.refresh(session)
+    assert len(_transactions(db_session, session.id)) == 1
+    assert (session.cash_krw, session.cash_usd) == (870_000, 100.0)
+
+
+def test_order_key_cannot_replay_as_an_exchange(client, db_session, registered_user, auth_headers, failing_snapshot):
+    session = create_game_session(db_session, current_user(db_session, registered_user), cash_krw=1_000_000)
+    assert _post(client, f"/game/sessions/{session.id}/trade/buy", auth_headers, KEY).status_code == 200
+
+    reused = _exchange(client, f"/game/sessions/{session.id}/trade/exchange", auth_headers, KEY)
+
+    assert reused.status_code == 400
+    assert len(_transactions(db_session, session.id)) == 1
