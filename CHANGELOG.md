@@ -9,6 +9,16 @@
   executing again, and the web client sends one key per order. Requires the additive manual migration
   `002_order_idempotency_key.py` before deployment to an existing database.
 
+### Demo and market data repairs
+
+- The demo account's games are dated relative to the day the backend seeds
+  them, so the two active demo games are always playable. With fixed July 2026
+  dates they had both ended by 2026-09-30.
+- The Market discovery list reads five days of closes instead of two, so an
+  empty newest row from the data provider no longer shows every stock with a
+  change of 0.
+- CI runs the frontend on Node 24, the version the Vercel project builds with.
+
 ### Database maintenance
 
 - Adds indexes for the three foreign keys that had none

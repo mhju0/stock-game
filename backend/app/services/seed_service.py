@@ -2,7 +2,8 @@
 
 The `demo` account is a public showcase for reviewers, so on every boot it is
 reset to a known-good baseline: two active games plus three completed/archived
-spring and summer 2026 games. The primary 90-day game has a sector-diversified
+earlier games. Every date is placed relative to the day the seed runs, so the
+active games are always playable. The primary 90-day game has a sector-diversified
 KR/US portfolio, one FX exchange, one realized-P/L sell, and a synthetic daily
 snapshot series so the performance/benchmark charts render from day one.
 
@@ -35,7 +36,11 @@ DEMO_PASSWORD = "demo1234"
 STARTING_BALANCE_KRW = 10_000_000.0
 DURATION_DAYS = 90
 PRIMARY_START = datetime(2026, 7, 2, tzinfo=timezone.utc)
-BACKDATE_DAYS = 12          # fixed July 2–14 showcase snapshot window
+BACKDATE_DAYS = 12          # July 2–14 showcase snapshot window
+# The dates below were authored as the showcase looked on this day. Each seed
+# moves all of them by the same amount so this day lands on the day it runs:
+# the games keep their spacing, and the newest record is always yesterday's.
+AUTHORED_AS_OF = datetime(2026, 7, 15, tzinfo=timezone.utc)
 SEED_RATE = 1500.0          # fixed point-in-time FX anchor for the synthetic
                             # July 2026 showcase history
 
@@ -94,9 +99,7 @@ class ClosedGameSpec:
     snapshots: tuple[SnapshotPoint, ...]
 
 
-# Fixed dates intentionally preserve the Spring/Summer 2026 release showcase.
-# Re-anchor the active examples before October 2026 so they do not read as
-# expired in future screenshots.
+# Authored dates; seed_demo shifts them together with the active games.
 _CLOSED_GAMES = (
     ClosedGameSpec(
         title="Spring Growth Sprint",
@@ -206,9 +209,9 @@ def _add_equity_transaction(
     ))
 
 
-def _seed_dividend_game(db: Session, user: User) -> None:
+def _seed_dividend_game(db: Session, user: User, shift: timedelta) -> None:
     """Add a smaller active game with a conservative KR/US mix."""
-    start = datetime(2026, 6, 15, tzinfo=timezone.utc)
+    start = datetime(2026, 6, 15, tzinfo=timezone.utc) + shift
     starting_balance = 5_000_000.0
     session = GameSession(
         user_id=user.id,
@@ -333,8 +336,8 @@ def _cash_after_closed_trades(
     return round(cash, 2)
 
 
-def _seed_closed_game(db: Session, user: User, spec: ClosedGameSpec) -> None:
-    start = spec.start
+def _seed_closed_game(db: Session, user: User, spec: ClosedGameSpec, shift: timedelta) -> None:
+    start = spec.start + shift
     duration_days = spec.duration_days
     starting_balance = spec.starting_balance_krw
     round_trips = spec.round_trips
@@ -405,16 +408,20 @@ def _seed_closed_game(db: Session, user: User, spec: ClosedGameSpec) -> None:
         ))
 
 
-def _seed_showcase_games(db: Session, user: User) -> None:
-    _seed_dividend_game(db, user)
+def _seed_showcase_games(db: Session, user: User, shift: timedelta) -> None:
+    _seed_dividend_game(db, user, shift)
     for spec in _CLOSED_GAMES:
-        _seed_closed_game(db, user, spec)
+        _seed_closed_game(db, user, spec, shift)
 
 
-def seed_demo(db: Session) -> bool:
+def seed_demo(db: Session, now: datetime | None = None) -> bool:
     """Create or reset the public demo account to its baseline. Runs on every
     boot; returns True when the demo state was (re)built."""
-    start = PRIMARY_START
+    today = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    shift = today - AUTHORED_AS_OF
+    start = PRIMARY_START + shift
 
     user = db.query(User).filter(User.username == DEMO_USERNAME).first()
     if user is None:
@@ -554,7 +561,7 @@ def seed_demo(db: Session) -> bool:
             created_at=start + timedelta(days=day, hours=8),
         ))
 
-    _seed_showcase_games(db, user)
+    _seed_showcase_games(db, user, shift)
 
     for ticker, market in _WATCHLIST:
         db.add(Watchlist(user_id=user.id, ticker=ticker, name=_name_for(ticker), market=market))
