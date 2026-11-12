@@ -9,6 +9,13 @@
   executing again, and the web client sends one key per order. Requires the additive manual migration
   `002_order_idempotency_key.py` before deployment to an existing database.
 
+### Database maintenance
+
+- Adds indexes for the three foreign keys that had none
+  (`transactions.game_session_id`, `portfolio_snapshots.game_session_id`,
+  `watchlist.user_id`) through the additive manual migration
+  `003_foreign_key_indexes.py`.
+
 ### Architecture maintenance
 
 - Centralizes Create Game and Trade Ticket focus, Escape, backdrop, and keyboard
