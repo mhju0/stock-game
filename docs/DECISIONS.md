@@ -862,3 +862,23 @@ takes the last two usable closes, so an empty newest row or a long weekend yield
 previous close. `[Unknown]` Why the provider returned the row empty. When it does, the list is
 still one session behind; it no longer reports an invented zero change. Order prices use a
 different lookup and were not affected.
+
+## 2026-11-12 — Index the three uncovered foreign keys
+
+The 2026-11-04 audit recorded three foreign keys without a covering index and deferred them to
+an approved, measured migration. The owner approved the migration on 2026-11-12.
+`[Verified]` A read-only catalog query found the same three: `transactions.game_session_id`,
+`portfolio_snapshots.game_session_id`, and `watchlist.user_id`. The existing composite indexes
+lead with `user_id`, so they do not serve a lookup by `game_session_id` alone, which is what the
+foreign-key check on a session delete performs.
+
+`backend/scripts/migrations/003_foreign_key_indexes.py` creates one single-column index for
+each, and the models declare the same indexes so a new database matches. A test fails if a
+model foreign key is added later without an index that leads with it. The migration is additive
+and has no deployment order. `[Verified]` It was applied to production on 2026-11-12 after a
+`pg_dump` backup; row counts were unchanged and a second check-only run reported all three
+present.
+
+No measurement was taken, and none would be meaningful: the largest of these tables held 46
+rows. The indexes close the advisor finding and keep session deletes from scanning these tables
+as they grow; they are not a measured speed-up. Existing indexes were left alone.

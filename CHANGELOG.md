@@ -19,6 +19,13 @@
   change of 0.
 - CI runs the frontend on Node 24, the version the Vercel project builds with.
 
+### Database maintenance
+
+- Adds indexes for the three foreign keys that had none
+  (`transactions.game_session_id`, `portfolio_snapshots.game_session_id`,
+  `watchlist.user_id`) through the additive manual migration
+  `003_foreign_key_indexes.py`.
+
 ### Architecture maintenance
 
 - Centralizes Create Game and Trade Ticket focus, Escape, backdrop, and keyboard

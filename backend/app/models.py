@@ -51,6 +51,8 @@ class Transaction(Base):
         # One order per client-chosen Idempotency-Key and account. NULL keys
         # (orders sent without one) never collide.
         Index("uq_transactions_user_client_request", "user_id", "client_request_id", unique=True),
+        # Covers the game_sessions foreign key (session delete and its checks).
+        Index("ix_transactions_game_session_id", "game_session_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -76,6 +78,9 @@ class Transaction(Base):
 
 class Watchlist(Base):
     __tablename__ = "watchlist"
+    __table_args__ = (
+        Index("ix_watchlist_user_id", "user_id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -90,6 +95,7 @@ class PortfolioSnapshot(Base):
     __tablename__ = "portfolio_snapshots"
     __table_args__ = (
         Index("ix_snapshots_user_session_created", "user_id", "game_session_id", "created_at"),
+        Index("ix_portfolio_snapshots_game_session_id", "game_session_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)

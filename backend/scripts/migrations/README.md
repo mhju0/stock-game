@@ -18,3 +18,14 @@ venv/bin/python scripts/migrations/002_order_idempotency_key.py --apply  # write
 ```
 
 It reads `--database-url`, then `DATABASE_URL`, then the local SQLite file. Apply it to an existing database, after a backup, before deploying code that includes the column; the earlier code keeps working once the column exists. Rerunning it skips whatever is already in place. A new local database needs nothing: startup creates the current schema.
+
+## 003 · Foreign-key indexes
+
+`003_foreign_key_indexes.py` creates the three single-column indexes the models declare on `transactions.game_session_id`, `portfolio_snapshots.game_session_id`, and `watchlist.user_id` (`docs/DECISIONS.md`, 2026-11-12). It changes no column, constraint, or row.
+
+```bash
+venv/bin/python scripts/migrations/003_foreign_key_indexes.py          # check-only
+venv/bin/python scripts/migrations/003_foreign_key_indexes.py --apply  # write
+```
+
+It reads the database URL the same way as 002 and skips indexes that already exist. The application works with or without these indexes, so there is no deployment order. It was applied to production on 2026-11-12 after a backup.
