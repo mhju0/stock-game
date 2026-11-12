@@ -43,7 +43,9 @@ jobs:
             backend/requirements-dev.txt
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt -r requirements-dev.txt
-      - run: PYTHON=python ../scripts/verify.sh backend
+      - run: ../scripts/check.sh --part backend
+        env:
+          PYTHON: python
 
   frontend:
     runs-on: ubuntu-latest
@@ -64,4 +66,4 @@ jobs:
       # already carries Chrome's shared libraries, and the tests still decide.
       - run: npx playwright install --with-deps chromium || npx playwright install chromium
         timeout-minutes: 20
-      - run: ../scripts/verify.sh frontend
+      - run: ../scripts/check.sh --part frontend

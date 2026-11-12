@@ -49,8 +49,9 @@ npm run lint
 
 Playwright needs Chromium (`npx playwright install chromium` for initial setup).
 From the repository root: `./scripts/regression-smoke.sh` and `git diff --check`.
-`./scripts/verify.sh [backend|frontend]` is the local/CI entrypoint. Check each
-command's exit status, not its output tail. Run backend checks only if backend changed.
+Done means `scripts/check.sh` prints GATE: PASS; paste the last lines.
+`scripts/check.sh [--fast] [--part backend|frontend]` is the local/CI entrypoint
+(it wraps `scripts/verify.sh`). Run backend checks only if backend changed.
 `main` requires a pull request with green `backend`/`frontend` checks.
 
 ## Project boundaries
