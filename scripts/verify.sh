@@ -26,10 +26,13 @@ if [[ "$CHECK" == all || "$CHECK" == frontend ]]; then
     cd "$ROOT_DIR/frontend"
     npm test
     npm run lint
-    # This artifact is for local/CI verification. Deployment builds supply their
-    # own API URL and must not fall back to localhost.
-    VITE_API_URL=http://127.0.0.1:8000 npm run build
-    npm run test:e2e
+    # VERIFY_FAST=1 (set by scripts/check.sh --fast) stops at unit tests and lint.
+    if [[ -z "${VERIFY_FAST:-}" ]]; then
+      # This artifact is for local/CI verification. Deployment builds supply their
+      # own API URL and must not fall back to localhost.
+      VITE_API_URL=http://127.0.0.1:8000 npm run build
+      npm run test:e2e
+    fi
   )
 fi
 
