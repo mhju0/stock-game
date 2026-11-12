@@ -194,6 +194,21 @@ class TestMarketBatch:
             "MSFT": (200.0, 200.0),
         }
 
+    def test_unfinished_latest_row_still_yields_a_real_previous_close(self, provider_fake, monkeypatch):
+        # Yahoo can return the newest daily row as NaN. A two-day window then
+        # holds one usable close, and the change collapsed to zero.
+        daily = batch_frame({"AAPL": [90.0, 100.0, 110.0, float("nan")]})
+
+        def windowed_download(tickers, **kwargs):
+            days = int(kwargs["period"].removesuffix("d"))
+            return daily.tail(days)
+
+        monkeypatch.setattr(provider_fake, "download", windowed_download)
+
+        assert market_data_provider.fetch_market_closes(["AAPL", "MSFT"]) == {
+            "AAPL": (110.0, 100.0),
+        }
+
     @pytest.mark.parametrize("result", [TimeoutError("slow"), pd.DataFrame(), {"bad": "shape"}])
     def test_timeout_empty_or_malformed_returns_empty(self, provider_fake, result):
         provider_fake.download_result = result

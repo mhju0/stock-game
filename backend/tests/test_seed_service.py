@@ -2,7 +2,10 @@
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app.models import User, Holding, Transaction, GameSession, PortfolioSnapshot, Watchlist
+from app.services.game_session_service import resolve_session_lifecycle_state
 from app.services.seed_service import (
     seed_demo,
     DEMO_USERNAME,
@@ -75,7 +78,69 @@ def test_seed_creates_session_scoped_baseline(db_session):
     assert db_session.query(Watchlist).filter(Watchlist.user_id == user.id).count() > 0
 
 
-def test_seed_creates_natural_2026_game_history(db_session):
+def _aware(value):
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize("now", [
+    datetime(2026, 7, 15, 0, 0, tzinfo=timezone.utc),
+    datetime(2026, 11, 12, 2, 13, tzinfo=timezone.utc),
+    datetime(2027, 3, 1, 23, 59, tzinfo=timezone.utc),
+])
+def test_seed_is_anchored_to_the_day_it_runs(db_session, now):
+    seed_demo(db_session, now=now)
+    user = _demo(db_session)
+    sessions = db_session.query(GameSession).filter(GameSession.user_id == user.id).all()
+    by_title = {session.title: session for session in sessions}
+
+    # Both showcase games are playable on the day of the seed, with time left.
+    for title in ("Demo Portfolio", "Dividend & Quality"):
+        session = by_title[title]
+        assert resolve_session_lifecycle_state(session, now) == "active"
+        assert _aware(session.end_date) - now > timedelta(days=30)
+        assert _aware(session.start_date) < now
+
+    # The history keeps its shape: the spacing between games never changes.
+    primary_start = _aware(by_title["Demo Portfolio"].start_date)
+    assert {
+        title: (primary_start - _aware(session.start_date)).days
+        for title, session in by_title.items()
+    } == {
+        "Demo Portfolio": 0,
+        "Dividend & Quality": 17,
+        "AI & Chips Rotation": 58,
+        "Value Rebound Test": 80,
+        "Spring Growth Sprint": 108,
+    }
+    for title in ("AI & Chips Rotation", "Value Rebound Test", "Spring Growth Sprint"):
+        assert _aware(by_title[title].end_date) < now
+
+    # Nothing in the seeded record is dated after the seed ran.
+    stamps = [
+        row.created_at
+        for model in (Transaction, PortfolioSnapshot)
+        for row in db_session.query(model).filter(model.user_id == user.id)
+    ]
+    assert stamps and all(_aware(stamp) <= now for stamp in stamps)
+    newest_snapshot = max(
+        _aware(row.created_at)
+        for row in db_session.query(PortfolioSnapshot).filter(PortfolioSnapshot.user_id == user.id)
+    )
+    assert now - newest_snapshot < timedelta(days=2)
+
+
+def test_seed_without_a_clock_uses_today(db_session):
+    seed_demo(db_session)
+    user = _demo(db_session)
+    primary = db_session.query(GameSession).filter(
+        GameSession.user_id == user.id,
+        GameSession.title == "Demo Portfolio",
+    ).one()
+
+    assert resolve_session_lifecycle_state(primary) == "active"
+
+
+def test_seed_creates_natural_game_history(db_session):
     seed_demo(db_session)
     user = _demo(db_session)
     sessions = (
@@ -92,9 +157,6 @@ def test_seed_creates_natural_2026_game_history(db_session):
         "archived",
         "completed",
     ]
-    assert all(session.start_date.year == 2026 for session in sessions)
-    assert all(session.end_date.year == 2026 for session in sessions)
-    assert all(3 <= session.start_date.month <= 7 for session in sessions)
 
     history = [session for session in sessions if session.status != "active"]
     assert all(session.completed_at is not None for session in history)

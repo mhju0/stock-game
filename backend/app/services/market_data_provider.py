@@ -205,9 +205,11 @@ def fetch_market_closes(candidates: list[str]) -> dict[str, tuple[float, float]]
     """Download and normalize current/previous closes for a market batch."""
     try:
         with _yf_semaphore:
+            # Five days, not two: Yahoo can return the newest daily row empty,
+            # and a long weekend must still leave two usable closes.
             data = yf.download(
                 candidates,
-                period="2d",
+                period="5d",
                 group_by="ticker",
                 threads=4,
                 progress=False,
