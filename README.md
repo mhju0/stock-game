@@ -183,8 +183,8 @@ Failure traces are in `frontend/test-results/`; open a trace with
 from the core flows are also written there. Backend errors are logged to the
 uvicorn terminal; `/health/db` checks connectivity without changing user data.
 
-As of the November 4, 2026 audit: 356 backend tests (including 14 cases against
-real PostgreSQL), 107 frontend unit tests, and 21 Chromium flows. CI runs the same
+As of November 12, 2026: 392 backend tests (including 17 cases against
+real PostgreSQL), 111 frontend unit tests, and 21 Chromium flows. CI runs the same
 verification script for PRs and pushes to `main`.
 
 The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
