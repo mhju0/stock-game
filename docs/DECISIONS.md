@@ -324,6 +324,8 @@ call serves as both readiness probe and keep-alive.
 
 ### D-16 · Demo account reset on every boot, from fixed anchors — `ACTIVE`
 
+> Fixed calendar dates superseded by the 2026-11-12 "Demo dates follow the seed day" entry.
+
 **Decided:** A public `demo` / `demo1234` account, rebuilt to a deterministic
 baseline on every backend start: two active games plus three completed/archived
 ones, a sector-diversified KR/US portfolio, one FX exchange, one realized-P/L sell,
@@ -832,3 +834,31 @@ exchange (rate and converted amount from the saved row) with `"replayed": true` 
 balances. A key reused for a different currency pair, amount, session, or for a buy/sell order
 is rejected with 400. The web client sends a key with every trade mutation. The other limits
 of the entry above stand.
+
+## 2026-11-12 — Demo dates follow the seed day
+
+`[Verified]` The demo seed used fixed July 2026 dates, so its two "active" games ended on
+2026-09-13 and 2026-09-30. From then on the public demo account had no playable game: the
+deployed API listed both as `expired` and rejected demo trades. The seed's own comment asked for
+a re-anchor before October 2026.
+
+Demo availability repair is accepted maintenance, and the owner approved the relative form over
+moving the fixed dates again. `seed_demo` now shifts every authored date by one amount so that
+the authored "as of" day (2026-07-15) lands on the UTC day the seed runs. The primary game
+starts 13 days before the seed and has 77 days left, the second active game has 60, the three
+ended games keep their spacing, and the newest seeded record is dated the day before. Titles,
+trades, quantities, prices, `SEED_RATE`, and the snapshot shape are unchanged, so the cost bases
+are still July 2026 anchors and live valuations differ from them. This supersedes only the fixed
+calendar dates of D-16. A process that stays up longer than 60 days without a restart would let
+a game expire; the demo is reseeded at every start.
+
+## 2026-11-12 — Market discovery uses a five-day close window
+
+`[Verified]` At 2026-11-12 02:13 UTC the batch download for the US discovery list returned the
+newest daily row empty for every symbol. With a two-day window that left one usable close, and
+the provider's fallback set the previous close equal to the current one: all 30 US rows showed a
+change of 0 and a price one session old. `fetch_market_closes` now requests five days and still
+takes the last two usable closes, so an empty newest row or a long weekend yields a real
+previous close. `[Unknown]` Why the provider returned the row empty. When it does, the list is
+still one session behind; it no longer reports an invented zero change. Order prices use a
+different lookup and were not affected.
