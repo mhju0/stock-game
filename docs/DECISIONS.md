@@ -953,3 +953,15 @@ any real-value feature.
 
 The reopening of ended sessions and semver-major upgrades keep their rows in the standing
 table.
+
+## 2026-11-14 — Migration 004 applied to production
+
+The owner approved applying `004_revoke_api_role_grants.py` on 2026-11-14. `[Verified]` It ran
+28 statements after a same-day `pg_dump` backup. A second check-only run found no privilege
+left for `anon` or `authenticated` on the six tables or their sequences; row counts were
+unchanged; the deployed API passed a health check, a demo login, and a throwaway account's
+registration and deletion.
+
+`[Verified]` `supabase_admin` keeps its own default privileges naming the API roles. They cover
+objects that role creates, which the application's tables are not, and the migration's role
+cannot alter them.

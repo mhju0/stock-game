@@ -39,4 +39,4 @@ venv/bin/python scripts/migrations/004_revoke_api_role_grants.py          # chec
 venv/bin/python scripts/migrations/004_revoke_api_role_grants.py --apply  # write
 ```
 
-It reads the database URL the same way as 002. It does nothing on SQLite or on a PostgreSQL database without those roles, and a rerun skips what is already revoked. Run it as the table owner. The application works with or without these grants, so there is no deployment order.
+It reads the database URL the same way as 002. It does nothing on SQLite or on a PostgreSQL database without those roles, and a rerun skips what is already revoked. Run it as the table owner. The application works with or without these grants, so there is no deployment order. It was applied to production on 2026-11-14 after a backup.
