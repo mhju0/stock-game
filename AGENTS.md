@@ -81,6 +81,8 @@ Done means `scripts/check.sh` prints GATE: PASS; paste the last lines.
 Don't remove or loosen these without an explicit request. Each has regression
 tests; a change that needs a test changed is a red flag.
 
+- `app/routes/auth.py`: login verifies a placeholder hash when no account matches, so an
+  unknown username costs the same bcrypt work as a wrong password.
 - `app/services/auth_rate_limit.py`: login charges the per-address ceiling before
   password verification and the per-account budget only on failure, so a third party
   can't lock an owner out. `client_address()` trusts only the rightmost `X-Forwarded-For` hop.
@@ -94,9 +96,10 @@ tests; a change that needs a test changed is a red flag.
 - `requirements.txt` fully pinned; `frontend/vercel.json` CSP and security headers;
   Dependabot security updates, CodeQL default setup, least-privilege workflow tokens.
 
-Deliberately open items (JWT revocation and password change, login timing oracle,
-`FORCE ROW LEVEL SECURITY` and policies, money as floats) are listed in
-`docs/DECISIONS.md` → "Standing deliberately open decisions". Raise them; don't fix silently.
+Accepted, not planned (JWT revocation and password change, the duplicate-username
+message at registration, RLS policies and `FORCE ROW LEVEL SECURITY`, money as floats):
+see `docs/DECISIONS.md` → "2026-11-14 — Adjudicate the standing open decisions" for the
+reasons and what reopens each. Raise them; don't fix silently.
 
 ## Agent skills
 

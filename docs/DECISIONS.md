@@ -644,6 +644,9 @@ which has never been checked.
 
 ## Standing "deliberately open" decisions
 
+> Superseded in part by "2026-11-14 — Adjudicate the standing open decisions": the first four
+> rows are decided there. The last two rows stand.
+
 `[Verified]` Carried in `PROJECT_STATUS.md`. Each needs an explicit decision or
 production access; none should be silently "fixed" during maintenance.
 
@@ -898,3 +901,55 @@ login. No application code, schema, role, or policy changed.
 No `pg_dump` was taken immediately before the upgrade. The newest local dump predates it by two
 days (taken before migration 003). CI already runs its PostgreSQL service on major version 17,
 so no workflow change was needed.
+
+## 2026-11-14 — Adjudicate the standing open decisions
+
+The owner asked for the remaining open items to be settled on the agent's judgement
+(2026-11-14). Four rows of the standing table are decided here. Two were small enough to fix;
+two are accepted as they are, with the condition that would reopen them.
+
+**Login timing — fixed.** `[Verified]` An unknown username skipped bcrypt, so response time
+separated registered from unregistered names. Login now verifies the submitted password against
+a placeholder hash when no account matches, so both paths cost one hash check. The placeholder
+is the hash of a random value generated at import and discarded. The rate limits and the order
+they run in are unchanged. A test counts the hash checks for both paths.
+
+**Registration reports a taken username — accepted.** A sign-up form that takes a username has
+to say when the name is taken; hiding it needs an email or other out-of-band channel this
+product does not have. Registration stays behind its per-address and process rate limits.
+Reopen if accounts gain an email address.
+
+**Token revocation, logout endpoint, password change — accepted, not planned.** Tokens stay
+stateless for seven days. Building revocation means a new column, a changed token contract, new
+endpoints and new screens, in a product that is in maintenance, holds simulated money only, and
+stores a username and a password hash and no other personal data. The operator's control is to
+rotate `JWT_SECRET_KEY`, which ends every session at once. Reopen before any feature that
+stores personal data or real value, or if the product leaves maintenance for general sign-up.
+
+**Row level security and API role grants — decided.** `[Verified]` A read-only catalog query on
+2026-11-14 found RLS enabled on all six tables with no policies, the tables owned by
+`postgres`, and Supabase's `anon` and `authenticated` roles holding every table privilege,
+including TRUNCATE, plus sequence usage. The backend connects as `postgres`; nothing in the
+repository uses the Supabase Data API.
+
+- No policies are added. With RLS enabled and no policy, the API roles are denied every row,
+  which is the intended rule for a database only the backend reads.
+- `FORCE ROW LEVEL SECURITY` is not set. It binds the table owner, and the backend connects as
+  the owner with `BYPASSRLS`, so it would change nothing while that role is in use.
+- The API roles' grants are revoked by `backend/scripts/migrations/004_revoke_api_role_grants.py`.
+  RLS does not cover TRUNCATE, and without the grants a table no longer depends on RLS staying
+  enabled. The migration also removes the roles from the owner's default privileges so later
+  tables are not granted. It is additive in effect: no column, constraint, policy or row
+  changes, and the owner and `service_role` keep their access.
+- A separate least-privilege login role for the backend is not created. It needs a new
+  credential in the host's environment and buys little while one service is the only client.
+  Reopen if a second client or direct database access for another person is added.
+
+**Money as floats — accepted, not planned.** Balances and prices stay binary floats. The money
+is simulated, amounts are rounded for display, and the change would rewrite every money column
+and every trading and valuation path, which is the highest-risk code in the product. No
+rounding defect has been reported or measured. Reopen on a verified rounding defect or before
+any real-value feature.
+
+The reopening of ended sessions and semver-major upgrades keep their rows in the standing
+table.

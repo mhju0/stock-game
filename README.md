@@ -183,7 +183,7 @@ Failure traces are in `frontend/test-results/`; open a trace with
 from the core flows are also written there. Backend errors are logged to the
 uvicorn terminal; `/health/db` checks connectivity without changing user data.
 
-As of November 12, 2026: 392 backend tests (including 17 cases against
+As of November 14, 2026: 402 backend tests (including 22 cases against
 real PostgreSQL), 111 frontend unit tests, and 21 Chromium flows. CI runs the same
 verification script for PRs and pushes to `main`.
 

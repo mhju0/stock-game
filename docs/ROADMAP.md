@@ -78,7 +78,9 @@ They are listed because they are known and real, not because they are scheduled.
   Would also be the natural home for `/auth/me` and a real client-side token
   validity check.
 - **Money representation** — integer minor units or `Numeric` instead of binary
-  floats, to remove sub-won drift across long trade chains.
+  floats, to remove sub-won drift across long trade chains. Accepted as is on
+  2026-11-14 (`docs/DECISIONS.md`); reopens on a verified rounding defect or a
+  real-value feature.
 - **Legacy Portfolio retirement** — deleting the unscoped `/portfolio/*`,
   `/trade/*`, `/analytics/*` paths, `portfolio_compatibility.py`,
   `sync_legacy_user_balance()`, and the nullable-FK branch. The largest available
@@ -87,9 +89,9 @@ They are listed because they are known and real, not because they are scheduled.
   `(game_session_id, market, ticker)` unique index that `001_session_scope.py`
   deliberately left out, batched with the other deferred DB constraints
   (CHECK constraints, FK CASCADE).
-- **Login enumeration decision** — fix the timing oracle with a dummy bcrypt
-  compare and soften the registration 409, or accept enumeration as the cost of a
-  usable sign-up. Either way, decide it explicitly.
+- **Login enumeration decision** — decided 2026-11-14 (`docs/DECISIONS.md`): the
+  timing oracle is fixed with a placeholder bcrypt compare, and the registration
+  409 is accepted as the cost of a usable sign-up.
 - **Ended-session valuation consistency across the hub/status and saved results.**
   The list N+1 issue was resolved in D-35. Hub/status still calculate current value
   from live prices; the result page uses saved evidence. Unifying those payloads
