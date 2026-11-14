@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Security
+
+- Login spends one password-hash check whether or not the username exists, so
+  response time no longer shows which usernames are registered.
+- Adds the manual migration `004_revoke_api_role_grants.py`, which removes the
+  Supabase `anon` and `authenticated` roles' privileges on the application
+  tables. The backend does not use those roles.
+
 ### Trading integrity
 
 - Buy, sell, and currency exchange accept an optional `Idempotency-Key` header.

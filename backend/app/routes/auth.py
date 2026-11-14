@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
@@ -21,6 +23,10 @@ from app.services.auth_rate_limit import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Verified against when no account matches, so an unknown username costs the
+# same bcrypt work as a wrong password. The plaintext is random and discarded.
+PLACEHOLDER_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
 
 
 class RegisterRequest(BaseModel):
@@ -84,7 +90,11 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         window_seconds=LOGIN_WINDOW_SECONDS,
     )
     user = db.query(User).filter(User.username == body.username).first()
-    if not user or not user.hashed_password or not verify_password(body.password, user.hashed_password):
+    has_password = bool(user and user.hashed_password)
+    password_matches = verify_password(
+        body.password, user.hashed_password if has_password else PLACEHOLDER_PASSWORD_HASH
+    )
+    if not has_password or not password_matches:
         # Charged only on failure, so nobody can spend an account's budget from
         # elsewhere and leave the owner's correct password meeting a 429.
         register_identity_failure(

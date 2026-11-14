@@ -83,19 +83,19 @@ the documented no-fix `ecdsa` advisory above.
 
 ## Deliberately open decisions
 
-These are not maintenance changes to make silently:
+These are not maintenance changes to make silently. The first four were decided
+on 2026-11-14 (`docs/DECISIONS.md`, "Adjudicate the standing open decisions"):
 
 - `[Verified]` Access tokens are stateless for seven days; there is no token
-  revocation or password-change flow. This needs a separately approved auth
-  phase.
-- `[Verified]` Login still has a username timing difference because an unknown
-  user skips bcrypt verification. Registration also intentionally reports a
-  duplicate username. The product/security tradeoff needs an explicit decision.
-- `[Verified]` Repository SQL enables Supabase RLS but contains no per-table
-  policies or `FORCE ROW LEVEL SECURITY`. `[Unknown]` Live database policy and
-  role state were not queried during this credential-independent audit.
-- `[Verified]` Money remains stored as binary floats. Moving to integer minor
-  units or `Numeric` requires an approved production migration.
+  revocation or password-change flow. Accepted, not planned; rotating
+  `JWT_SECRET_KEY` ends every session.
+- `[Verified]` Login verifies a placeholder hash for an unknown username, so
+  the timing difference is closed. Registration still reports a duplicate
+  username, by decision.
+- `[Verified]` RLS is enabled on the six tables with no policies, which denies
+  the Supabase API roles every row; no policies or `FORCE ROW LEVEL SECURITY`
+  are planned. Migration 004 revokes those roles' table grants.
+- `[Verified]` Money remains stored as binary floats. Accepted, not planned.
 - `[Verified]` Completed and archived sessions cannot be reopened as active.
   Reopening remains out of scope, not a missing v1 behavior.
 - `[Verified]` Dependency automation intentionally ignores semver-major updates.

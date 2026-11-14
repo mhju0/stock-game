@@ -29,3 +29,14 @@ venv/bin/python scripts/migrations/003_foreign_key_indexes.py --apply  # write
 ```
 
 It reads the database URL the same way as 002 and skips indexes that already exist. The application works with or without these indexes, so there is no deployment order. It was applied to production on 2026-11-12 after a backup.
+
+## 004 · Revoke API role grants
+
+`004_revoke_api_role_grants.py` revokes the Supabase `anon` and `authenticated` roles' privileges on the six application tables and their id sequences, and removes those roles from the connecting user's default privileges for new tables and sequences (`docs/DECISIONS.md`, 2026-11-14). It changes no column, constraint, policy, or row, and leaves the owner and `service_role` alone.
+
+```bash
+venv/bin/python scripts/migrations/004_revoke_api_role_grants.py          # check-only
+venv/bin/python scripts/migrations/004_revoke_api_role_grants.py --apply  # write
+```
+
+It reads the database URL the same way as 002. It does nothing on SQLite or on a PostgreSQL database without those roles, and a rerun skips what is already revoked. Run it as the table owner. The application works with or without these grants, so there is no deployment order.
