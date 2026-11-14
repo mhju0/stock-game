@@ -882,3 +882,19 @@ present.
 No measurement was taken, and none would be meaningful: the largest of these tables held 46
 rows. The indexes close the advisor finding and keep session deletes from scanning these tables
 as they grow; they are not a measured speed-up. Existing indexes were left alone.
+
+## 2026-11-14 — Apply the PostgreSQL 17.11 platform update
+
+The 2026-11-04 audit recorded the production server at PostgreSQL 17.6 and left the 17.11
+security update for a separately approved phase. Read-only checks on 2026-11-12 found none of
+the conditions the update notice lists as needing action. The owner started the upgrade from
+the Supabase dashboard on 2026-11-14; the project was offline while it ran.
+
+`[Verified]` A read-only check on 2026-11-15 reported server version 17.11, unchanged row
+counts in all six application tables, no invalid indexes, no orphaned session rows, and the
+indexes from migrations 002 and 003 present. The deployed API passed `/health/db` and a demo
+login. No application code, schema, role, or policy changed.
+
+No `pg_dump` was taken immediately before the upgrade. The newest local dump predates it by two
+days (taken before migration 003). CI already runs its PostgreSQL service on major version 17,
+so no workflow change was needed.
