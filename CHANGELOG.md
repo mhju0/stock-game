@@ -25,6 +25,8 @@
   (`transactions.game_session_id`, `portfolio_snapshots.game_session_id`,
   `watchlist.user_id`) through the additive manual migration
   `003_foreign_key_indexes.py`.
+- The production database moved from PostgreSQL 17.6 to 17.11 through the Supabase
+  platform upgrade; data and indexes were verified unchanged afterwards.
 
 ### Architecture maintenance
 
