@@ -1,201 +1,51 @@
 # Stock Game
 
-Stock Game is a full-stack paper-trading simulator for US and Korean equities. It lets users run independent investment challenges, trade in KRW and USD, and compare portfolio returns with the S&P 500 and KOSPI without using real money.
+Paper trading for Korean and US stocks, with separate investment challenges and benchmark comparisons.
 
-**[Open the live app](https://stock-game-gray.vercel.app)** · API base `https://stock-game-6411.onrender.com`
+**[Live app](https://stock-game-gray.vercel.app)**
 
-> **v1.1.0 (latest tag) · Feature complete · Maintenance mode**
->
-> The planned product scope is complete. v1.1.0 changed the interface only and added no features. Since then `main` has received maintenance fixes only, most recently [PR #54](https://github.com/mhju0/stock-game/pull/54) on November 4, 2026. Maintenance covers security and dependency updates, production compatibility, regressions, and documentation corrections. See [MAINTENANCE.md](MAINTENANCE.md).
+Choose a starting balance and duration, trade virtual KRW/USD funds, and compare results with the KOSPI and S&P 500. Prices come from Yahoo through yfinance; orders and money are simulated, with no brokerage execution.
 
-The verified release, deployment, security, test, and remaining-decision snapshot is recorded in [PROJECT_STATUS.md](PROJECT_STATUS.md).
+Try `demo` / `demo1234`. This is an intentionally public, shared account: visitors can change it, and backend startup resets its baseline. Free hosting can make the first request slow.
 
-Interactive API docs are a developer-environment feature and are disabled on the deployed API; see [Run locally](#run-locally) to browse them.
+<img src="docs/screenshots/performance-benchmark.png" width="900" alt="An active paper-trading game beside its benchmark comparison">
 
-## Demo
+Screenshot uses fixed test fixtures, not production user data.
 
-Sign in with `demo` / `demo1234` to explore a pre-populated portfolio. This is a shared public account: visitors can change its state while the backend remains running, and the baseline is rebuilt on the next backend start. The Render API uses free hosting, so the first request can take 30 to 60 seconds while the service starts.
+## Engineering decisions
 
-## Screenshots
+- Each game owns cash, holdings, transactions and valuation snapshots. Shared ownership checks hide other users’ sessions with a 404; watchlists remain user-level.
+- Trading resolves session lifecycle before mutation. Ended games retain saved results and reject new trades; client portfolio scopes separate session and legacy query paths.
+- Keyed buy, sell and exchange requests can replay an existing order without duplicating it. The browser keeps the key for an open ticket; closing it and submitting again creates a new order.
 
-These captures were taken on November 4, 2026 from current `main` with fixed, fixture-backed data exercised through the automated browser flows; they do not contain production user data.
-
-### Sign in
-
-<img src="docs/screenshots/auth-showcase.png" alt="Dark Stock Game sign-in experience with product story and focused form" width="1280">
-
-### Game overview
-
-<img src="docs/screenshots/games-overview.png" alt="Demo game overview" width="1440">
-
-### Active game and benchmark
-
-<img src="docs/screenshots/performance-benchmark.png" alt="Active game status with benchmark comparison" width="1440">
-
-### Portfolio
-
-<img src="docs/screenshots/portfolio-summary.png" alt="Demo portfolio holdings and allocation" width="1440">
-
-### Mobile game overview
-
-<img src="docs/screenshots/mobile-game-status.png" alt="Responsive active game overview with bottom navigation" width="390">
-
-## Highlights
-
-- Session-scoped games with configurable capital and duration; completed games remain available as read-only results.
-- KRW/USD cash balances, live FX exchange, average-cost holdings, and realized/unrealized P&L.
-- Benchmark, allocation, and holding-level analytics backed by periodic portfolio snapshots.
-- Korean and English UI, a global user-level watchlist, and market browsing for US and Korean stocks.
-- Ownership checks at every session-scoped API boundary; cross-user resources return 404.
-- Rate limiting, bounded request validation, and hardened response headers on the API (see [Security](#security)).
-- A dark-first interface with an explicit light theme, contextual desktop sidebar, mobile tab bar, keyboard focus containment, and reduced-motion support. The interface contract is documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
-
-## Architecture
-
-```mermaid
-flowchart LR
-  Browser[React + Vite client] -->|JWT API requests| API[FastAPI]
-  API --> Routes[Route layer]
-  Routes --> Services[Trading, valuation, snapshots, market services]
-  Services --> DB[(Supabase Postgres)]
-  Services --> Market[yfinance market data]
-  API --> Scheduler[Single-worker refresh and snapshot jobs]
-  Scheduler --> Services
-```
-
-`GameSession` owns playable cash and state. Holdings, transactions, and portfolio snapshots are scoped by `game_session_id`; the watchlist is intentionally user-level. Routes authenticate with a custom JWT and use shared ownership helpers before reading or mutating a session.
-
-On the client, each selected-game route mounts an explicit Session Portfolio scope that owns its API paths, query keys, and trade invalidation boundary. Legacy user-level Portfolio access remains isolated behind a compatibility adapter. Game lifecycle query orchestration and shared dialog keyboard/dismissal mechanics live in dedicated frontend modules; page components retain the product-specific rendering and copy.
-
-## Security
-
-The deployed API is internet-accessible. Authentication and market-data routes accept callers without an API key, so the controls below account for anonymous scripted traffic.
-
-**Authentication and access**
-
-- Custom JWT (HS256) with bcrypt password hashing. The server refuses to start without `JWT_SECRET_KEY`.
-- Every session-scoped route resolves ownership through shared helpers; another user's session is a 404, not a 403.
-- Interactive docs (`/docs`, `/redoc`, `/openapi.json`) are served only where `ENABLE_DEV_TOOLS=true`, matching the gate on the `/admin` fund routes. They fail closed on any other value.
-- Production CORS allows the single configured `FRONTEND_URL`; local development allows `localhost:5173` and `localhost:3000`. Credentialed requests are disabled because the API reads a Bearer header and never a cookie.
-- Every response carries `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`.
-
-**Rate limits:** all return `429` with a `Retry-After` header.
-
-| Scope | Limit | Keyed on |
-|---|---|---|
-| Login | 20 / min per address; 10 / min per account, charged only on failure; 600 / min process backstop | Client address, account, and process |
-| Register | 5 per 10 min per address and username; 100 per 10 min process backstop | Client address, requested username, and process |
-| Market data | 120 / min | Client address |
-| Trades | 60 / min | Account |
-| Game creation | 60 / min | Account |
-
-The account budget is charged only after credentials are checked and only when they were wrong, so a third party cannot spend it to lock an owner out of their own login.
-
-**Request bounds**
-
-- Ticker parameters must match a Yahoo symbol shape before they reach the upstream provider.
-- Trade quantities are whole shares in `1 … 1,000,000,000`; money fields reject `Infinity` and `NaN`.
-- The benchmark lookback is capped at 10 years, and an account may hold at most 20 active games.
-- JSON request bodies over 64 KB are rejected with `413` before any authentication work.
-- Price and metadata lookup misses are cached briefly, so repeated requests for the same unknown symbol do not force an outbound call each time. Search, history, and other upstream-backed routes remain protected by the market-data rate limit.
-
-Backend dependencies are pinned and checked against the installed environment. Frontend installs use the committed lockfile with `npm ci`; the declared React Router minimum includes the advisory fixes.
-The Vercel deployment adds a restrictive Content Security Policy. GitHub vulnerability alerts and Dependabot security updates are enabled; routine version-update PRs are turned off. Tokens are signed and verified with PyJWT, HS256 only; python-jose, which has an unfixed critical advisory, was removed. CodeQL scans Actions, JavaScript/TypeScript, and Python with GitHub's default query suite. The protected `main` branch requires the backend and frontend CI checks through a pull request.
-
-## Tech stack
-
-| Layer | Stack |
-|---|---|
-| Frontend | React 19, Vite, React Router, TanStack Query, Recharts, react-i18next |
-| Backend | Python 3.11, FastAPI, SQLAlchemy, yfinance |
-| Data | Supabase Postgres in production, SQLite for local development |
-| Deployment | Vercel frontend, Render API |
+React · Vite · TanStack Query · FastAPI · SQLAlchemy · PostgreSQL (production) / SQLite (local) · Vercel + Render
 
 ## Run locally
 
-Prerequisites: Python 3.11 and Node.js 20.19+ (or 22.13+).
-
-### Backend
+Use Python 3.11 and Node 20.19+ or 22.13+. Start the backend and frontend in separate terminals.
 
 ```bash
 cd backend
 python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
+venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 test -e .env || cp .env.example .env
-# Set JWT_SECRET_KEY in .env, then:
-uvicorn app.main:app --reload
+# Set JWT_SECRET_KEY in .env before starting.
+venv/bin/uvicorn app.main:app --reload
 ```
-
-The API starts at `http://127.0.0.1:8000`. Set `ENABLE_DEV_TOOLS=true` in `.env` to serve the interactive docs at `/docs`; they are off by default, including locally.
-
-### Frontend
 
 ```bash
 cd frontend
 npm ci --no-audit
-VITE_API_URL=http://127.0.0.1:8000 npm run dev
+npm run dev
 ```
 
-The app starts at `http://localhost:5173`.
+Local development defaults to SQLite and the API at `http://127.0.0.1:8000`. See [backend configuration](backend/.env.example). Production builds require `VITE_API_URL`, `DATABASE_URL` and the matching `FRONTEND_URL`; interactive API docs and developer fund controls stay disabled by default.
 
-## Configuration
+## Scope and checks
 
-| Location | Variable | Required | Purpose |
-|---|---|---|---|
-| backend | `JWT_SECRET_KEY` | Yes | Signs access tokens; the server refuses to start without it. |
-| backend | `DATABASE_URL` | Production | Supabase Postgres connection URL; unset uses local SQLite for development. |
-| backend | `FRONTEND_URL` | Production | Sole production CORS origin. Unset selects the documented localhost development origins. |
-| backend | `ENABLE_DEV_TOOLS` | No | Enables the local-only balance adjustment endpoints and the interactive API docs. Keep unset in production. |
-| frontend | `VITE_API_URL` | Production | Backend API base URL; development defaults to `http://127.0.0.1:8000`. |
-| frontend | `VITE_ENABLE_DEV_TOOLS` | No | Exposes local-only developer controls. Keep unset in production. |
+Quotes can be unavailable or stale; yfinance is unofficial.
 
-## Verification
-
-```bash
-./scripts/verify.sh                 # all gates, also used by CI
-./scripts/verify.sh backend         # pytest + compileall
-./scripts/verify.sh frontend        # unit tests + lint + build + Chromium
-./scripts/regression-smoke.sh       # API smoke + rendered stock navigation
-
-# Targeted tests
-backend/venv/bin/pytest backend/tests/test_game.py -k expired
-npm --prefix frontend test -- src/game/useGameSessionLifecycle.test.jsx
-npm --prefix frontend run test:e2e -- --grep 'stock search'
-```
-
-Install Chromium once with `npm --prefix frontend exec -- playwright install chromium`.
-Tests force an in-memory database and a fixed test JWT secret before importing the
-app. The PostgreSQL concurrency tests run only when `AUDIT_POSTGRES_URL` points at
-a disposable database (CI starts one); otherwise they are skipped. Market data is mocked. Auth tests still exercise real registration/login;
-other tests reuse one password hash when preparing their users.
-
-`verify.sh` uses the backend virtualenv by default; set `PYTHON=python3.11` if your
-dependencies are installed elsewhere. Its build artifact uses localhost for
-verification. A deployment must run `npm run build` with its actual `VITE_API_URL`;
-Vite rejects a missing/empty API URL before bundling.
-
-Playwright starts its own frontend and mocks API responses, so no running backend
-or credentials are needed. It refuses to reuse an unrelated server. For another
-worktree, install dependencies there and use `E2E_PORT=4175 ./scripts/verify.sh frontend`.
-Failure traces are in `frontend/test-results/`; open a trace with
-`npm --prefix frontend exec -- playwright show-trace <trace.zip>`. Screenshots
-from the core flows are also written there. Backend errors are logged to the
-uvicorn terminal; `/health/db` checks connectivity without changing user data.
-
-As of November 14, 2026: 402 backend tests (including 22 cases against
-real PostgreSQL), 111 frontend unit tests, and 21 Chromium flows. CI runs the same
-verification script for PRs and pushes to `main`.
-
-The regression smoke covers authentication, games, trading, FX, analytics, ownership isolation, and delete boundaries. See [REGRESSION_SMOKE.md](REGRESSION_SMOKE.md) for coverage and manual QA limits.
-
-## Known limitations
-
-- Market data comes from yfinance, an unofficial source; the app uses caching and static fundamentals as fallbacks, but quotes can still be unavailable during an outage.
-- The free Render service can cold-start slowly.
-- Rate limiting is process-local and resets whenever the worker restarts, including deploys and routine recycling. That is sound for the single Gunicorn worker this service runs, but a multi-worker deployment should move the counters to a shared store such as Redis.
-- Cash and holdings are stored as floats rather than integer minor units, so long chains of trades can accumulate sub-won rounding drift.
-- Access tokens are stateless and last 7 days, so signing out clears the browser's copy but cannot invalidate a token already issued. There is no password-change flow.
+[Verification script](scripts/check.sh) · [Regression smoke and QA limits](REGRESSION_SMOKE.md) · [Verified project record](PROJECT_STATUS.md) · [Maintenance policy](MAINTENANCE.md) · [Decisions](docs/DECISIONS.md)
 
 ## License
 
