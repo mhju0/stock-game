@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.102.8",
-    "i18next": "^25.10.10",
+    "i18next": "^27.2.7",
     "jwt-decode": "^4.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
